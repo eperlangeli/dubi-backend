@@ -13,6 +13,12 @@ const pool = new Pool({
 
 app.use(cors());
 app.use(express.json());
+app.get('/', (req, res) => {
+  res.json({
+    message: 'DUBI Backend is running successfully',
+    status: 'online'
+  });
+});
 
 // HEALTH CHECK
 app.get('/health', (req, res) => {
