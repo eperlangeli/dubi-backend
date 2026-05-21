@@ -86,7 +86,8 @@ const initDb = async () => {
     `);
 
     console.log('✅ Database initialized successfully');
-    await client.end();
+    client.release();
+await pool.end();
   } catch (error) {
     console.error('❌ Database init failed:', error);
     process.exit(1);
