@@ -2,11 +2,11 @@ services:
   - type: web
     name: dubi-backend
     runtime: node
-    runtimeVersion: 20.11.0
+    plan: starter
     buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3000
+      - key: NODE_VERSION
+        value: 18.20.4
