@@ -26,7 +26,19 @@ module.exports = (pool) => {
     }
   };
 
-  // Save or update onboarding data
+  const wearableMap = {
+    apple: 'apple_health',
+    garmin: 'garmin',
+    whoop: 'whoop',
+    oura: 'oura_ring',
+    strava: 'strava',
+    polar: 'polar',
+    suunto: 'suunto',
+    samsung: 'samsung_health',
+    google: 'google_health_connect',
+    none: 'none'
+  };
+
   router.post('/save', verifyToken, async (req, res) => {
     try {
       const {
@@ -56,22 +68,7 @@ module.exports = (pool) => {
         wearable_provider
       } = req.body;
 
-      const allowedWearables = [
-        'apple_health',
-        'garmin',
-        'whoop',
-        'oura_ring',
-        'strava',
-        'polar',
-        'suunto',
-        'samsung_health',
-        'google_health_connect',
-        'none'
-      ];
-
-      if (wearable_provider && !allowedWearables.includes(wearable_provider)) {
-        return res.status(400).json({ error: 'Invalid wearable provider' });
-      }
+      const cleanWearableProvider = wearableMap[wearable_provider] || 'none';
 
       const result = await pool.query(
         `
@@ -164,7 +161,7 @@ module.exports = (pool) => {
           breakfast_pref,
           day_start,
           day_end,
-          wearable_provider
+          cleanWearableProvider
         ]
       );
 
@@ -178,7 +175,6 @@ module.exports = (pool) => {
     }
   });
 
-  // Get current user onboarding data
   router.get('/me', verifyToken, async (req, res) => {
     try {
       const result = await pool.query(
