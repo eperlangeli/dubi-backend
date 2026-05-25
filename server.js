@@ -28,6 +28,7 @@ app.get('/health', (req, res) => {
 // ROUTES
 app.use('/auth', require('./routes/auth')(pool));
 app.use('/api/onboarding', require('./routes/onboarding')(pool));
+app.use('/api/plans', require('./routes/plans')(pool));
 app.use('/user', require('./routes/user')(pool));
 app.use('/plan', require('./routes/plan')(pool));
 app.use('/adherence', require('./routes/adherence')(pool));
