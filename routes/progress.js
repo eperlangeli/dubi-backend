@@ -93,6 +93,83 @@ module.exports = (pool) => {
       res.status(500).json({ error: 'Failed to fetch progress history' });
     }
   });
+router.put('/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    const {
+      weight,
+      calories_consumed,
+      meals_completed,
+      meals_total,
+      adherence_percent,
+      note
+    } = req.body;
+
+    const result = await pool.query(
+      `
+      UPDATE user_progress
+      SET
+        weight = COALESCE($1, weight),
+        calories_consumed = COALESCE($2, calories_consumed),
+        meals_completed = COALESCE($3, meals_completed),
+        meals_total = COALESCE($4, meals_total),
+        adherence_percent = COALESCE($5, adherence_percent),
+        note = COALESCE($6, note)
+      WHERE id = $7 AND user_id = $8
+      RETURNING *;
+      `,
+      [
+        weight,
+        calories_consumed,
+        meals_completed,
+        meals_total,
+        adherence_percent,
+        note,
+        id,
+        req.userId
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Progress entry not found' });
+    }
+
+    res.json({
+      message: 'Progress updated successfully',
+      progress: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Progress update error:', error);
+    res.status(500).json({ error: 'Failed to update progress' });
+  }
+});
+
+router.delete('/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      DELETE FROM user_progress
+      WHERE id = $1 AND user_id = $2
+      RETURNING *;
+      `,
+      [id, req.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Progress entry not found' });
+    }
+
+    res.json({
+      message: 'Progress deleted successfully',
+      progress: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Progress delete error:', error);
+    res.status(500).json({ error: 'Failed to delete progress' });
+  }
+});
   return router;
 };
