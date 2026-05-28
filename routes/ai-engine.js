@@ -506,6 +506,8 @@ module.exports = (pool) => {
     return {
       id: selected.id,
       name: selected.name,
+      description: selected.description,
+      ingredients: selected.ingredients || [],
       slot: slot.key,
       mealType: slot.type,
       cuisine: selected.cuisine,
@@ -541,7 +543,9 @@ module.exports = (pool) => {
         level: filterLevel,
         dietStyle,
         excludedAllergens,
-        season
+        season,
+        mealGoalTags: selected.meal_goal_tags || [],
+        avoidIf: selected.avoid_if || []
       },
       scienceTrace: {
         reasons: explainRecipeSelection(selected, slot, physiologicalState),
