@@ -550,6 +550,70 @@ module.exports = (pool) => {
     };
   };
 
+  const decideRegenerationFromWeight = ({ user, weightTrend, latestWeight, force = false, reason = null }) => {
+    if (force) {
+      return {
+        shouldRegenerate: true,
+        reason: reason || 'manual_regeneration',
+        explanation: 'Plan regeneration was requested explicitly.'
+      };
+    }
+
+    if (!weightTrend || weightTrend.status === 'insufficient_data') {
+      return {
+        shouldRegenerate: false,
+        reason: 'insufficient_weight_data',
+        explanation: 'At least 6 weight entries are needed before DUBI changes the plan from weight trend alone.'
+      };
+    }
+
+    const goal = String(user?.goal || '').toLowerCase();
+    const targetWeight = Number(user?.target_weight || 0);
+    const currentWeight = Number(latestWeight || user?.weight || 0);
+    const nearTarget = targetWeight > 0 && currentWeight > 0 && Math.abs(currentWeight - targetWeight) <= 1;
+
+    if (nearTarget) {
+      return {
+        shouldRegenerate: false,
+        reason: 'near_target_weight',
+        explanation: 'Current weight is close to target; DUBI keeps the plan stable.'
+      };
+    }
+
+    if (['fatloss', 'fat_loss', 'definition', 'cut'].includes(goal)) {
+      if (weightTrend.status === 'stagnant') {
+        return {
+          shouldRegenerate: true,
+          reason: 'fat_loss_stagnation',
+          explanation: 'Weight trend is stagnant during a fat-loss goal, so DUBI recalibrates calories and meals.'
+        };
+      }
+      if (weightTrend.status === 'increasing') {
+        return {
+          shouldRegenerate: true,
+          reason: 'fat_loss_weight_increase',
+          explanation: 'Weight is increasing during a fat-loss goal, so DUBI recalibrates the plan.'
+        };
+      }
+    }
+
+    if (['gain', 'muscle_gain'].includes(goal)) {
+      if (weightTrend.status === 'stagnant' || weightTrend.status === 'decreasing') {
+        return {
+          shouldRegenerate: true,
+          reason: 'gain_not_progressing',
+          explanation: 'Weight is not increasing during a gain goal, so DUBI increases support for progress.'
+        };
+      }
+    }
+
+    return {
+      shouldRegenerate: false,
+      reason: 'trend_acceptable',
+      explanation: 'Weight trend is compatible with the current goal.'
+    };
+  };
+
   const queryRecipes = async ({ dietStyle, excludedAllergens, mealType, season }) => {
     const result = await pool.query(
       `
@@ -798,6 +862,47 @@ module.exports = (pool) => {
     return result.rows[0];
   };
 
+  const generateAdaptivePlan = async (userId, options = {}) => {
+    const user = await getUserProfile(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const physiologicalState = await interpretPhysiologicalState(userId);
+    const metabolism = calculateMetabolism(user);
+    const weightTrend = await analyzeWeightTrend(userId);
+    const targets = makeAdaptiveDecisions(user, metabolism, physiologicalState, weightTrend);
+    const mealStructure = await generateMeals(user, targets, physiologicalState);
+    const regenerationDecision = options.regenerationDecision || null;
+    const plan = {
+      userId,
+      generatedAt: new Date().toISOString(),
+      goal: user.goal,
+      bmr: metabolism.bmr,
+      tdee: metabolism.tdee,
+      activityFactor: metabolism.activityFactor,
+      caloriesTarget: targets.calories,
+      proteinTarget: targets.protein,
+      carbsTarget: targets.carbs,
+      fatsTarget: targets.fats,
+      recoveryMode: targets.recoveryMode || false,
+      physiologicalState,
+      weightTrend,
+      regeneration: regenerationDecision ? {
+        reason: regenerationDecision.reason,
+        explanation: regenerationDecision.explanation,
+        triggeredBy: options.triggeredBy || 'ai_engine'
+      } : null,
+      mealStructure,
+      message: 'FASE 2 aligned. Layers 0-4 generate adaptive targets and meals.'
+    };
+    const savedPlan = await savePlan(userId, plan);
+
+    return { user, plan, savedPlan };
+  };
+
   router.get('/test', (req, res) => {
     res.json({
       message: 'DUBI AI Engine FASE 1 is running',
@@ -814,39 +919,119 @@ module.exports = (pool) => {
 
   router.post('/generate-plan', verifyToken, async (req, res) => {
     try {
-      const userId = req.userId;
-      const user = await getUserProfile(userId);
-
-      if (!user) return res.status(404).json({ error: 'User not found' });
-
-      const physiologicalState = await interpretPhysiologicalState(userId);
-      const metabolism = calculateMetabolism(user);
-      const weightTrend = await analyzeWeightTrend(userId);
-      const targets = makeAdaptiveDecisions(user, metabolism, physiologicalState, weightTrend);
-      const mealStructure = await generateMeals(user, targets, physiologicalState);
-      const plan = {
-        userId,
-        generatedAt: new Date().toISOString(),
-        goal: user.goal,
-        bmr: metabolism.bmr,
-        tdee: metabolism.tdee,
-        activityFactor: metabolism.activityFactor,
-        caloriesTarget: targets.calories,
-        proteinTarget: targets.protein,
-        carbsTarget: targets.carbs,
-        fatsTarget: targets.fats,
-        recoveryMode: targets.recoveryMode || false,
-        physiologicalState,
-        weightTrend,
-        mealStructure,
-        message: 'FASE 2 aligned. Layers 0-4 generate adaptive targets and meals.'
-      };
-      const savedPlan = await savePlan(userId, plan);
+      const { plan, savedPlan } = await generateAdaptivePlan(req.userId, {
+        triggeredBy: 'manual_generate'
+      });
 
       res.json({ success: true, plan, savedPlanId: savedPlan.id });
     } catch (error) {
       console.error('AI plan generation error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(error.statusCode || 500).json({ error: error.message });
+    }
+  });
+
+  router.post('/regenerate', verifyToken, async (req, res) => {
+    try {
+      const { reason } = req.body || {};
+      const user = await getUserProfile(req.userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      const weightTrend = await analyzeWeightTrend(req.userId);
+      const latestWeightResult = await pool.query(
+        `
+        SELECT weight
+        FROM weight_history
+        WHERE user_id = $1
+        ORDER BY logged_at DESC
+        LIMIT 1
+        `,
+        [req.userId]
+      );
+      const latestWeight = latestWeightResult.rows[0]?.weight || user.weight;
+      const regenerationDecision = decideRegenerationFromWeight({
+        user,
+        weightTrend,
+        latestWeight,
+        force: true,
+        reason
+      });
+      const { plan, savedPlan } = await generateAdaptivePlan(req.userId, {
+        regenerationDecision,
+        triggeredBy: 'manual_regenerate'
+      });
+
+      res.json({
+        success: true,
+        regenerated: true,
+        decision: regenerationDecision,
+        plan,
+        savedPlanId: savedPlan.id
+      });
+    } catch (error) {
+      console.error('AI plan regeneration error:', error);
+      res.status(error.statusCode || 500).json({ error: error.message });
+    }
+  });
+
+  router.post('/weight/log', verifyToken, async (req, res) => {
+    try {
+      const weight = Number(req.body?.weight);
+
+      if (!Number.isFinite(weight) || weight < 30 || weight > 300) {
+        return res.status(400).json({ error: 'Valid weight is required' });
+      }
+
+      const logged = await pool.query(
+        `
+        INSERT INTO weight_history (user_id, weight)
+        VALUES ($1, $2)
+        RETURNING *
+        `,
+        [req.userId, weight]
+      );
+
+      await pool.query('UPDATE users SET weight = $1 WHERE id = $2', [weight, req.userId]);
+      await pool.query(
+        `
+        UPDATE user_onboarding
+        SET weight = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = $2
+        `,
+        [weight, req.userId]
+      );
+
+      const user = await getUserProfile(req.userId);
+      const weightTrend = await analyzeWeightTrend(req.userId);
+      const regenerationDecision = decideRegenerationFromWeight({
+        user,
+        weightTrend,
+        latestWeight: weight
+      });
+
+      let regeneratedPlan = null;
+      let savedPlanId = null;
+
+      if (regenerationDecision.shouldRegenerate) {
+        const generated = await generateAdaptivePlan(req.userId, {
+          regenerationDecision,
+          triggeredBy: 'weight_log'
+        });
+        regeneratedPlan = generated.plan;
+        savedPlanId = generated.savedPlan.id;
+      }
+
+      res.json({
+        success: true,
+        weight: logged.rows[0],
+        weightTrend,
+        decision: regenerationDecision,
+        regenerated: Boolean(regeneratedPlan),
+        plan: regeneratedPlan,
+        savedPlanId
+      });
+    } catch (error) {
+      console.error('AI weight log error:', error);
+      res.status(error.statusCode || 500).json({ error: error.message });
     }
   });
 
