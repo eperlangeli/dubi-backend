@@ -575,15 +575,21 @@ module.exports = (pool) => {
     return result.rows;
   };
 
-  const queryRecipeFallback = async (mealType) => {
+  const queryRecipeFallback = async ({ dietStyle, excludedAllergens, mealType }) => {
     const result = await pool.query(
       `
       SELECT *
       FROM recipes
       WHERE is_active = true
-        AND (meal_type IS NULL OR meal_type && ARRAY[$1]::varchar[])
+        AND (diet_compatibility IS NULL OR diet_compatibility @> ARRAY[$1]::varchar[])
+        AND (
+          $2::varchar[] = ARRAY[]::varchar[]
+          OR allergens IS NULL
+          OR NOT (allergens && $2::varchar[])
+        )
+        AND (meal_type IS NULL OR meal_type && ARRAY[$3]::varchar[])
       `,
-      [mealType]
+      [dietStyle, excludedAllergens, mealType]
     );
 
     return result.rows;
@@ -614,8 +620,12 @@ module.exports = (pool) => {
     }
 
     if (candidates.length === 0) {
-      candidates = await queryRecipeFallback(slot.type);
-      filterLevel = 'meal_type_only';
+      candidates = await queryRecipeFallback({
+        dietStyle,
+        excludedAllergens,
+        mealType: slot.type
+      });
+      filterLevel = 'diet_allergy_no_season';
     }
 
     if (candidates.length === 0) return null;
