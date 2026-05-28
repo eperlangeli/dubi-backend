@@ -160,6 +160,106 @@ const normalizeDiet = (diet) => {
   return 'omnivore';
 };
 
+const INGREDIENT_SWAP_LIBRARY = [
+  {
+    role: 'protein',
+    match: /pollo|tacchino|manzo|bresaola|uova|albumi|salmone|tonno|merluzzo|branzino|sgombro|polpo|gamberi|trota|nasello|tofu|tempeh|seitan|edamame|yogurt|skyr|kefir|ricotta|fiocchi di latte|proteine/i,
+    options: [
+      { name: 'Petto di pollo', quantity: 150, unit: 'g', diets: ['omnivore'], allergens: [] },
+      { name: 'Fesa di tacchino', quantity: 150, unit: 'g', diets: ['omnivore'], allergens: [] },
+      { name: 'Uova', quantity: 2, unit: 'pz', diets: ['omnivore', 'vegetarian'], allergens: ['eggs'] },
+      { name: 'Tonno al naturale', quantity: 120, unit: 'g', diets: ['omnivore', 'pescatarian'], allergens: ['fish'] },
+      { name: 'Merluzzo', quantity: 160, unit: 'g', diets: ['omnivore', 'pescatarian'], allergens: ['fish'] },
+      { name: 'Tofu', quantity: 170, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['soy'] },
+      { name: 'Tempeh', quantity: 150, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['soy'] },
+      { name: 'Seitan', quantity: 150, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['gluten'] },
+      { name: 'Yogurt greco 0-2%', quantity: 170, unit: 'g', diets: ['omnivore', 'vegetarian', 'pescatarian'], allergens: ['dairy'] },
+      { name: 'Skyr naturale', quantity: 170, unit: 'g', diets: ['omnivore', 'vegetarian', 'pescatarian'], allergens: ['dairy'] },
+      { name: 'Proteine vegetali in polvere', quantity: 25, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] }
+    ]
+  },
+  {
+    role: 'carb',
+    match: /riso|pasta|quinoa|cous cous|orzo|farro|pane|toast|piadina|wrap|gallette|crackers|patate|zucca|avena|granola|crema di riso/i,
+    options: [
+      { name: 'Riso basmati', quantity: 75, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Quinoa', quantity: 75, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Patate', quantity: 220, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Pasta integrale', quantity: 80, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['gluten'] },
+      { name: 'Cous cous', quantity: 75, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['gluten'] },
+      { name: 'Pane senza glutine', quantity: 70, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Gallette di riso', quantity: 3, unit: 'pz', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Fiocchi di avena certificati senza glutine', quantity: 55, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] }
+    ]
+  },
+  {
+    role: 'vegetable',
+    match: /zucchine|broccoli|spinaci|funghi|pomodoro|pomodorini|carote|asparagi|peperoni|cetrioli|rucola|insalata|fagiolini|finocchi|verdure|minestrone/i,
+    options: [
+      { name: 'Zucchine', quantity: 180, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Broccoli', quantity: 180, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Spinaci', quantity: 120, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Carote', quantity: 120, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Verdure miste', quantity: 200, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Insalata mista', quantity: 120, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] }
+    ]
+  },
+  {
+    role: 'fat',
+    match: /olio evo|avocado|noci|mandorle|burro di arachidi|tahina|semi|olive|crema di nocciole/i,
+    options: [
+      { name: 'Olio EVO', quantity: 10, unit: 'ml', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Avocado', quantity: 70, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Semi di chia', quantity: 15, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Tahina', quantity: 15, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['sesame'] },
+      { name: 'Mandorle', quantity: 15, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['nuts'] },
+      { name: 'Noci', quantity: 15, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['nuts'] }
+    ]
+  },
+  {
+    role: 'fruit',
+    match: /banana|mela|pera|kiwi|fragole|mirtilli|frutti rossi|lamponi|mango|arancia|frutta|datteri/i,
+    options: [
+      { name: 'Banana', quantity: 1, unit: 'media', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Mela', quantity: 1, unit: 'media', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Pera', quantity: 1, unit: 'media', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Kiwi', quantity: 1, unit: 'medio', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Frutti rossi', quantity: 100, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Mango', quantity: 120, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] }
+    ]
+  }
+];
+
+const withIngredientSwaps = (ingredients, user) => {
+  const dietStyle = normalizeDiet(user.diet_style);
+  const excludedAllergens = parseList(user.allergies);
+
+  return (Array.isArray(ingredients) ? ingredients : []).map((ingredient) => {
+    const name = typeof ingredient === 'string' ? ingredient : ingredient?.name || '';
+    const group = INGREDIENT_SWAP_LIBRARY.find((entry) => entry.match.test(name));
+    if (!group) return ingredient;
+
+    const alternatives = group.options
+      .filter((option) => option.name.toLowerCase() !== name.toLowerCase())
+      .filter((option) => option.diets.includes(dietStyle) || dietStyle === 'omnivore')
+      .filter((option) => !option.allergens.some((allergen) => excludedAllergens.includes(allergen)))
+      .slice(0, 5)
+      .map((option) => ({
+        name: option.name,
+        quantity: option.quantity,
+        unit: option.unit,
+        role: group.role,
+        equivalence: 'DUBI equivalent swap: same nutritional role, adjusted portion'
+      }));
+
+    return {
+      ...(typeof ingredient === 'string' ? { name: ingredient } : ingredient),
+      role: group.role,
+      alternatives
+    };
+  });
+};
+
 const timeToHour = (value, fallback) => {
   if (value == null || value === '') return fallback;
   if (typeof value === 'number') return value;
@@ -507,7 +607,7 @@ module.exports = (pool) => {
       id: selected.id,
       name: selected.name,
       description: selected.description,
-      ingredients: selected.ingredients || [],
+      ingredients: withIngredientSwaps(selected.ingredients || [], user),
       slot: slot.key,
       mealType: slot.type,
       cuisine: selected.cuisine,
