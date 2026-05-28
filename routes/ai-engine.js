@@ -152,6 +152,31 @@ const parseList = (value) => {
     .filter(Boolean);
 };
 
+const normalizeAllergenList = (value) => {
+  const raw = parseList(value);
+  const normalized = new Set(raw);
+
+  raw.forEach((item) => {
+    if (/latt|latte|dairy|milk|casein|caseina/.test(item)) {
+      normalized.add('dairy');
+      normalized.add('lactose');
+    }
+    if (/uov|egg/.test(item)) normalized.add('eggs');
+    if (/glutin|gluten|celiach|celiac/.test(item)) normalized.add('gluten');
+    if (/arachid|peanut/.test(item)) {
+      normalized.add('peanuts');
+      normalized.add('nuts');
+    }
+    if (/frutta secca|noci|nocciol|mandorl|nut/.test(item)) normalized.add('nuts');
+    if (/soia|soy/.test(item)) normalized.add('soy');
+    if (/sesamo|sesame/.test(item)) normalized.add('sesame');
+    if (/pesce|fish/.test(item)) normalized.add('fish');
+    if (/crostace|gamber|shellfish|crustacean/.test(item)) normalized.add('shellfish');
+  });
+
+  return Array.from(normalized);
+};
+
 const normalizeDiet = (diet) => {
   const value = String(diet || 'omnivore').toLowerCase();
   if (['veg', 'vegetarian', 'vegetariano'].includes(value)) return 'vegetarian';
@@ -232,7 +257,7 @@ const INGREDIENT_SWAP_LIBRARY = [
 
 const withIngredientSwaps = (ingredients, user) => {
   const dietStyle = normalizeDiet(user.diet_style);
-  const excludedAllergens = parseList(user.allergies);
+  const excludedAllergens = normalizeAllergenList(user.allergies);
 
   return (Array.isArray(ingredients) ? ingredients : []).map((ingredient) => {
     const name = typeof ingredient === 'string' ? ingredient : ingredient?.name || '';
@@ -560,7 +585,7 @@ module.exports = (pool) => {
 
   const selectRecipeForSlot = async ({ user, slot, usedRecipeIds, physiologicalState }) => {
     const dietStyle = normalizeDiet(user.diet_style);
-    const excludedAllergens = parseList(user.allergies);
+    const excludedAllergens = normalizeAllergenList(user.allergies);
     const season = getCurrentSeason();
     let candidates = await queryRecipes({
       dietStyle,
