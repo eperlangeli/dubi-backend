@@ -402,9 +402,44 @@ const buildIngredients = (category, name) => {
   return ingredients.slice(0, 7);
 };
 
+const inferDietMetadata = (name, ingredients) => {
+  const text = `${name} ${ingredients.map((item) => item.name).join(' ')}`.toLowerCase();
+  const allergens = new Set();
+
+  const hasMeat = /(pollo|tacchino|manzo|bresaola)/.test(text);
+  const hasFish = /(salmone|tonno|merluzzo|branzino|sgombro|trota|nasello)/.test(text);
+  const hasShellfish = /(gamberi|polpo)/.test(text);
+  const hasEggs = /(uovo|uova|albumi|omelette|frittata)/.test(text);
+  const hasDairy = /(yogurt|skyr|kefir|ricotta|fiocchi di latte|mozzarella|feta|grana|whey|latte parzialmente|latte vaccino)/.test(text);
+  const hasGluten = /(pasta integrale|cous cous|seitan|pane|piadina|wrap|crackers|farro|orzo)/.test(text)
+    && !/(senza glutine|certificati senza glutine)/.test(text);
+  const hasNuts = /(mandorle|noci|nocciole|frutta secca)/.test(text);
+  const hasPeanuts = /(arachidi|burro di arachidi)/.test(text);
+  const hasSoy = /(tofu|tempeh|edamame|soia)/.test(text);
+  const hasSesame = /(tahina|sesamo)/.test(text);
+  const hasHoney = /miele/.test(text);
+
+  if (hasDairy) { allergens.add('dairy'); allergens.add('lactose'); }
+  if (hasEggs) allergens.add('eggs');
+  if (hasGluten) allergens.add('gluten');
+  if (hasNuts) allergens.add('nuts');
+  if (hasPeanuts) { allergens.add('peanuts'); allergens.add('nuts'); }
+  if (hasSoy) allergens.add('soy');
+  if (hasSesame) allergens.add('sesame');
+  if (hasFish) allergens.add('fish');
+  if (hasShellfish) allergens.add('shellfish');
+
+  let dietCompatibility;
+  if (hasMeat) dietCompatibility = ['omnivore'];
+  else if (hasFish || hasShellfish) dietCompatibility = ['omnivore', 'pescatarian'];
+  else if (hasEggs || hasDairy || hasHoney) dietCompatibility = ['omnivore', 'vegetarian', 'pescatarian'];
+  else dietCompatibility = ['omnivore', 'vegetarian', 'vegan', 'pescatarian'];
+
+  return { dietCompatibility, allergens: [...allergens] };
+};
+
 const buildRecipe = (category, name, index) => {
   const group = GROUPS[category];
-  const diet = DIET_ROTATION[index % DIET_ROTATION.length];
   const adjustment = CATEGORY_ADJUSTMENTS[category][index % CATEGORY_ADJUSTMENTS[category].length];
   const macro = {
     calories: clamp(group.macro.calories + (adjustment.calories || 0), 120),
@@ -420,6 +455,8 @@ const buildRecipe = (category, name, index) => {
   if (category === 'dinner' && index % 10 === 0) mealType.push('post_workout');
   const cuisine = CUISINE_ROTATION[(index + category.length) % CUISINE_ROTATION.length];
   const mealGoalTags = buildGoalTags(category, macro, mealType);
+  const ingredients = buildIngredients(category, name);
+  const diet = inferDietMetadata(name, ingredients);
 
   return {
     name,
@@ -446,7 +483,7 @@ const buildRecipe = (category, name, index) => {
     avoidIf: buildAvoidIf(diet.allergens, macro),
     dietCompatibility: diet.dietCompatibility,
     allergens: diet.allergens,
-    ingredients: buildIngredients(category, name),
+    ingredients,
     scientificSource: group.source.source,
     evidenceLevel: group.source.evidenceLevel,
     scienceTags: [group.source.label, category]
