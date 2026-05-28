@@ -374,6 +374,8 @@ const calculateMealStructure = (user, targets) => {
 const scoreRecipe = (recipe, slot, physiologicalState) => {
   const calorieDistance = Math.abs(Number(recipe.calories || 0) - slot.calories);
   const proteinDistance = Math.abs(Number(recipe.protein || 0) - slot.protein);
+  const carbDistance = Math.abs(Number(recipe.carbs || 0) - slot.carbs);
+  const fatDistance = Math.abs(Number(recipe.fats || 0) - slot.fats);
   const goalTags = Array.isArray(recipe.meal_goal_tags) ? recipe.meal_goal_tags : [];
   const recoveryBonus = physiologicalState.recoveryStatus === 'compromised' && goalTags.includes('recovery') ? 4 : 0;
   const trainingBonus = slot.tag && goalTags.includes('training_fuel') ? 3 : 0;
@@ -389,7 +391,11 @@ const scoreRecipe = (recipe, slot, physiologicalState) => {
   const slotBonus = Array.isArray(recipe.meal_type) && slot.tag && recipe.meal_type.includes(slot.tag) ? 5 : 0;
 
   return qualityScore + slotBonus + recoveryBonus + trainingBonus + satietyBonus -
-    calorieDistance * 0.045 - proteinDistance * 0.08 - processingPenalty - sodiumPenalty - sugarPenalty;
+    calorieDistance * 0.045 -
+    proteinDistance * 0.08 -
+    carbDistance * 0.025 -
+    fatDistance * 0.05 -
+    processingPenalty - sodiumPenalty - sugarPenalty;
 };
 
 const explainRecipeSelection = (recipe, slot, physiologicalState) => {
@@ -614,16 +620,14 @@ module.exports = (pool) => {
 
     if (candidates.length === 0) return null;
 
-    const sorted = candidates
+    const scored = candidates
       .map((recipe) => ({
         ...recipe,
         dubi_score: scoreRecipe(recipe, slot, physiologicalState)
-      }))
-      .sort((a, b) => {
-        const aUsed = usedRecipeIds.has(String(a.id)) ? -3 : 0;
-        const bUsed = usedRecipeIds.has(String(b.id)) ? -3 : 0;
-        return (b.dubi_score + bUsed) - (a.dubi_score + aUsed);
-      });
+      }));
+    const unused = scored.filter((recipe) => !usedRecipeIds.has(String(recipe.id)));
+    const poolForSlot = unused.length > 0 ? unused : scored;
+    const sorted = poolForSlot.sort((a, b) => b.dubi_score - a.dubi_score);
 
     const selected = sorted[0];
     usedRecipeIds.add(String(selected.id));
@@ -744,7 +748,9 @@ module.exports = (pool) => {
         'Safety -> Recovery -> Goal -> Performance priority tree',
         'Protein target by body weight and goal',
         'Recipe filtering by diet, allergens, meal type, seasonality',
-        'Recipe scoring by satiety, nutrient density, processing level, glycemic index, recovery support'
+        'Recipe scoring by satiety, nutrient density, processing level, glycemic index, recovery support',
+        'Weekly diversity guard avoids repeating the same recipe while alternatives exist',
+        'Per-slot macro distance checks calories, protein, carbohydrates, and fats'
       ],
       slots: structure,
       days
