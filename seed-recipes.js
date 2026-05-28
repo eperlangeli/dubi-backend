@@ -252,6 +252,156 @@ const buildAvoidIf = (allergens, macro) => {
   return avoid;
 };
 
+const ingredient = (name, quantity, unit) => ({ name, quantity, unit });
+
+const titleHas = (name, term) => name.toLowerCase().includes(term.toLowerCase());
+
+const buildIngredients = (category, name) => {
+  const ingredients = [];
+  const add = (itemName, quantity, unit = 'g') => {
+    if (!ingredients.some((item) => item.name === itemName)) ingredients.push(ingredient(itemName, quantity, unit));
+  };
+  const isSavory = ['lunch', 'dinner'].includes(category)
+    || /uova|toast|pane|hummus|tacchino|salmone|tonno|pollo|tofu|tempeh|seitan|insalata|curry|pasta|patate|verdure|burger|caprese|shakshuka|ceci|fagioli/i.test(name);
+
+  if (titleHas(name, 'Avena') || titleHas(name, 'Overnight') || titleHas(name, 'Muesli')) add('Fiocchi di avena', 55);
+  if (titleHas(name, 'Granola')) add('Granola senza zuccheri aggiunti', 35);
+  if (titleHas(name, 'Chia')) add('Semi di chia', 25);
+  if (titleHas(name, 'Cocco')) add('Latte di cocco light', 120, 'ml');
+  if (titleHas(name, 'Pancake')) add('Farina di avena', 50);
+  if (titleHas(name, 'Pancake')) add('Albumi', 160);
+  if (titleHas(name, 'Smoothie Verde')) add('Spinaci freschi', 60);
+  if (titleHas(name, 'Smoothie Verde')) add('Proteine in polvere', 25);
+  if (titleHas(name, 'Smoothie Verde')) add('Banana', 1, 'media');
+  if (titleHas(name, 'Caffe')) add('Caffe espresso', 1, 'tazzina');
+  if (titleHas(name, 'Datteri')) add('Datteri', 3, 'pz');
+  if (titleHas(name, 'Cioccolato Fondente')) add('Cioccolato fondente 85%', 15);
+  if (titleHas(name, 'Barretta')) add('Miele', 10);
+  if (titleHas(name, 'Caprese')) add('Mozzarella light', 100);
+  if (titleHas(name, 'Caprese')) add('Basilico', 5);
+  if (titleHas(name, 'Greca')) add('Feta', 60);
+  if (titleHas(name, 'Greca')) add('Cetrioli', 120);
+  if (titleHas(name, 'Burger Vegetale')) add('Burger vegetale di legumi', 1, 'pz');
+  if (titleHas(name, 'Bowl Mediterranea Vegan')) add('Ceci cotti', 150);
+  if (titleHas(name, 'Bowl Mediterranea Vegan')) add('Quinoa', 70);
+  if (titleHas(name, 'Zuppa')) add('Cereali integrali misti', 60);
+  if (titleHas(name, 'Minestrone')) add('Verdure per minestrone', 250);
+  if (titleHas(name, 'Shakshuka')) add('Passata di pomodoro', 180);
+  if (titleHas(name, 'Porridge')) add('Latte parzialmente scremato o bevanda vegetale', 180, 'ml');
+  if (titleHas(name, 'Mirtilli') || titleHas(name, 'Frutti Rossi')) add('Mirtilli o frutti rossi', 100);
+  if (titleHas(name, 'Fragole')) add('Fragole', 120);
+  if (titleHas(name, 'Lamponi')) add('Lamponi', 100);
+  if (titleHas(name, 'Banana')) add('Banana', 1, 'media');
+  if (titleHas(name, 'Pera')) add('Pera', 1, 'media');
+  if (titleHas(name, 'Mela')) add('Mela', 1, 'media');
+  if (titleHas(name, 'Kiwi')) add('Kiwi', 1, 'medio');
+  if (titleHas(name, 'Mango')) add('Mango', 120);
+  if (titleHas(name, 'Arancia')) add('Succo di arancia', 180, 'ml');
+  if (titleHas(name, 'Cacao')) add('Cacao amaro', 8);
+  if (titleHas(name, 'Cannella')) add('Cannella', 1, 'cucchiaino');
+  if (titleHas(name, 'Miele')) add('Miele', 10);
+  if (titleHas(name, 'Marmellata')) add('Marmellata senza zuccheri aggiunti', 20);
+  if (titleHas(name, 'Semi')) add('Semi di chia o semi misti', 15);
+  if (titleHas(name, 'Noci')) add('Noci', 15);
+  if (titleHas(name, 'Mandorle')) add('Mandorle', 15);
+  if (titleHas(name, 'Arachidi')) add('Burro di arachidi', 15);
+  if (titleHas(name, 'Nocciole')) add('Crema di nocciole 100%', 15);
+  if (titleHas(name, 'Tahina')) add('Tahina', 15);
+
+  if (titleHas(name, 'Yogurt Greco')) add('Yogurt greco 0-2%', 170);
+  if (titleHas(name, 'Yogurt Senza Lattosio') || titleHas(name, 'Lactose Free')) add('Yogurt senza lattosio', 170);
+  if (titleHas(name, 'Yogurt') && !ingredients.some((item) => item.name.includes('Yogurt'))) add('Yogurt bianco naturale', 160);
+  if (titleHas(name, 'Skyr')) add('Skyr naturale', 170);
+  if (titleHas(name, 'Kefir')) add('Kefir naturale', 200, 'ml');
+  if (titleHas(name, 'Ricotta')) add('Ricotta magra', 90);
+  if (titleHas(name, 'Fiocchi di Latte') || titleHas(name, 'Cottage Cheese')) add('Fiocchi di latte', 150);
+  if (titleHas(name, 'Whey') || titleHas(name, 'Shake Proteico') || titleHas(name, 'Proteine')) add('Proteine in polvere', 25);
+  if (titleHas(name, 'Soia')) add('Yogurt di soia o bevanda di soia', 170);
+
+  if (titleHas(name, 'Uova')) add('Uova', 2, 'pz');
+  if (titleHas(name, 'Albumi')) add('Albumi', 180);
+  if (titleHas(name, 'Omelette') && !ingredients.some((item) => item.name === 'Uova')) add('Uova', 2, 'pz');
+  if (titleHas(name, 'Frittata') && !ingredients.some((item) => item.name === 'Uova')) add('Uova', 2, 'pz');
+  if (titleHas(name, 'Tofu')) add('Tofu', category.includes('snack') ? 120 : 160);
+  if (titleHas(name, 'Tempeh')) add('Tempeh', 150);
+  if (titleHas(name, 'Seitan')) add('Seitan', 150);
+  if (titleHas(name, 'Edamame')) add('Edamame', 160);
+  if (titleHas(name, 'Pollo')) add('Petto di pollo', category === 'post_workout' ? 150 : 140);
+  if (titleHas(name, 'Tacchino')) add('Fesa di tacchino', 130);
+  if (titleHas(name, 'Manzo')) add('Manzo magro', 140);
+  if (titleHas(name, 'Bresaola')) add('Bresaola', 80);
+  if (titleHas(name, 'Salmone')) add('Salmone', 140);
+  if (titleHas(name, 'Tonno')) add('Tonno al naturale o fresco', 120);
+  if (titleHas(name, 'Merluzzo')) add('Merluzzo', 160);
+  if (titleHas(name, 'Branzino')) add('Branzino', 160);
+  if (titleHas(name, 'Sgombro')) add('Sgombro', 130);
+  if (titleHas(name, 'Polpo')) add('Polpo', 160);
+  if (titleHas(name, 'Gamberi')) add('Gamberi', 150);
+  if (titleHas(name, 'Trota')) add('Trota', 150);
+  if (titleHas(name, 'Nasello')) add('Nasello', 160);
+
+  if (titleHas(name, 'Riso Basmati')) add('Riso basmati', category === 'pre_workout' ? 60 : 75);
+  if (titleHas(name, 'Riso Integrale')) add('Riso integrale', 75);
+  if (titleHas(name, 'Riso Nero')) add('Riso nero', 75);
+  if (titleHas(name, 'Riso Jasmine')) add('Riso jasmine', 75);
+  if (titleHas(name, 'Riso Soffiato')) add('Riso soffiato', 35);
+  if (titleHas(name, 'Crema di Riso') || titleHas(name, 'Crema Riso')) add('Crema di riso', 60);
+  if (titleHas(name, 'Riso') && !ingredients.some((item) => item.name.toLowerCase().includes('riso'))) add('Riso', 70);
+  if (titleHas(name, 'Quinoa')) add('Quinoa', 75);
+  if (titleHas(name, 'Pasta Integrale')) add('Pasta integrale', 80);
+  if (titleHas(name, 'Pasta Lenticchie')) add('Pasta di lenticchie', 80);
+  if (titleHas(name, 'Pasta') && !ingredients.some((item) => item.name.toLowerCase().includes('pasta'))) add('Pasta', 80);
+  if (titleHas(name, 'Cous Cous')) add('Cous cous', 75);
+  if (titleHas(name, 'Noodles')) add('Noodles di riso', 75);
+  if (titleHas(name, 'Orzo')) add('Orzo perlato', 75);
+  if (titleHas(name, 'Farro')) add('Farro', 75);
+  if (titleHas(name, 'Pane Integrale')) add('Pane integrale', 70);
+  if (titleHas(name, 'Pane Segale')) add('Pane di segale', 70);
+  if (titleHas(name, 'Pane Senza Glutine')) add('Pane senza glutine', 70);
+  if (titleHas(name, 'Pane Bianco')) add('Pane bianco', 60);
+  if (titleHas(name, 'Pane') && !ingredients.some((item) => item.name.toLowerCase().includes('pane'))) add('Pane', 60);
+  if (titleHas(name, 'Toast') && !ingredients.some((item) => item.name.toLowerCase().includes('pane'))) add('Pane per toast', 70);
+  if (titleHas(name, 'Piadina')) add('Piadina integrale', 1, 'pz');
+  if (titleHas(name, 'Wrap')) add('Wrap integrale', 1, 'pz');
+  if (titleHas(name, 'Burrito')) add('Riso o tortilla integrale', 70);
+  if (titleHas(name, 'Gallette')) add('Gallette di riso o mais', 3, 'pz');
+  if (titleHas(name, 'Crackers')) add('Crackers integrali o di riso', 35);
+  if (titleHas(name, 'Patate Dolci') || titleHas(name, 'Patata Dolce')) add('Patata dolce', 220);
+  if (titleHas(name, 'Patate')) add('Patate', 220);
+  if (titleHas(name, 'Zucca')) add('Zucca', 220);
+
+  if (titleHas(name, 'Ceci')) add('Ceci cotti', 150);
+  if (titleHas(name, 'Lenticchie Rosse')) add('Lenticchie rosse', 80);
+  if (titleHas(name, 'Lenticchie')) add('Lenticchie cotte', 160);
+  if (titleHas(name, 'Fagioli')) add('Fagioli cotti', 160);
+  if (titleHas(name, 'Legumi')) add('Legumi misti cotti', 180);
+  if (titleHas(name, 'Hummus')) add('Hummus', category === 'snack' ? 60 : 80);
+  if (titleHas(name, 'Mais')) add('Mais', 60);
+
+  if (titleHas(name, 'Spinaci')) add('Spinaci', 120);
+  if (titleHas(name, 'Broccoli')) add('Broccoli', 180);
+  if (titleHas(name, 'Zucchine')) add('Zucchine', 180);
+  if (titleHas(name, 'Funghi')) add('Funghi', 120);
+  if (titleHas(name, 'Pomodoro') || titleHas(name, 'Pomodorini')) add(titleHas(name, 'Pomodorini') ? 'Pomodorini' : 'Pomodoro', 120);
+  if (titleHas(name, 'Carote')) add('Carote', 120);
+  if (titleHas(name, 'Asparagi')) add('Asparagi', 160);
+  if (titleHas(name, 'Peperoni')) add('Peperoni', 160);
+  if (titleHas(name, 'Cetrioli')) add('Cetrioli', 120);
+  if (titleHas(name, 'Rucola')) add('Rucola', 50);
+  if (titleHas(name, 'Insalata')) add('Insalata mista', 120);
+  if (titleHas(name, 'Fagiolini')) add('Fagiolini', 160);
+  if (titleHas(name, 'Finocchi')) add('Finocchi', 180);
+  if (titleHas(name, 'Verdure')) add('Verdure miste', 200);
+  if (titleHas(name, 'Avocado')) add('Avocado', 70);
+  if (titleHas(name, 'Olive')) add('Olive', 25);
+  if (titleHas(name, 'Grana')) add('Grana Padano', 20);
+
+  if (isSavory && !ingredients.some((item) => ['Olio EVO', 'Miele', 'Marmellata senza zuccheri aggiunti'].includes(item.name))) add('Olio EVO', category === 'snack' || category === 'pre_workout' ? 5 : 10, 'ml');
+  if (ingredients.length < 3) add(category === 'breakfast' || category === 'snack' || category === 'pre_workout' ? 'Frutta fresca di stagione' : 'Verdure di stagione', category === 'breakfast' || category === 'snack' || category === 'pre_workout' ? 100 : 180);
+
+  return ingredients.slice(0, 7);
+};
+
 const buildRecipe = (category, name, index) => {
   const group = GROUPS[category];
   const diet = DIET_ROTATION[index % DIET_ROTATION.length];
@@ -296,11 +446,7 @@ const buildRecipe = (category, name, index) => {
     avoidIf: buildAvoidIf(diet.allergens, macro),
     dietCompatibility: diet.dietCompatibility,
     allergens: diet.allergens,
-    ingredients: [
-      { name: 'Fonte proteica principale', quantity: 1, unit: 'porzione' },
-      { name: 'Carboidrato o fibra principale', quantity: 1, unit: 'porzione' },
-      { name: 'Verdure, frutta o grassi di qualita', quantity: 1, unit: 'porzione' }
-    ],
+    ingredients: buildIngredients(category, name),
     scientificSource: group.source.source,
     evidenceLevel: group.source.evidenceLevel,
     scienceTags: [group.source.label, category]
