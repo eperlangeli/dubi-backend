@@ -185,6 +185,61 @@ const normalizeDiet = (diet) => {
   return 'omnivore';
 };
 
+const TEMPORARY_ANOMALY_CAUSES = new Set([
+  'stress',
+  'argument',
+  'anger',
+  'caffeine',
+  'alcohol',
+  'poor_sleep',
+  'intense_training',
+  'travel',
+  'illness',
+  'menstrual_cycle',
+  'high_sodium',
+  'temporary_stress'
+]);
+
+const normalizeAnomalyAttribution = (value) => {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return 'unknown';
+  if (['yes', 'si', 'sì', 'stress', 'litigata', 'discussione', 'ira', 'rabbia'].includes(raw)) return 'temporary_stress';
+  if (['no', 'none', 'nothing', 'normale'].includes(raw)) return 'none_reported';
+  return raw.replace(/\s+/g, '_');
+};
+
+const decideAnomalyAction = (attribution) => {
+  const normalized = normalizeAnomalyAttribution(attribution);
+
+  if (TEMPORARY_ANOMALY_CAUSES.has(normalized)) {
+    return {
+      attribution: normalized,
+      nutritionRelated: false,
+      action: 'exclude_and_monitor',
+      excludedFromRegeneration: true,
+      explanation: 'Temporary non-nutrition cause confirmed. DUBI excludes this data point and keeps the plan unchanged.'
+    };
+  }
+
+  if (normalized === 'none_reported') {
+    return {
+      attribution: normalized,
+      nutritionRelated: null,
+      action: 'monitor_48_72h',
+      excludedFromRegeneration: false,
+      explanation: 'No external cause confirmed. DUBI monitors the next 48-72 hours before changing nutrition.'
+    };
+  }
+
+  return {
+    attribution: normalized,
+    nutritionRelated: null,
+    action: 'monitor',
+    excludedFromRegeneration: false,
+    explanation: 'Attribution recorded. DUBI will use it in the next trend analysis.'
+  };
+};
+
 const INGREDIENT_SWAP_LIBRARY = [
   {
     role: 'protein',
@@ -1031,6 +1086,70 @@ module.exports = (pool) => {
       });
     } catch (error) {
       console.error('AI weight log error:', error);
+      res.status(error.statusCode || 500).json({ error: error.message });
+    }
+  });
+
+  router.post('/anomaly/confirm', verifyToken, async (req, res) => {
+    try {
+      const {
+        anomaly_type,
+        metric,
+        current_value,
+        baseline_value,
+        delta_percent,
+        attribution,
+        note,
+        payload
+      } = req.body || {};
+
+      if (!anomaly_type) {
+        return res.status(400).json({ error: 'anomaly_type is required' });
+      }
+
+      const decision = decideAnomalyAction(attribution);
+      const result = await pool.query(
+        `
+        INSERT INTO user_anomaly_events (
+          user_id,
+          anomaly_type,
+          metric,
+          current_value,
+          baseline_value,
+          delta_percent,
+          user_attribution,
+          user_note,
+          nutrition_related,
+          action,
+          excluded_from_regeneration,
+          payload
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        RETURNING *
+        `,
+        [
+          req.userId,
+          anomaly_type,
+          metric || null,
+          current_value ?? null,
+          baseline_value ?? null,
+          delta_percent ?? null,
+          decision.attribution,
+          note || null,
+          decision.nutritionRelated,
+          decision.action,
+          decision.excludedFromRegeneration,
+          JSON.stringify(payload || {})
+        ]
+      );
+
+      res.json({
+        success: true,
+        event: result.rows[0],
+        decision
+      });
+    } catch (error) {
+      console.error('AI anomaly confirmation error:', error);
       res.status(error.statusCode || 500).json({ error: error.message });
     }
   });

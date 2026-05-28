@@ -100,6 +100,23 @@ CREATE TABLE IF NOT EXISTS user_ingredient_swaps (
   UNIQUE(user_id, swap_key)
 );
 
+CREATE TABLE IF NOT EXISTS user_anomaly_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  anomaly_type VARCHAR(80) NOT NULL,
+  metric VARCHAR(50),
+  current_value NUMERIC,
+  baseline_value NUMERIC,
+  delta_percent NUMERIC,
+  user_attribution VARCHAR(80),
+  user_note TEXT,
+  nutrition_related BOOLEAN,
+  action VARCHAR(80) NOT NULL DEFAULT 'monitor',
+  excluded_from_regeneration BOOLEAN DEFAULT FALSE,
+  payload JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS recipes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
@@ -162,6 +179,8 @@ CREATE INDEX IF NOT EXISTS idx_user_onboarding_user ON user_onboarding(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_plans_user_created ON user_plans(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_progress_user_created ON user_progress(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_ingredient_swaps_user ON user_ingredient_swaps(user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_anomaly_events_user_created ON user_anomaly_events(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_anomaly_events_action ON user_anomaly_events(action, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wearable_data_user_synced ON wearable_data(user_id, synced_at DESC);
 CREATE INDEX IF NOT EXISTS idx_weight_history_user_logged ON weight_history(user_id, logged_at DESC);
 CREATE INDEX IF NOT EXISTS idx_adherence_user_date ON adherence(user_id, date DESC);
