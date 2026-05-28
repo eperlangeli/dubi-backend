@@ -830,5 +830,82 @@ module.exports = (pool) => {
     }
   });
 
+  router.get('/swaps', verifyToken, async (req, res) => {
+    try {
+      const result = await pool.query(
+        `
+        SELECT swap_key, day_index, meal_key, item_index, original_ingredient, replacement_ingredient, had_at_home, updated_at
+        FROM user_ingredient_swaps
+        WHERE user_id = $1
+        ORDER BY updated_at DESC
+        `,
+        [req.userId]
+      );
+
+      res.json({ swaps: result.rows });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post('/swaps', verifyToken, async (req, res) => {
+    try {
+      const {
+        swap_key,
+        day_index,
+        meal_key,
+        item_index,
+        original_ingredient,
+        replacement_ingredient,
+        had_at_home
+      } = req.body || {};
+
+      if (!swap_key || !replacement_ingredient) {
+        return res.status(400).json({ error: 'swap_key and replacement_ingredient are required' });
+      }
+
+      const result = await pool.query(
+        `
+        INSERT INTO user_ingredient_swaps (
+          user_id,
+          swap_key,
+          day_index,
+          meal_key,
+          item_index,
+          original_ingredient,
+          replacement_ingredient,
+          had_at_home,
+          updated_at
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+        ON CONFLICT (user_id, swap_key)
+        DO UPDATE SET
+          day_index = EXCLUDED.day_index,
+          meal_key = EXCLUDED.meal_key,
+          item_index = EXCLUDED.item_index,
+          original_ingredient = EXCLUDED.original_ingredient,
+          replacement_ingredient = EXCLUDED.replacement_ingredient,
+          had_at_home = EXCLUDED.had_at_home,
+          updated_at = NOW()
+        RETURNING *
+        `,
+        [
+          req.userId,
+          swap_key,
+          day_index ?? null,
+          meal_key || null,
+          item_index ?? null,
+          original_ingredient || null,
+          replacement_ingredient,
+          had_at_home ?? null
+        ]
+      );
+
+      res.json({ success: true, swap: result.rows[0] });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return router;
 };
