@@ -52,5 +52,14 @@ Flow:
 
 1. `POST /api/wearables/openwearables/user` maps the DUBI user to an OpenWearables user.
 2. `POST /api/wearables/openwearables/authorize` returns the provider OAuth URL.
-3. `POST /api/wearables/openwearables/sync` requests provider sync.
+3. `POST /api/wearables/openwearables/sync` requests historical provider sync by default.
 4. `POST /api/wearables/openwearables/import-recovery` imports recovery, sleep, HRV, and resting heart rate into `wearable_data`.
+
+OpenWearables is the data pipe only. DUBI remains the brain that interprets wearable data and adapts nutrition logic.
+
+OpenWearables is MIT/self-hosted, so there is no per-user OpenWearables fee in the open-source path. OAuth credentials are still configured per provider inside the OpenWearables instance:
+- WHOOP: Developer Platform/API is currently free, but the developer needs a WHOOP device/membership.
+- Polar: AccessLink is a free API; create a Polar Flow account and register as a third-party developer.
+- Strava/Fitbit: free developer accounts are normally enough.
+- Garmin/Suunto: application/approval process required.
+- Apple Health: SDK/mobile-app path, not web OAuth.

@@ -83,6 +83,15 @@ module.exports = (pool) => {
     return String(value).slice(0, 10);
   };
 
+  const daysBetween = (startDate, endDate) => {
+    if (!startDate || !endDate) return 90;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 90;
+    const diff = Math.ceil((end - start) / 86400000);
+    return Math.min(Math.max(diff || 1, 1), 365);
+  };
+
   const mapRecoverySummary = (entry) => ({
     dataDate: toDateString(entry.date),
     hrv: entry.avg_hrv_sdnn_ms ?? entry.hrv ?? null,
@@ -141,7 +150,7 @@ module.exports = (pool) => {
 
   router.get('/providers', verifyToken, async (req, res) => {
     try {
-      const providers = await openWearablesRequest('/oauth/providers');
+      const providers = await openWearablesRequest('/oauth/providers?enabled_only=true&cloud_only=true');
       res.json({ providers });
     } catch (error) {
       res.status(error.statusCode || 500).json({ error: error.message, detail: error.payload });
@@ -187,18 +196,28 @@ module.exports = (pool) => {
 
   router.post('/openwearables/sync', verifyToken, async (req, res) => {
     try {
-      const { provider, data_type = 'all', start_date, end_date } = req.body || {};
+      const { provider, data_type = 'all', start_date, end_date, historical = true } = req.body || {};
       if (!provider) return res.status(400).json({ error: 'provider is required' });
 
       const connection = await getOrCreateOpenWearablesUser(req.userId);
-      const query = new URLSearchParams({ data_type });
-      if (start_date) query.set('summary_start_time', new Date(start_date).toISOString());
-      if (end_date) query.set('summary_end_time', new Date(end_date).toISOString());
+      let sync;
 
-      const sync = await openWearablesRequest(
-        `/providers/${provider}/users/${connection.openwearables_user_id}/sync?${query.toString()}`,
-        { method: 'POST' }
-      );
+      if (historical) {
+        const query = new URLSearchParams({ days: String(daysBetween(start_date, end_date)) });
+        sync = await openWearablesRequest(
+          `/providers/${provider}/users/${connection.openwearables_user_id}/sync/historical?${query.toString()}`,
+          { method: 'POST' }
+        );
+      } else {
+        const query = new URLSearchParams({ data_type });
+        if (start_date) query.set('summary_start_time', new Date(start_date).toISOString());
+        if (end_date) query.set('summary_end_time', new Date(end_date).toISOString());
+
+        sync = await openWearablesRequest(
+          `/providers/${provider}/users/${connection.openwearables_user_id}/sync?${query.toString()}`,
+          { method: 'POST' }
+        );
+      }
 
       await pool.query(
         `
