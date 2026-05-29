@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 
 module.exports = (pool) => {
   const router = express.Router();
@@ -112,6 +113,8 @@ module.exports = (pool) => {
       `
       INSERT INTO wearable_data (
         user_id,
+        activity_kcal,
+        steps,
         heart_rate,
         hrv,
         sleep_hours,
@@ -121,9 +124,11 @@ module.exports = (pool) => {
         data_date,
         synced_at
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_TIMESTAMP)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,CURRENT_TIMESTAMP)
       ON CONFLICT (user_id, data_date)
       DO UPDATE SET
+        activity_kcal = COALESCE(EXCLUDED.activity_kcal, wearable_data.activity_kcal),
+        steps = COALESCE(EXCLUDED.steps, wearable_data.steps),
         heart_rate = COALESCE(EXCLUDED.heart_rate, wearable_data.heart_rate),
         hrv = COALESCE(EXCLUDED.hrv, wearable_data.hrv),
         sleep_hours = COALESCE(EXCLUDED.sleep_hours, wearable_data.sleep_hours),
@@ -135,6 +140,8 @@ module.exports = (pool) => {
       `,
       [
         userId,
+        day.activityKcal,
+        day.steps,
         day.heartRate,
         day.hrv,
         day.sleepDuration,
@@ -146,6 +153,29 @@ module.exports = (pool) => {
     );
 
     return result.rows[0];
+  };
+
+  const buildDemoWearableDays = (scenario = 'balanced') => {
+    const today = new Date();
+    return Array.from({ length: 14 }, (_, index) => {
+      const date = new Date(today.getTime() - index * 86400000);
+      const isRecent = index < 3;
+      const lowRecovery = scenario === 'low_recovery' && isRecent;
+      const hrv = lowRecovery ? 36 - index : 52 + ((index % 5) - 2);
+      const sleepDuration = lowRecovery ? 5.3 + index * 0.15 : 7.1 + ((index % 4) * 0.18);
+      const recoveryScore = lowRecovery ? 42 - index * 2 : 74 + ((index % 6) - 3);
+
+      return {
+        dataDate: date.toISOString().slice(0, 10),
+        steps: 7600 + ((index % 6) * 420),
+        activityKcal: 390 + ((index % 5) * 32),
+        heartRate: lowRecovery ? 67 + index : 58 + (index % 4),
+        hrv,
+        sleepDuration: Math.round(sleepDuration * 100) / 100,
+        sleepQuality: String(Math.max(Math.min(Math.round(sleepDuration * 11), 94), 55)),
+        recoveryScore: Math.max(Math.min(recoveryScore, 92), 30)
+      };
+    }).reverse();
   };
 
   router.get('/providers', verifyToken, async (req, res) => {
@@ -262,6 +292,56 @@ module.exports = (pool) => {
       );
 
       res.json({ success: true, importedCount: imported.length, imported });
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ error: error.message, detail: error.payload });
+    }
+  });
+
+  router.post('/demo/seed', verifyToken, async (req, res) => {
+    try {
+      const { scenario = 'balanced' } = req.body || {};
+      const allowedScenarios = ['balanced', 'low_recovery'];
+      const selectedScenario = allowedScenarios.includes(scenario) ? scenario : 'balanced';
+      const days = buildDemoWearableDays(selectedScenario);
+      const imported = [];
+
+      for (const day of days) {
+        const saved = await upsertWearableDay(req.userId, day);
+        if (saved) imported.push(saved);
+      }
+
+      await pool.query(
+        `
+        INSERT INTO openwearables_connections (user_id, openwearables_user_id, provider, status, last_synced_at, updated_at)
+        VALUES ($1, $2, 'demo', 'demo_seeded', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT (user_id)
+        DO UPDATE SET
+          provider = CASE
+            WHEN openwearables_connections.provider IS NULL OR openwearables_connections.provider = 'demo'
+            THEN 'demo'
+            ELSE openwearables_connections.provider
+          END,
+          status = CASE
+            WHEN openwearables_connections.provider IS NULL OR openwearables_connections.provider = 'demo'
+            THEN 'demo_seeded'
+            ELSE openwearables_connections.status
+          END,
+          last_synced_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+        RETURNING *
+        `,
+        [req.userId, crypto.randomUUID()]
+      );
+
+      res.json({
+        success: true,
+        scenario: selectedScenario,
+        importedCount: imported.length,
+        imported,
+        note: selectedScenario === 'low_recovery'
+          ? 'Demo data seeded with low recent recovery to test DUBI recovery overrides.'
+          : 'Demo data seeded with balanced recovery to test normal planning.'
+      });
     } catch (error) {
       res.status(error.statusCode || 500).json({ error: error.message, detail: error.payload });
     }
