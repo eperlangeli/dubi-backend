@@ -26,6 +26,43 @@ const calculateTrend = (values) => {
   };
 };
 
+const getSleepHours = (day) => {
+  const value = day?.sleep_duration ?? day?.sleep_hours;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const getRecoveryScore = (day) => {
+  const numeric = Number(day?.recovery_score);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const classifyRecoveryStatus = ({ hrvTrend, sleepTrend, recoveryTrend, poorSleepDays }) => {
+  if (recoveryTrend.value != null) {
+    if (recoveryTrend.value < 50) return 'compromised';
+    if (recoveryTrend.value > 70 && poorSleepDays === 0 && !(hrvTrend.isDecreasing && hrvTrend.difference <= -4)) {
+      return 'excellent';
+    }
+  }
+
+  if ((hrvTrend.value != null && hrvTrend.value < 35) || poorSleepDays >= 3) return 'compromised';
+  if (hrvTrend.isDecreasing && sleepTrend.isDecreasing) return 'compromised';
+  return 'normal';
+};
+
+const classifyFatigueLevel = ({ recoveryStatus, hrvTrend, sleepTrend, poorSleepDays }) => {
+  if (recoveryStatus === 'compromised' || poorSleepDays >= 3) return 'high';
+  if (hrvTrend.isDecreasing || sleepTrend.isDecreasing || poorSleepDays >= 1) return 'moderate';
+  return 'low';
+};
+
+const daysBetween = (from, to) => {
+  const start = new Date(from).getTime();
+  const end = new Date(to).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 0;
+  return Math.max(0, Math.round((end - start) / 86400000));
+};
+
 const normalizeGender = (gender) => {
   const value = String(gender || '').toLowerCase();
   if (value === 'f' || value === 'female' || value === 'femmina') return 'F';
@@ -556,8 +593,13 @@ module.exports = (pool) => {
     }
 
     const hrvTrend = calculateTrend(wearableData.map((day) => day.hrv));
-    const sleepTrend = calculateTrend(wearableData.map((day) => day.sleep_hours));
+    const sleepTrend = calculateTrend(wearableData.map(getSleepHours));
+    const recoveryTrend = calculateTrend(wearableData.map(getRecoveryScore));
     const activityTrend = calculateTrend(wearableData.map((day) => day.activity_kcal));
+    const poorSleepDays = wearableData.filter((day) => {
+      const sleepHours = getSleepHours(day);
+      return sleepHours != null && sleepHours < 6;
+    }).length;
     const avgSteps = average(wearableData.map((day) => day.steps));
     const avgActivityKcal = average(wearableData.map((day) => day.activity_kcal));
     const glucoseDemand = (avgSteps || 0) >= 12000 || (avgActivityKcal || 0) >= 700
@@ -565,14 +607,21 @@ module.exports = (pool) => {
       : (avgSteps || 0) >= 7000 || (avgActivityKcal || 0) >= 350
         ? 'moderate'
         : 'low';
+    const recoveryStatus = classifyRecoveryStatus({
+      hrvTrend,
+      sleepTrend,
+      recoveryTrend,
+      poorSleepDays
+    });
 
     return {
       status: 'ok',
-      recoveryStatus: hrvTrend.value != null && hrvTrend.value < 35 ? 'compromised' : 'normal',
-      fatigueLevel: hrvTrend.isDecreasing && sleepTrend.isDecreasing ? 'high' : 'low',
-      sympatheticDominance: Boolean(hrvTrend.isDecreasing),
+      recoveryStatus,
+      fatigueLevel: classifyFatigueLevel({ recoveryStatus, hrvTrend, sleepTrend, poorSleepDays }),
+      sympatheticDominance: Boolean(hrvTrend.isDecreasing || recoveryStatus === 'compromised'),
       glucoseDemand,
-      trends: { hrv: hrvTrend, sleep: sleepTrend, activity: activityTrend },
+      trends: { hrv: hrvTrend, sleep: sleepTrend, recovery: recoveryTrend, activity: activityTrend },
+      poorSleepDays,
       dataPoints: wearableData.length
     };
   };
@@ -584,23 +633,37 @@ module.exports = (pool) => {
       FROM weight_history
       WHERE user_id = $1
       ORDER BY logged_at DESC
-      LIMIT 14
+      LIMIT 21
       `,
       [userId]
     );
     const weights = result.rows.reverse();
 
-    if (weights.length < 6) return { status: 'insufficient_data', dataPoints: weights.length };
+    if (weights.length < 10) return { status: 'insufficient_data', dataPoints: weights.length };
 
-    const split = Math.floor(weights.length / 2);
-    const olderAvg = average(weights.slice(0, split).map((row) => row.weight));
-    const recentAvg = average(weights.slice(split).map((row) => row.weight));
-    const delta = recentAvg - olderAvg;
+    const recentWindow = weights.slice(-7);
+    const previousWindow = weights.slice(-14, -7);
+    const previousAvg = average(previousWindow.map((row) => row.weight));
+    const recentAvg = average(recentWindow.map((row) => row.weight));
+
+    if (previousAvg == null || recentAvg == null || previousWindow.length < 3 || recentWindow.length < 3) {
+      return { status: 'insufficient_data', dataPoints: weights.length };
+    }
+
+    const firstDate = weights[0].logged_at;
+    const lastDate = weights[weights.length - 1].logged_at;
+    const observationDays = daysBetween(firstDate, lastDate);
+    const delta = recentAvg - previousAvg;
+    const weeklyDelta = observationDays > 0 ? delta / Math.max(1, observationDays / 7) : delta;
 
     return {
-      status: Math.abs(delta) < 0.2 ? 'stagnant' : delta < 0 ? 'decreasing' : 'increasing',
+      status: Math.abs(weeklyDelta) < 0.2 ? 'stagnant' : weeklyDelta < 0 ? 'decreasing' : 'increasing',
       delta: Math.round(delta * 10) / 10,
+      weeklyDelta: Math.round(weeklyDelta * 10) / 10,
       recentAverage: Math.round(recentAvg * 10) / 10,
+      previousAverage: Math.round(previousAvg * 10) / 10,
+      observationDays,
+      rollingWindowDays: 7,
       dataPoints: weights.length
     };
   };
@@ -618,7 +681,15 @@ module.exports = (pool) => {
       return {
         shouldRegenerate: false,
         reason: 'insufficient_weight_data',
-        explanation: 'At least 6 weight entries are needed before DUBI changes the plan from weight trend alone.'
+        explanation: 'DUBI needs enough weight entries across about 14 days before changing the plan from weight trend alone.'
+      };
+    }
+
+    if (Number(weightTrend.observationDays || 0) < 13) {
+      return {
+        shouldRegenerate: false,
+        reason: 'trend_window_too_short',
+        explanation: 'Weight data does not yet cover a full two-week trend window, so DUBI keeps the plan stable.'
       };
     }
 
@@ -653,7 +724,7 @@ module.exports = (pool) => {
     }
 
     if (['gain', 'muscle_gain'].includes(goal)) {
-      if (weightTrend.status === 'stagnant' || weightTrend.status === 'decreasing') {
+      if (weightTrend.status === 'decreasing' || Number(weightTrend.weeklyDelta || 0) < 0.3) {
         return {
           shouldRegenerate: true,
           reason: 'gain_not_progressing',

@@ -56,7 +56,10 @@ CREATE TABLE IF NOT EXISTS wearable_data (
   heart_rate INT,
   hrv INT,
   sleep_hours DOUBLE PRECISION,
+  sleep_duration DOUBLE PRECISION,
   sleep_quality VARCHAR(20),
+  recovery_score INT,
+  data_date DATE,
   synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -182,6 +185,7 @@ CREATE INDEX IF NOT EXISTS idx_user_ingredient_swaps_user ON user_ingredient_swa
 CREATE INDEX IF NOT EXISTS idx_user_anomaly_events_user_created ON user_anomaly_events(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_anomaly_events_action ON user_anomaly_events(action, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wearable_data_user_synced ON wearable_data(user_id, synced_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wearable_data_user_date ON wearable_data(user_id, data_date DESC);
 CREATE INDEX IF NOT EXISTS idx_weight_history_user_logged ON weight_history(user_id, logged_at DESC);
 CREATE INDEX IF NOT EXISTS idx_adherence_user_date ON adherence(user_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_recipes_meal_type ON recipes USING GIN(meal_type);
@@ -196,6 +200,9 @@ ALTER TABLE recipes ADD COLUMN IF NOT EXISTS sodium_level VARCHAR(20) DEFAULT 'm
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS added_sugar_level VARCHAR(20) DEFAULT 'low';
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS meal_goal_tags VARCHAR(50)[];
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS avoid_if VARCHAR(50)[];
+ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS sleep_duration DOUBLE PRECISION;
+ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS recovery_score INT;
+ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS data_date DATE;
 
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_onboarding ENABLE ROW LEVEL SECURITY;

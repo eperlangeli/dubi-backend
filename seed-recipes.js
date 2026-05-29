@@ -23,7 +23,7 @@ const SOURCE_LIBRARY = {
 
 const GROUPS = {
   breakfast: {
-    count: 24,
+    count: 30,
     mealType: ['breakfast'],
     names: [
       'Porridge Avena Mirtilli e Semi',
@@ -49,13 +49,19 @@ const GROUPS = {
       'Crespelle Avena e Albumi',
       'Hummus Toast Mediterraneo',
       'Kefir Mirtilli e Fiocchi Avena',
-      'Bowl Riso Latte e Cannella'
+      'Bowl Riso Latte e Cannella',
+      'Porridge Proteico Mela e Cannella',
+      'Toast Tofu Avocado e Pomodoro',
+      'Skyr Mango e Semi di Chia',
+      'Omelette Spinaci e Pane Senza Glutine',
+      'Smoothie Soia Banana e Cacao',
+      'Quinoa Breakfast Bowl Fragole e Mandorle'
     ],
     macro: { calories: 340, protein: 24, carbs: 42, fats: 10, fiber: 7 },
     source: SOURCE_LIBRARY.lowGiFiber
   },
   lunch: {
-    count: 24,
+    count: 30,
     mealType: ['lunch'],
     names: [
       'Salmone Riso Basmati e Zucchine',
@@ -81,13 +87,19 @@ const GROUPS = {
       'Trota Patate e Fagiolini',
       'Seitan Cous Cous e Zucchine',
       'Insalata Greca Bilanciata',
-      'Riso Tofu Mango e Cetrioli'
+      'Riso Tofu Mango e Cetrioli',
+      'Poke Salmone Riso Nero e Avocado',
+      'Bowl Pollo Quinoa e Broccoli',
+      'Cous Cous Ceci Carote e Tahina',
+      'Pasta di Lenticchie Tonno e Pomodoro',
+      'Tempeh Riso Basmati e Asparagi',
+      'Manzo Magro Patate e Spinaci'
     ],
     macro: { calories: 540, protein: 38, carbs: 62, fats: 14, fiber: 10 },
     source: SOURCE_LIBRARY.mediterraneanQuality
   },
   dinner: {
-    count: 24,
+    count: 30,
     mealType: ['dinner'],
     names: [
       'Branzino Verdure e Pane Integrale',
@@ -113,13 +125,19 @@ const GROUPS = {
       'Tofu Teriyaki Leggero',
       'Insalata Tiepida Fagioli e Patate',
       'Nasello Finocchi e Riso',
-      'Bowl Mediterranea Vegan'
+      'Bowl Mediterranea Vegan',
+      'Merluzzo Patate Dolci e Zucchine',
+      'Curry Tofu Ceci e Riso Integrale',
+      'Tacchino Funghi e Quinoa',
+      'Zuppa Lenticchie Rosse e Spinaci',
+      'Salmone Finocchi e Riso Basmati',
+      'Seitan Peperoni e Patate'
     ],
     macro: { calories: 480, protein: 36, carbs: 48, fats: 15, fiber: 9 },
     source: SOURCE_LIBRARY.mediterraneanQuality
   },
   snack: {
-    count: 20,
+    count: 25,
     mealType: ['snack'],
     names: [
       'Yogurt Greco e Fragole',
@@ -141,13 +159,18 @@ const GROUPS = {
       'Smoothie Proteico Frutti Rossi',
       'Barretta Avena e Semi Homemade',
       'Mela Burro Arachidi',
-      'Ricotta Cannella e Pera'
+      'Ricotta Cannella e Pera',
+      'Kefir Banana e Cacao',
+      'Gallette Riso Avocado e Pomodoro',
+      'Edamame Mais e Carote',
+      'Yogurt di Soia Fragole e Chia',
+      'Pera Mandorle e Cioccolato Fondente'
     ],
     macro: { calories: 230, protein: 16, carbs: 24, fats: 8, fiber: 5 },
     source: SOURCE_LIBRARY.proteinSatiety
   },
   pre_workout: {
-    count: 14,
+    count: 17,
     mealType: ['pre_workout', 'snack'],
     names: [
       'Banana Mandorle e Caffe',
@@ -163,13 +186,16 @@ const GROUPS = {
       'Pera Gallette e Crema Nocciole',
       'Avena Rapida Banana e Cannella',
       'Pane Senza Glutine Miele e Tahina',
-      'Succo Arancia Toast e Ricotta'
+      'Succo Arancia Toast e Ricotta',
+      'Crema di Riso Banana e Cacao',
+      'Gallette Mais Datteri e Yogurt',
+      'Mango Riso Soffiato e Proteine'
     ],
     macro: { calories: 285, protein: 15, carbs: 42, fats: 7, fiber: 4 },
     source: SOURCE_LIBRARY.recoveryCarbs
   },
   post_workout: {
-    count: 14,
+    count: 18,
     mealType: ['post_workout', 'snack'],
     names: [
       'Shake Proteico Banana e Cacao',
@@ -185,7 +211,11 @@ const GROUPS = {
       'Riso Ceci e Tahina Recovery',
       'Pasta Lenticchie Post Workout',
       'Salmone Riso e Asparagi Recovery',
-      'Crema Riso Whey e Mirtilli'
+      'Crema Riso Whey e Mirtilli',
+      'Pollo Riso Basmati e Broccoli Recovery',
+      'Skyr Banana Avena e Cacao',
+      'Tofu Quinoa e Peperoni Recovery',
+      'Tonno Patate e Fagiolini Recovery'
     ],
     macro: { calories: 410, protein: 32, carbs: 52, fats: 8, fiber: 6 },
     source: SOURCE_LIBRARY.recoveryCarbs
@@ -502,8 +532,8 @@ const seedRecipes = async () => {
     ssl: { rejectUnauthorized: false }
   });
 
-  if (recipeRows.length !== 120) {
-    throw new Error(`Expected 120 recipes, found ${recipeRows.length}`);
+  if (recipeRows.length !== 150) {
+    throw new Error(`Expected 150 recipes, found ${recipeRows.length}`);
   }
 
   try {
