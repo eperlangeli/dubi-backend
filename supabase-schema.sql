@@ -63,6 +63,18 @@ CREATE TABLE IF NOT EXISTS wearable_data (
   synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS openwearables_connections (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  openwearables_user_id UUID NOT NULL,
+  provider VARCHAR(50),
+  status VARCHAR(50) DEFAULT 'created',
+  last_synced_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id)
+);
+
 CREATE TABLE IF NOT EXISTS user_plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -186,6 +198,8 @@ CREATE INDEX IF NOT EXISTS idx_user_anomaly_events_user_created ON user_anomaly_
 CREATE INDEX IF NOT EXISTS idx_user_anomaly_events_action ON user_anomaly_events(action, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wearable_data_user_synced ON wearable_data(user_id, synced_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wearable_data_user_date ON wearable_data(user_id, data_date DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wearable_data_user_date_unique ON wearable_data(user_id, data_date);
+CREATE INDEX IF NOT EXISTS idx_openwearables_connections_user ON openwearables_connections(user_id);
 CREATE INDEX IF NOT EXISTS idx_weight_history_user_logged ON weight_history(user_id, logged_at DESC);
 CREATE INDEX IF NOT EXISTS idx_adherence_user_date ON adherence(user_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_recipes_meal_type ON recipes USING GIN(meal_type);
@@ -203,10 +217,14 @@ ALTER TABLE recipes ADD COLUMN IF NOT EXISTS avoid_if VARCHAR(50)[];
 ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS sleep_duration DOUBLE PRECISION;
 ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS recovery_score INT;
 ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS data_date DATE;
+ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS provider VARCHAR(50);
+ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'created';
+ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP;
 
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_onboarding ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wearable_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE openwearables_connections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
