@@ -43,7 +43,7 @@ Authorization: Bearer <dubi_token>
 Server-side configuration:
 
 ```txt
-OPENWEARABLES_BASE_URL=https://api.openwearables.io/api/v1
+OPENWEARABLES_BASE_URL=https://<open-wearables-backend-url>
 OPENWEARABLES_API_KEY=...
 OPENWEARABLES_REDIRECT_URI=https://dubi-frontend.onrender.com
 ```

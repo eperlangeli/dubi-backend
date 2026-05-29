@@ -6,13 +6,13 @@ module.exports = (pool) => {
   const { verifyToken } = authModule;
 
   const getConfig = () => ({
-    baseUrl: (process.env.OPENWEARABLES_BASE_URL || 'https://api.openwearables.io/api/v1').replace(/\/$/, ''),
+    baseUrl: (process.env.OPENWEARABLES_BASE_URL || '').replace(/\/$/, ''),
     apiKey: process.env.OPENWEARABLES_API_KEY
   });
 
   const requireOpenWearablesConfig = () => {
     const config = getConfig();
-    if (!config.apiKey) {
+    if (!config.baseUrl || !config.apiKey) {
       const error = new Error('OPENWEARABLES_API_KEY is not configured');
       error.statusCode = 503;
       throw error;
@@ -22,7 +22,7 @@ module.exports = (pool) => {
 
   const openWearablesRequest = async (path, options = {}) => {
     const config = requireOpenWearablesConfig();
-    const response = await fetch(`${config.baseUrl}${path}`, {
+    const response = await fetch(`${config.baseUrl}/api/v1${path}`, {
       ...options,
       headers: {
         'X-Open-Wearables-API-Key': config.apiKey,
