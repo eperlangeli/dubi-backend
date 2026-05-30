@@ -332,45 +332,59 @@ module.exports = (pool) => {
       const selectedScenario = allowedScenarios.includes(scenario) ? scenario : 'balanced';
       const days = buildDemoWearableDays(selectedScenario);
       const imported = [];
+      const skipped = [];
 
       for (const day of days) {
-        const saved = await upsertWearableDay(req.userId, day);
-        if (saved) imported.push(saved);
+        try {
+          const saved = await upsertWearableDay(req.userId, day);
+          if (saved) imported.push(saved);
+        } catch (error) {
+          skipped.push({ dataDate: day.dataDate, reason: error.message });
+        }
       }
 
-      const existingConnection = await pool.query(
-        'SELECT provider FROM openwearables_connections WHERE user_id = $1 LIMIT 1',
-        [req.userId]
-      );
-
-      if (existingConnection.rows.length > 0) {
-        await pool.query(
-          `
-          UPDATE openwearables_connections
-          SET
-            provider = CASE WHEN provider IS NULL OR provider = 'demo' THEN 'demo' ELSE provider END,
-            status = CASE WHEN provider IS NULL OR provider = 'demo' THEN 'demo_seeded' ELSE status END,
-            last_synced_at = CURRENT_TIMESTAMP,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE user_id = $1
-          `,
+      let connectionSaved = false;
+      try {
+        const existingConnection = await pool.query(
+          'SELECT provider FROM openwearables_connections WHERE user_id = $1 LIMIT 1',
           [req.userId]
         );
-      } else {
-        await pool.query(
-          `
-          INSERT INTO openwearables_connections (user_id, openwearables_user_id, provider, status, last_synced_at, updated_at)
-          VALUES ($1, $2, 'demo', 'demo_seeded', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-          `,
-          [req.userId, crypto.randomUUID()]
-        );
+
+        if (existingConnection.rows.length > 0) {
+          await pool.query(
+            `
+            UPDATE openwearables_connections
+            SET
+              provider = CASE WHEN provider IS NULL OR provider = 'demo' THEN 'demo' ELSE provider END,
+              status = CASE WHEN provider IS NULL OR provider = 'demo' THEN 'demo_seeded' ELSE status END,
+              last_synced_at = CURRENT_TIMESTAMP,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+            `,
+            [req.userId]
+          );
+        } else {
+          await pool.query(
+            `
+            INSERT INTO openwearables_connections (user_id, openwearables_user_id, provider, status, last_synced_at, updated_at)
+            VALUES ($1, $2, 'demo', 'demo_seeded', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `,
+            [req.userId, crypto.randomUUID()]
+          );
+        }
+        connectionSaved = true;
+      } catch (error) {
+        skipped.push({ dataDate: null, reason: error.message });
       }
 
       res.json({
         success: true,
         scenario: selectedScenario,
         importedCount: imported.length,
+        skippedCount: skipped.length,
+        connectionSaved,
         imported,
+        skipped,
         note: selectedScenario === 'low_recovery'
           ? 'Demo data seeded with low recent recovery to test DUBI recovery overrides.'
           : 'Demo data seeded with balanced recovery to test normal planning.'
