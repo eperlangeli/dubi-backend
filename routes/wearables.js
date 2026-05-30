@@ -200,6 +200,7 @@ module.exports = (pool) => {
     try {
       const { provider, redirect_uri } = req.body || {};
       if (!provider) return res.status(400).json({ error: 'provider is required' });
+      const providerId = String(provider).trim().toLowerCase();
 
       const connection = await getOrCreateOpenWearablesUser(req.userId);
       const redirectUri = redirect_uri || process.env.OPENWEARABLES_REDIRECT_URI || process.env.FRONTEND_URL;
@@ -207,7 +208,7 @@ module.exports = (pool) => {
         user_id: connection.openwearables_user_id,
         ...(redirectUri ? { redirect_uri: redirectUri } : {})
       });
-      const auth = await openWearablesRequest(`/oauth/${provider}/authorize?${query.toString()}`);
+      const auth = await openWearablesRequest(`/oauth/${providerId}/authorize?${query.toString()}`);
 
       await pool.query(
         `
@@ -215,10 +216,10 @@ module.exports = (pool) => {
         SET provider = $1, status = 'authorizing', updated_at = CURRENT_TIMESTAMP
         WHERE user_id = $2
         `,
-        [provider, req.userId]
+        [providerId, req.userId]
       );
 
-      res.json({ success: true, provider, authorization_url: auth.authorization_url, state: auth.state });
+      res.json({ success: true, provider: providerId, authorization_url: auth.authorization_url, state: auth.state });
     } catch (error) {
       res.status(error.statusCode || 500).json({ error: error.message, detail: error.payload });
     }
