@@ -109,6 +109,44 @@ module.exports = (pool) => {
   const upsertWearableDay = async (userId, day) => {
     if (!day.dataDate) return null;
 
+    const existing = await pool.query(
+      'SELECT id FROM wearable_data WHERE user_id = $1 AND data_date = $2 LIMIT 1',
+      [userId, day.dataDate]
+    );
+
+    if (existing.rows.length > 0) {
+      const result = await pool.query(
+        `
+        UPDATE wearable_data
+        SET
+          activity_kcal = COALESCE($3, activity_kcal),
+          steps = COALESCE($4, steps),
+          heart_rate = COALESCE($5, heart_rate),
+          hrv = COALESCE($6, hrv),
+          sleep_hours = COALESCE($7, sleep_hours),
+          sleep_duration = COALESCE($8, sleep_duration),
+          sleep_quality = COALESCE($9, sleep_quality),
+          recovery_score = COALESCE($10, recovery_score),
+          synced_at = CURRENT_TIMESTAMP
+        WHERE user_id = $1 AND data_date = $2
+        RETURNING *
+        `,
+        [
+          userId,
+          day.dataDate,
+          day.activityKcal,
+          day.steps,
+          day.heartRate,
+          day.hrv,
+          day.sleepDuration,
+          day.sleepDuration,
+          day.sleepQuality,
+          day.recoveryScore
+        ]
+      );
+      return result.rows[0];
+    }
+
     const result = await pool.query(
       `
       INSERT INTO wearable_data (
@@ -125,17 +163,6 @@ module.exports = (pool) => {
         synced_at
       )
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,CURRENT_TIMESTAMP)
-      ON CONFLICT (user_id, data_date)
-      DO UPDATE SET
-        activity_kcal = COALESCE(EXCLUDED.activity_kcal, wearable_data.activity_kcal),
-        steps = COALESCE(EXCLUDED.steps, wearable_data.steps),
-        heart_rate = COALESCE(EXCLUDED.heart_rate, wearable_data.heart_rate),
-        hrv = COALESCE(EXCLUDED.hrv, wearable_data.hrv),
-        sleep_hours = COALESCE(EXCLUDED.sleep_hours, wearable_data.sleep_hours),
-        sleep_duration = COALESCE(EXCLUDED.sleep_duration, wearable_data.sleep_duration),
-        sleep_quality = COALESCE(EXCLUDED.sleep_quality, wearable_data.sleep_quality),
-        recovery_score = COALESCE(EXCLUDED.recovery_score, wearable_data.recovery_score),
-        synced_at = CURRENT_TIMESTAMP
       RETURNING *
       `,
       [
@@ -311,28 +338,33 @@ module.exports = (pool) => {
         if (saved) imported.push(saved);
       }
 
-      await pool.query(
-        `
-        INSERT INTO openwearables_connections (user_id, openwearables_user_id, provider, status, last_synced_at, updated_at)
-        VALUES ($1, $2, 'demo', 'demo_seeded', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ON CONFLICT (user_id)
-        DO UPDATE SET
-          provider = CASE
-            WHEN openwearables_connections.provider IS NULL OR openwearables_connections.provider = 'demo'
-            THEN 'demo'
-            ELSE openwearables_connections.provider
-          END,
-          status = CASE
-            WHEN openwearables_connections.provider IS NULL OR openwearables_connections.provider = 'demo'
-            THEN 'demo_seeded'
-            ELSE openwearables_connections.status
-          END,
-          last_synced_at = CURRENT_TIMESTAMP,
-          updated_at = CURRENT_TIMESTAMP
-        RETURNING *
-        `,
-        [req.userId, crypto.randomUUID()]
+      const existingConnection = await pool.query(
+        'SELECT provider FROM openwearables_connections WHERE user_id = $1 LIMIT 1',
+        [req.userId]
       );
+
+      if (existingConnection.rows.length > 0) {
+        await pool.query(
+          `
+          UPDATE openwearables_connections
+          SET
+            provider = CASE WHEN provider IS NULL OR provider = 'demo' THEN 'demo' ELSE provider END,
+            status = CASE WHEN provider IS NULL OR provider = 'demo' THEN 'demo_seeded' ELSE status END,
+            last_synced_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $1
+          `,
+          [req.userId]
+        );
+      } else {
+        await pool.query(
+          `
+          INSERT INTO openwearables_connections (user_id, openwearables_user_id, provider, status, last_synced_at, updated_at)
+          VALUES ($1, $2, 'demo', 'demo_seeded', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          `,
+          [req.userId, crypto.randomUUID()]
+        );
+      }
 
       res.json({
         success: true,
