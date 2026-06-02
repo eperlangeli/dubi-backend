@@ -14,6 +14,7 @@ npm run seed-recipes
 
 - `supabase-schema.sql` is the single source of truth for the current database shape.
 - `npm run init-db` applies `supabase-schema.sql` idempotently to `DATABASE_URL`.
+- `npm start` runs the idempotent database initialization before starting the API.
 - `npm run seed-recipes` inserts missing DUBI recipes. The current seed expects 150 recipes.
 
 ## Main AI Endpoints

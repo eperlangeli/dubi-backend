@@ -4,6 +4,7 @@
   "description": "DUBI Backend - Node.js + Express + PostgreSQL",
   "main": "server.js",
   "scripts": {
+    "prestart": "node init-db.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "init-db": "node init-db.js",

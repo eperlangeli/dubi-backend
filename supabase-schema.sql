@@ -196,10 +196,6 @@ CREATE INDEX IF NOT EXISTS idx_user_progress_user_created ON user_progress(user_
 CREATE INDEX IF NOT EXISTS idx_user_ingredient_swaps_user ON user_ingredient_swaps(user_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_anomaly_events_user_created ON user_anomaly_events(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_anomaly_events_action ON user_anomaly_events(action, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_wearable_data_user_synced ON wearable_data(user_id, synced_at DESC);
-CREATE INDEX IF NOT EXISTS idx_wearable_data_user_date ON wearable_data(user_id, data_date DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_wearable_data_user_date_unique ON wearable_data(user_id, data_date);
-CREATE INDEX IF NOT EXISTS idx_openwearables_connections_user ON openwearables_connections(user_id);
 CREATE INDEX IF NOT EXISTS idx_weight_history_user_logged ON weight_history(user_id, logged_at DESC);
 CREATE INDEX IF NOT EXISTS idx_adherence_user_date ON adherence(user_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_recipes_meal_type ON recipes USING GIN(meal_type);
@@ -220,6 +216,11 @@ ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS data_date DATE;
 ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS provider VARCHAR(50);
 ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'created';
 ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP;
+
+CREATE INDEX IF NOT EXISTS idx_wearable_data_user_synced ON wearable_data(user_id, synced_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wearable_data_user_date ON wearable_data(user_id, data_date DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wearable_data_user_date_unique ON wearable_data(user_id, data_date);
+CREATE INDEX IF NOT EXISTS idx_openwearables_connections_user ON openwearables_connections(user_id);
 
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_onboarding ENABLE ROW LEVEL SECURITY;
