@@ -42,6 +42,8 @@ Authenticated endpoints require:
 Authorization: Bearer <dubi_token>
 ```
 
+The initial DUBI beta accepts onboarding profiles for users aged 18 or older. Minor access stays disabled until a real parental-consent flow is implemented.
+
 ## OpenWearables
 
 Server-side configuration:

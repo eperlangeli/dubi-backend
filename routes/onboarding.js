@@ -68,6 +68,10 @@ module.exports = (pool) => {
         wearable_provider
       } = req.body;
 
+      if (!Number.isFinite(Number(age)) || Number(age) < 18) {
+        return res.status(403).json({ error: 'DUBI beta is currently available only to users aged 18 or older' });
+      }
+
       const cleanWearableProvider = wearableMap[wearable_provider] || 'none';
 
       const result = await pool.query(
