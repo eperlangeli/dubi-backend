@@ -406,5 +406,44 @@ module.exports = (pool) => {
     }
   });
 
+  router.get('/current', verifyToken, async (req, res) => {
+    try {
+      const latest = await pool.query(
+        `
+        SELECT *
+        FROM wearable_data
+        WHERE user_id = $1
+        ORDER BY data_date DESC NULLS LAST, synced_at DESC
+        LIMIT 1
+        `,
+        [req.userId]
+      );
+
+      const recent = await pool.query(
+        `
+        SELECT *
+        FROM wearable_data
+        WHERE user_id = $1
+        ORDER BY data_date DESC NULLS LAST, synced_at DESC
+        LIMIT 7
+        `,
+        [req.userId]
+      );
+
+      const connection = await pool.query(
+        'SELECT provider, status, last_synced_at FROM openwearables_connections WHERE user_id = $1 LIMIT 1',
+        [req.userId]
+      );
+
+      res.json({
+        latest: latest.rows[0] || null,
+        recent: recent.rows.reverse(),
+        connection: connection.rows[0] || null
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return router;
 };

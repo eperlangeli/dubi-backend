@@ -30,6 +30,8 @@ POST /api/wearables/openwearables/authorize
 POST /api/wearables/openwearables/sync
 POST /api/wearables/openwearables/import-recovery
 GET  /api/wearables/openwearables/status
+POST /api/wearables/demo/seed
+GET  /api/wearables/current
 ```
 
 Authenticated endpoints require:
@@ -54,6 +56,9 @@ Flow:
 2. `POST /api/wearables/openwearables/authorize` returns the provider OAuth URL.
 3. `POST /api/wearables/openwearables/sync` requests historical provider sync by default.
 4. `POST /api/wearables/openwearables/import-recovery` imports recovery, sleep, HRV, and resting heart rate into `wearable_data`.
+5. `GET /api/wearables/current` returns the latest wearable day, the recent 7-day window, and connection status for the DUBI Today screen.
+
+For UI testing without a connected provider, `POST /api/wearables/demo/seed` inserts balanced or low-recovery demo data.
 
 OpenWearables is the data pipe only. DUBI remains the brain that interprets wearable data and adapts nutrition logic.
 
