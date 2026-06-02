@@ -211,7 +211,7 @@ module.exports = (pool) => {
       const sleepDuration = lowRecovery ? 5.3 + index * 0.15 : 7.1 + ((index % 4) * 0.18);
       const recoveryScore = lowRecovery ? 42 - index * 2 : 74 + ((index % 6) - 3);
 
-      return {
+      const day = {
         dataDate: date.toISOString().slice(0, 10),
         steps: 7600 + ((index % 6) * 420),
         activityKcal: 390 + ((index % 5) * 32),
@@ -221,6 +221,9 @@ module.exports = (pool) => {
         sleepQuality: String(Math.max(Math.min(Math.round(sleepDuration * 11), 94), 55)),
         recoveryScore: Math.max(Math.min(recoveryScore, 92), 30)
       };
+      return scenario === 'activity_only'
+        ? { ...day, hrv: null, sleepDuration: null, sleepQuality: null, recoveryScore: null }
+        : day;
     }).reverse();
   };
 
@@ -396,7 +399,7 @@ module.exports = (pool) => {
   router.post('/demo/seed', verifyToken, async (req, res) => {
     try {
       const { scenario = 'balanced' } = req.body || {};
-      const allowedScenarios = ['balanced', 'low_recovery'];
+      const allowedScenarios = ['balanced', 'low_recovery', 'activity_only'];
       const selectedScenario = allowedScenarios.includes(scenario) ? scenario : 'balanced';
       const days = buildDemoWearableDays(selectedScenario);
       const imported = [];
@@ -455,7 +458,9 @@ module.exports = (pool) => {
         skipped,
         note: selectedScenario === 'low_recovery'
           ? 'Demo data seeded with low recent recovery to test DUBI recovery overrides.'
-          : 'Demo data seeded with balanced recovery to test normal planning.'
+          : selectedScenario === 'activity_only'
+            ? 'Demo data seeded with activity-only metrics to test partial providers such as Strava.'
+            : 'Demo data seeded with balanced recovery to test normal planning.'
       });
     } catch (error) {
       res.status(error.statusCode || 500).json({ error: error.message, detail: error.payload });
