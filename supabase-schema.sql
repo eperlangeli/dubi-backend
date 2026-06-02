@@ -216,6 +216,8 @@ ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS data_date DATE;
 ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS provider VARCHAR(50);
 ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'created';
 ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP;
+ALTER TABLE nps_responses ADD COLUMN IF NOT EXISTS comment TEXT;
+ALTER TABLE nps_responses ADD COLUMN IF NOT EXISTS context VARCHAR(50) DEFAULT 'beta_settings';
 
 CREATE INDEX IF NOT EXISTS idx_wearable_data_user_synced ON wearable_data(user_id, synced_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wearable_data_user_date ON wearable_data(user_id, data_date DESC);

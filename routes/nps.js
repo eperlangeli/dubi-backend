@@ -8,15 +8,15 @@ module.exports = (pool) => {
   // Submit NPS
   router.post('/submit', verifyToken, async (req, res) => {
     try {
-      const { score } = req.body;
+      const { score, comment, context = 'beta_settings' } = req.body;
 
-      if (!score || score < 1 || score > 10) {
+      if (!Number.isInteger(score) || score < 1 || score > 10) {
         return res.status(400).json({ error: 'Score must be 1-10' });
       }
 
       const result = await pool.query(
-        'INSERT INTO nps_responses (user_id, score) VALUES ($1, $2) RETURNING *',
-        [req.userId, score]
+        'INSERT INTO nps_responses (user_id, score, comment, context) VALUES ($1, $2, $3, $4) RETURNING *',
+        [req.userId, score, String(comment || '').trim().slice(0, 2000) || null, String(context || 'beta_settings').slice(0, 50)]
       );
 
       res.json(result.rows[0]);
