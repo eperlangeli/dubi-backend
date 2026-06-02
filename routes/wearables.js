@@ -106,6 +106,25 @@ module.exports = (pool) => {
     recoveryScore: entry.recovery_score ?? null
   });
 
+  const mapActivitySummary = (entry) => ({
+    dataDate: toDateString(entry.date),
+    steps: entry.steps ?? null,
+    activityKcal: entry.active_calories_kcal != null ? Math.round(Number(entry.active_calories_kcal)) : null,
+    heartRate: entry.heart_rate?.avg_bpm ?? null
+  });
+
+  const mapSleepSummary = (entry) => ({
+    dataDate: toDateString(entry.date),
+    hrv: entry.avg_hrv_sdnn_ms != null ? Math.round(Number(entry.avg_hrv_sdnn_ms)) : null,
+    heartRate: entry.avg_heart_rate_bpm ?? null,
+    sleepDuration: entry.duration_minutes != null
+      ? Math.round((Number(entry.duration_minutes) / 60) * 100) / 100
+      : null,
+    sleepQuality: entry.efficiency_percent != null
+      ? String(Math.round(Number(entry.efficiency_percent)))
+      : null
+  });
+
   const upsertWearableDay = async (userId, day) => {
     if (!day.dataDate) return null;
 
@@ -320,6 +339,55 @@ module.exports = (pool) => {
       );
 
       res.json({ success: true, importedCount: imported.length, imported });
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ error: error.message, detail: error.payload });
+    }
+  });
+
+  router.post('/openwearables/import', verifyToken, async (req, res) => {
+    try {
+      const { start_date, end_date } = req.body || {};
+      const connection = await getOrCreateOpenWearablesUser(req.userId);
+      const end = end_date || new Date().toISOString().slice(0, 10);
+      const start = start_date || new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+      const query = new URLSearchParams({ start_date: start, end_date: end, limit: '100' });
+      const sources = [
+        { type: 'activity', map: mapActivitySummary },
+        { type: 'sleep', map: mapSleepSummary },
+        { type: 'recovery', map: mapRecoverySummary }
+      ];
+      const imported = [];
+      const summaries = [];
+
+      for (const source of sources) {
+        try {
+          const summary = await openWearablesRequest(
+            `/users/${connection.openwearables_user_id}/summaries/${source.type}?${query.toString()}`
+          );
+          let count = 0;
+          for (const entry of summary.data || []) {
+            const saved = await upsertWearableDay(req.userId, source.map(entry));
+            if (saved) {
+              imported.push(saved);
+              count += 1;
+            }
+          }
+          summaries.push({ type: source.type, importedCount: count });
+        } catch (error) {
+          summaries.push({ type: source.type, importedCount: 0, error: error.message });
+        }
+      }
+
+      await pool.query(
+        `
+        UPDATE openwearables_connections
+        SET status = 'imported_available_data', last_synced_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = $1
+        `,
+        [req.userId]
+      );
+
+      res.json({ success: true, importedCount: imported.length, summaries });
     } catch (error) {
       res.status(error.statusCode || 500).json({ error: error.message, detail: error.payload });
     }
