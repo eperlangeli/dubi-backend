@@ -25,6 +25,7 @@ POST /api/ai/generate-plan
 POST /api/ai/weight/log
 POST /api/ai/anomaly/confirm
 GET  /api/ai/plan/current
+DELETE /auth/me
 GET  /api/wearables/providers
 POST /api/wearables/openwearables/user
 POST /api/wearables/openwearables/authorize
