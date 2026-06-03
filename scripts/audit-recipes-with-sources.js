@@ -76,11 +76,11 @@ const saveAudit = async (recipe, audit) => {
   await pool.query(`
     UPDATE recipes
     SET
-      calories = CASE WHEN $1 = 'approved' THEN $2 ELSE calories END,
-      protein = CASE WHEN $1 = 'approved' THEN ROUND($3)::int ELSE protein END,
-      carbs = CASE WHEN $1 = 'approved' THEN ROUND($4)::int ELSE carbs END,
-      fats = CASE WHEN $1 = 'approved' THEN ROUND($5)::int ELSE fats END,
-      fiber = CASE WHEN $1 = 'approved' THEN ROUND($6)::int ELSE fiber END,
+      calories = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN $2 ELSE calories END,
+      protein = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN ROUND($3)::int ELSE protein END,
+      carbs = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN ROUND($4)::int ELSE carbs END,
+      fats = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN ROUND($5)::int ELSE fats END,
+      fiber = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN ROUND($6)::int ELSE fiber END,
       nutrition_audit_status = $1,
       nutrition_confidence_score = $7,
       nutrition_source_ids = $8,
@@ -96,7 +96,8 @@ const saveAudit = async (recipe, audit) => {
     audit.confidence,
     sourceIds,
     JSON.stringify(audit),
-    recipe.id
+    recipe.id,
+    audit.sourceCoverage
   ]);
 };
 
