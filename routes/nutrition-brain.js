@@ -376,5 +376,77 @@ module.exports = (pool = null) => {
     }
   });
 
+  router.get('/temp-pipeline/export-recipes', requireTemporaryPipelineToken, async (req, res) => {
+    if (!pool) return res.status(501).json({ error: 'Database pool not configured' });
+
+    try {
+      const result = await pool.query(`
+        SELECT
+          id,
+          name,
+          description,
+          meal_type,
+          diet_compatibility,
+          allergens,
+          calories,
+          protein,
+          carbs,
+          fats,
+          fiber,
+          ingredients,
+          scientific_source,
+          evidence_level,
+          nutrition_audit_status,
+          nutrition_confidence_score,
+          nutrition_source_ids,
+          nutrition_audit_payload
+        FROM recipes
+        WHERE is_active = true
+        ORDER BY name
+      `);
+
+      const recipes = result.rows.map((recipe) => ({
+        id: recipe.id,
+        name: recipe.name,
+        description: recipe.description,
+        mealType: recipe.meal_type || [],
+        dietCompatibility: recipe.diet_compatibility || [],
+        allergens: recipe.allergens || [],
+        calories: Number(recipe.calories || 0),
+        protein: Number(recipe.protein || 0),
+        carbs: Number(recipe.carbs || 0),
+        fats: Number(recipe.fats || 0),
+        fiber: Number(recipe.fiber || 0),
+        ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
+        scientificSource: recipe.scientific_source,
+        evidenceLevel: recipe.evidence_level,
+        nutritionAuditStatus: recipe.nutrition_audit_status,
+        nutritionConfidenceScore: Number(recipe.nutrition_confidence_score || 0),
+        nutritionSourceIds: recipe.nutrition_source_ids || [],
+        nutritionAuditPayload: recipe.nutrition_audit_payload || {}
+      }));
+
+      const summary = recipes.reduce((acc, recipe) => {
+        const status = recipe.nutritionAuditStatus || 'unknown';
+        acc.auditStatuses[status] = (acc.auditStatuses[status] || 0) + 1;
+        for (const diet of recipe.dietCompatibility) {
+          acc.dietCompatibility[diet] = (acc.dietCompatibility[diet] || 0) + 1;
+        }
+        return acc;
+      }, { totalRecipes: recipes.length, auditStatuses: {}, dietCompatibility: {} });
+
+      res.json({
+        generatedAt: new Date().toISOString(),
+        sourceMode: 'database',
+        title: 'DUBI Ricette con Fonti Nutrizionali Ufficiali',
+        summary,
+        recipes
+      });
+    } catch (error) {
+      console.error('Temporary recipe export error:', error);
+      res.status(500).json({ error: 'Failed to export recipes' });
+    }
+  });
+
   return router;
 };
