@@ -11,7 +11,8 @@
     "seed-recipes": "node seed-recipes.js",
     "ingest-usda": "node scripts/ingest-usda-ingredients.js",
     "import-nutrition-csv": "node scripts/import-official-nutrition-csv.js",
-    "audit-recipes": "node scripts/audit-recipes-with-sources.js"
+    "audit-recipes": "node scripts/audit-recipes-with-sources.js",
+    "export-recipes-pdf-data": "node scripts/export-recipes-pdf-data.js"
   },
   "dependencies": {
     "express": "^4.18.2",

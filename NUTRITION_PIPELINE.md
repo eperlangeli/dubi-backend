@@ -82,6 +82,22 @@ npm run audit-recipes
 - `recipes.nutrition_confidence_score`
 - `recipes.nutrition_source_ids`
 
+7. Export data for the official recipe PDF:
+
+```bash
+npm run export-recipes-pdf-data
+```
+
+This writes `DUBI_Ricette_Ufficiali_Data.json` in the parent DUBI workspace. If `DATABASE_URL` is not configured, the export falls back to local preview mode and marks recipes as not audited.
+
+8. Render the PDF locally:
+
+```bash
+python scripts/render-recipes-pdf.py
+```
+
+The PDF is written to `DUBI_Ricette_Fonti_Ufficiali.pdf` in the parent DUBI workspace. The file is considered beta-ready only when the export source mode is `database` and the audit summary shows recipes moving to `approved`.
+
 ## Backend Endpoints
 
 Public read/diagnostic:
