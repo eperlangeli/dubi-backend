@@ -168,6 +168,48 @@ CREATE TABLE IF NOT EXISTS recipes (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS nutrition_ingredient_refs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ingredient_key VARCHAR(160) NOT NULL,
+  display_name VARCHAR(255) NOT NULL,
+  source_id VARCHAR(80) NOT NULL,
+  source_food_id VARCHAR(120),
+  source_food_name TEXT,
+  locale VARCHAR(20) DEFAULT 'global',
+  preparation_state VARCHAR(80),
+  calories_per_100g NUMERIC,
+  protein_per_100g NUMERIC,
+  carbs_per_100g NUMERIC,
+  fats_per_100g NUMERIC,
+  fiber_per_100g NUMERIC,
+  confidence_score INT DEFAULT 50,
+  source_payload JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(ingredient_key, source_id, source_food_id, preparation_state)
+);
+
+CREATE TABLE IF NOT EXISTS recipe_nutrition_audits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
+  recipe_name VARCHAR(255),
+  declared_calories INT,
+  calculated_calories INT,
+  calorie_delta INT,
+  declared_protein NUMERIC,
+  calculated_protein NUMERIC,
+  declared_carbs NUMERIC,
+  calculated_carbs NUMERIC,
+  declared_fats NUMERIC,
+  calculated_fats NUMERIC,
+  confidence_score INT DEFAULT 50,
+  status VARCHAR(40) DEFAULT 'pending',
+  source_ids VARCHAR(80)[],
+  notes TEXT,
+  audit_payload JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS weight_history (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -203,6 +245,10 @@ CREATE INDEX IF NOT EXISTS idx_recipes_meal_type ON recipes USING GIN(meal_type)
 CREATE INDEX IF NOT EXISTS idx_recipes_diet ON recipes USING GIN(diet_compatibility);
 CREATE INDEX IF NOT EXISTS idx_recipes_allergens ON recipes USING GIN(allergens);
 CREATE INDEX IF NOT EXISTS idx_recipes_goal_tags ON recipes USING GIN(meal_goal_tags);
+CREATE INDEX IF NOT EXISTS idx_nutrition_refs_key ON nutrition_ingredient_refs(ingredient_key);
+CREATE INDEX IF NOT EXISTS idx_nutrition_refs_source ON nutrition_ingredient_refs(source_id);
+CREATE INDEX IF NOT EXISTS idx_recipe_audits_recipe ON recipe_nutrition_audits(recipe_id);
+CREATE INDEX IF NOT EXISTS idx_recipe_audits_status ON recipe_nutrition_audits(status);
 
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS prep_time_minutes INT;
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS cost_level VARCHAR(20);
@@ -233,6 +279,8 @@ ALTER TABLE openwearables_connections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE nutrition_ingredient_refs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recipe_nutrition_audits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE weight_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE adherence ENABLE ROW LEVEL SECURITY;
 ALTER TABLE nps_responses ENABLE ROW LEVEL SECURITY;
