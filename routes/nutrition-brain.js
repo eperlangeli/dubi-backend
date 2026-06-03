@@ -1,10 +1,16 @@
 const express = require('express');
+const crypto = require('crypto');
 const {
   buildNutritionBrainStatus,
   rankSourcesForIngredient,
   scoreIngredientReference,
   validateMacroEnergy
 } = require('../services/nutrition-brain');
+const { buildRecipeAuditFromReferences, normalizeIngredientKey } = require('../services/recipe-audit');
+
+const TEMP_PIPELINE_TOKEN_SHA256 = '1ec64d41cd43466dc0df1be0381c10ba50b6da9c497d398267a9e596e0f82941';
+const hashToken = (value = '') =>
+  crypto.createHash('sha256').update(String(value)).digest('hex');
 
 module.exports = (pool = null) => {
   const router = express.Router();
@@ -17,6 +23,14 @@ module.exports = (pool = null) => {
     const provided = req.headers['x-nutrition-admin-token'];
     if (provided !== adminToken) {
       return res.status(403).json({ error: 'Invalid nutrition admin token' });
+    }
+    return next();
+  };
+
+  const requireTemporaryPipelineToken = (req, res, next) => {
+    const provided = req.headers['x-dubi-pipeline-token'];
+    if (hashToken(provided) !== TEMP_PIPELINE_TOKEN_SHA256) {
+      return res.status(403).json({ error: 'Invalid temporary pipeline token' });
     }
     return next();
   };
@@ -168,6 +182,197 @@ module.exports = (pool = null) => {
     } catch (error) {
       console.error('Nutrition recipe audit error:', error);
       res.status(500).json({ error: 'Failed to audit recipes' });
+    }
+  });
+
+  router.post('/temp-pipeline/upsert-refs', requireTemporaryPipelineToken, async (req, res) => {
+    if (!pool) return res.status(501).json({ error: 'Database pool not configured' });
+    const references = Array.isArray(req.body?.references) ? req.body.references.slice(0, 100) : [];
+    if (!references.length) return res.status(400).json({ error: 'references array is required' });
+
+    const summary = { received: references.length, saved: 0, skipped: 0, errors: 0 };
+    for (const reference of references) {
+      const ingredientKey = normalizeIngredientKey(reference.ingredient_key || reference.display_name);
+      if (!ingredientKey || !reference.display_name || !reference.source_id || !reference.source_food_id) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      try {
+        const confidence = Number(reference.confidence_score) || scoreIngredientReference({
+          ...reference,
+          preparation_match: true,
+          locale_match: false
+        });
+        await pool.query(`
+          INSERT INTO nutrition_ingredient_refs (
+            ingredient_key,
+            display_name,
+            source_id,
+            source_food_id,
+            source_food_name,
+            locale,
+            preparation_state,
+            calories_per_100g,
+            protein_per_100g,
+            carbs_per_100g,
+            fats_per_100g,
+            fiber_per_100g,
+            confidence_score,
+            source_payload,
+            updated_at
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,'generic',$7,$8,$9,$10,$11,$12,$13,CURRENT_TIMESTAMP)
+          ON CONFLICT (ingredient_key, source_id, source_food_id, preparation_state)
+          DO UPDATE SET
+            display_name = EXCLUDED.display_name,
+            source_food_name = EXCLUDED.source_food_name,
+            locale = EXCLUDED.locale,
+            calories_per_100g = EXCLUDED.calories_per_100g,
+            protein_per_100g = EXCLUDED.protein_per_100g,
+            carbs_per_100g = EXCLUDED.carbs_per_100g,
+            fats_per_100g = EXCLUDED.fats_per_100g,
+            fiber_per_100g = EXCLUDED.fiber_per_100g,
+            confidence_score = EXCLUDED.confidence_score,
+            source_payload = EXCLUDED.source_payload,
+            updated_at = CURRENT_TIMESTAMP
+        `, [
+          ingredientKey,
+          reference.display_name,
+          reference.source_id,
+          String(reference.source_food_id),
+          reference.source_food_name,
+          reference.locale || 'global',
+          reference.calories_per_100g,
+          reference.protein_per_100g,
+          reference.carbs_per_100g,
+          reference.fats_per_100g,
+          reference.fiber_per_100g,
+          confidence,
+          JSON.stringify(reference.source_payload || reference)
+        ]);
+        summary.saved += 1;
+      } catch {
+        summary.errors += 1;
+      }
+    }
+    res.json(summary);
+  });
+
+  router.post('/temp-pipeline/audit-recipes', requireTemporaryPipelineToken, async (req, res) => {
+    if (!pool) return res.status(501).json({ error: 'Database pool not configured' });
+    const limit = Math.max(1, Math.min(40, Number(req.body?.limit || req.query.limit || 20)));
+    const offset = Math.max(0, Number(req.body?.offset || req.query.offset || 0));
+
+    try {
+      const total = await pool.query('SELECT COUNT(*)::int AS count FROM recipes WHERE is_active = true');
+      const recipes = await pool.query(`
+        SELECT id, name, calories, protein, carbs, fats, fiber, ingredients
+        FROM recipes
+        WHERE is_active = true
+        ORDER BY name
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+
+      const getReferenceMap = async (ingredientKeys) => {
+        if (!ingredientKeys.length) return {};
+        const result = await pool.query(`
+          SELECT DISTINCT ON (ingredient_key)
+            ingredient_key,
+            source_id,
+            source_food_id,
+            source_food_name,
+            calories_per_100g,
+            protein_per_100g,
+            carbs_per_100g,
+            fats_per_100g,
+            fiber_per_100g,
+            confidence_score
+          FROM nutrition_ingredient_refs
+          WHERE ingredient_key = ANY($1::varchar[])
+          ORDER BY ingredient_key, confidence_score DESC, updated_at DESC
+        `, [ingredientKeys]);
+        return Object.fromEntries(result.rows.map((row) => [row.ingredient_key, row]));
+      };
+
+      const audits = [];
+      for (const recipe of recipes.rows) {
+        const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+        const keys = ingredients.map((item) => normalizeIngredientKey(item.name)).filter(Boolean);
+        const refs = await getReferenceMap(keys);
+        const audit = buildRecipeAuditFromReferences(recipe, refs);
+        const sourceIds = [...new Set(audit.contributions.map((item) => item.sourceId).filter(Boolean))];
+
+        await pool.query(`
+          INSERT INTO recipe_nutrition_audits (
+            recipe_id, recipe_name, declared_calories, calculated_calories, calorie_delta,
+            declared_protein, calculated_protein, declared_carbs, calculated_carbs,
+            declared_fats, calculated_fats, confidence_score, status, source_ids, notes, audit_payload
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        `, [
+          recipe.id,
+          recipe.name,
+          audit.declared.calories,
+          audit.calculated.calories,
+          audit.calorieDelta,
+          audit.declared.protein,
+          audit.calculated.protein,
+          audit.declared.carbs,
+          audit.calculated.carbs,
+          audit.declared.fats,
+          audit.calculated.fats,
+          audit.confidence,
+          audit.status,
+          sourceIds,
+          audit.missing.length ? `Missing official references for: ${audit.missing.map((item) => item.ingredientName).join(', ')}` : 'All ingredients matched to official source references.',
+          JSON.stringify(audit)
+        ]);
+
+        await pool.query(`
+          UPDATE recipes
+          SET
+            calories = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN $2 ELSE calories END,
+            protein = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN ROUND($3)::int ELSE protein END,
+            carbs = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN ROUND($4)::int ELSE carbs END,
+            fats = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN ROUND($5)::int ELSE fats END,
+            fiber = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN ROUND($6)::int ELSE fiber END,
+            nutrition_audit_status = $1,
+            nutrition_confidence_score = $7,
+            nutrition_source_ids = $8,
+            nutrition_audit_payload = $9
+          WHERE id = $10
+        `, [
+          audit.status,
+          audit.calculated.calories,
+          audit.calculated.protein,
+          audit.calculated.carbs,
+          audit.calculated.fats,
+          audit.calculated.fiber,
+          audit.confidence,
+          sourceIds,
+          JSON.stringify(audit),
+          recipe.id,
+          audit.sourceCoverage
+        ]);
+
+        audits.push({ recipeId: recipe.id, recipeName: recipe.name, status: audit.status, confidence: audit.confidence, sourceCoverage: audit.sourceCoverage, calorieDelta: audit.calorieDelta });
+      }
+
+      res.json({
+        totalRecipes: total.rows[0].count,
+        offset,
+        limit,
+        audited: audits.length,
+        summary: audits.reduce((acc, audit) => {
+          acc[audit.status] = (acc[audit.status] || 0) + 1;
+          return acc;
+        }, {}),
+        audits
+      });
+    } catch (error) {
+      console.error('Temporary recipe audit error:', error);
+      res.status(500).json({ error: 'Failed to audit recipes with sources' });
     }
   });
 
