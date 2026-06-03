@@ -70,7 +70,7 @@ def audit_label(recipe):
 
 
 def build_pdf(data_path, output_path):
-    payload = json.loads(Path(data_path).read_text(encoding="utf-8"))
+    payload = json.loads(Path(data_path).read_text(encoding="utf-8-sig"))
     recipes = payload.get("recipes") or []
     source_mode = payload.get("sourceMode", "unknown")
     generated_at = payload.get("generatedAt")
