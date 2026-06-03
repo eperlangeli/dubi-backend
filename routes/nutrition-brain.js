@@ -134,7 +134,7 @@ module.exports = (pool = null) => {
           allIngredientsSourceBacked
             ? 'Recipe macro energy and ingredient source coverage passed.'
             : 'Recipe macro energy is checked; official ingredient source coverage still pending.',
-          auditPayload
+          JSON.stringify(auditPayload)
         ]);
 
         await pool.query(`
@@ -145,7 +145,7 @@ module.exports = (pool = null) => {
             nutrition_source_ids = $3,
             nutrition_audit_payload = $4
           WHERE id = $5
-        `, [status, confidence, sourceIds, auditPayload, recipe.id]);
+        `, [status, confidence, sourceIds, JSON.stringify(auditPayload), recipe.id]);
 
         audits.push({
           recipeId: recipe.id,
