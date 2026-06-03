@@ -164,6 +164,10 @@ CREATE TABLE IF NOT EXISTS recipes (
   ingredients JSONB DEFAULT '[]'::jsonb,
   scientific_source VARCHAR(255),
   evidence_level VARCHAR(20) DEFAULT 'medium',
+  nutrition_audit_status VARCHAR(40) DEFAULT 'pending',
+  nutrition_confidence_score INT DEFAULT 50,
+  nutrition_source_ids VARCHAR(80)[] DEFAULT ARRAY[]::varchar[],
+  nutrition_audit_payload JSONB DEFAULT '{}'::jsonb,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -257,6 +261,10 @@ ALTER TABLE recipes ADD COLUMN IF NOT EXISTS sodium_level VARCHAR(20) DEFAULT 'm
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS added_sugar_level VARCHAR(20) DEFAULT 'low';
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS meal_goal_tags VARCHAR(50)[];
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS avoid_if VARCHAR(50)[];
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS nutrition_audit_status VARCHAR(40) DEFAULT 'pending';
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS nutrition_confidence_score INT DEFAULT 50;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS nutrition_source_ids VARCHAR(80)[] DEFAULT ARRAY[]::varchar[];
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS nutrition_audit_payload JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS sleep_duration DOUBLE PRECISION;
 ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS recovery_score INT;
 ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS data_date DATE;

@@ -1,4 +1,5 @@
 const express = require('express');
+const { getRecipeNutritionAuditStatus } = require('../services/nutrition-brain');
 
 const average = (values) => {
   const clean = values.map(Number).filter(Number.isFinite);
@@ -481,13 +482,15 @@ const scoreRecipe = (recipe, slot, physiologicalState) => {
     Math.max(0, Number(recipe.glycemic_index || 50) - 55) * 0.04;
   const processingPenalty = String(recipe.processing_level || '').includes('ultra') ? 6 : 0;
   const slotBonus = Array.isArray(recipe.meal_type) && slot.tag && recipe.meal_type.includes(slot.tag) ? 5 : 0;
+  const nutritionAudit = getRecipeNutritionAuditStatus(recipe);
+  const officialSourceBonus = nutritionAudit.readyForPrecisionPlan ? 6 : 0;
 
-  return qualityScore + slotBonus + recoveryBonus + trainingBonus + satietyBonus -
+  return qualityScore + slotBonus + recoveryBonus + trainingBonus + satietyBonus + officialSourceBonus -
     calorieDistance * 0.045 -
     proteinDistance * 0.08 -
     carbDistance * 0.025 -
     fatDistance * 0.05 -
-    processingPenalty - sodiumPenalty - sugarPenalty;
+    processingPenalty - sodiumPenalty - sugarPenalty - nutritionAudit.scoringPenalty;
 };
 
 const explainRecipeSelection = (recipe, slot, physiologicalState) => {
@@ -516,6 +519,13 @@ const explainRecipeSelection = (recipe, slot, physiologicalState) => {
 
   if (goalTags.length > 0) {
     reasons.push(`Recipe goal tags considered: ${goalTags.join(', ')}.`);
+  }
+
+  const nutritionAudit = getRecipeNutritionAuditStatus(recipe);
+  if (nutritionAudit.readyForPrecisionPlan) {
+    reasons.push('Recipe macros are source-backed and approved by the DUBI nutrition audit layer.');
+  } else {
+    reasons.push(`Nutrition audit status: ${nutritionAudit.auditStatus}; confidence ${nutritionAudit.sourceConfidence}/100. Pending recipes are penalized until source-backed ingredient data are loaded.`);
   }
 
   return reasons;
@@ -830,6 +840,7 @@ module.exports = (pool) => {
     const sorted = poolForSlot.sort((a, b) => b.dubi_score - a.dubi_score);
 
     const selected = sorted[0];
+    const selectedNutritionAudit = getRecipeNutritionAuditStatus(selected);
     usedRecipeIds.add(String(selected.id));
 
     return {
@@ -866,7 +877,10 @@ module.exports = (pool) => {
         recoverySupport: selected.recovery_support,
         sodiumLevel: selected.sodium_level,
         addedSugarLevel: selected.added_sugar_level,
-        score: Math.round(selected.dubi_score * 10) / 10
+        score: Math.round(selected.dubi_score * 10) / 10,
+        nutritionAuditStatus: selectedNutritionAudit.auditStatus,
+        nutritionConfidenceScore: selectedNutritionAudit.sourceConfidence,
+        sourceBackedMacros: selectedNutritionAudit.readyForPrecisionPlan
       },
       filters: {
         level: filterLevel,
@@ -887,7 +901,8 @@ module.exports = (pool) => {
           sodiumLevel: selected.sodium_level,
           addedSugarLevel: selected.added_sugar_level,
           mealGoalTags: selected.meal_goal_tags,
-          avoidIf: selected.avoid_if
+          avoidIf: selected.avoid_if,
+          nutritionAudit: selectedNutritionAudit
         },
         source: selected.scientific_source,
         evidenceLevel: selected.evidence_level

@@ -138,6 +138,32 @@ const validateMacroEnergy = ({ calories, protein, carbs, fats, toleranceKcal = 8
   };
 };
 
+const getRecipeNutritionAuditStatus = (recipe = {}) => {
+  const macroEnergy = validateMacroEnergy({
+    calories: recipe.calories,
+    protein: recipe.protein,
+    carbs: recipe.carbs,
+    fats: recipe.fats
+  });
+  const sourceConfidence = Number(recipe.nutrition_confidence_score ?? recipe.nutritionConfidenceScore ?? 50);
+  const auditStatus = recipe.nutrition_audit_status || recipe.nutritionAuditStatus || 'pending';
+  const sourceIds = recipe.nutrition_source_ids || recipe.nutritionSourceIds || [];
+  const ingredientAuditAvailable = auditStatus === 'approved' || auditStatus === 'verified';
+  const pendingPenalty = ingredientAuditAvailable ? 0 : 6;
+  const confidencePenalty = Math.max(0, 90 - sourceConfidence) * 0.08;
+  const macroPenalty = macroEnergy.valid ? 0 : Math.min(10, Math.abs(macroEnergy.delta) * 0.12);
+
+  return {
+    macroEnergy,
+    sourceConfidence,
+    auditStatus,
+    sourceIds,
+    ingredientAuditAvailable,
+    scoringPenalty: Math.round((pendingPenalty + confidencePenalty + macroPenalty) * 10) / 10,
+    readyForPrecisionPlan: macroEnergy.valid && ingredientAuditAvailable && sourceConfidence >= 85
+  };
+};
+
 const getSourceById = (sourceId) =>
   NUTRITION_DATA_SOURCES.find((source) => source.id === sourceId) || null;
 
@@ -202,6 +228,7 @@ module.exports = {
   SOURCE_PRIORITY,
   calculateEnergyFromMacros,
   validateMacroEnergy,
+  getRecipeNutritionAuditStatus,
   getSourceById,
   rankSourcesForIngredient,
   scoreIngredientReference,
