@@ -500,6 +500,93 @@ module.exports = (pool = null) => {
     res.json(summary);
   });
 
+  router.post('/temp-pipeline/seed-recipes', requireTemporaryPipelineToken, async (req, res) => {
+    if (!pool) return res.status(501).json({ error: 'Database pool not configured' });
+
+    try {
+      const seedRecipes = require('../seed-recipes');
+      const summary = { totalSeedRecipes: seedRecipes.length, inserted: 0, existing: 0 };
+
+      for (const recipe of seedRecipes) {
+        const existing = await pool.query('SELECT id FROM recipes WHERE name = $1 LIMIT 1', [recipe.name]);
+        if (existing.rows.length > 0) {
+          summary.existing += 1;
+          continue;
+        }
+
+        await pool.query(
+          `
+          INSERT INTO recipes (
+            name,
+            description,
+            serving_size,
+            calories,
+            protein,
+            carbs,
+            fats,
+            fiber,
+            satiety_score,
+            nutrient_density,
+            processing_level,
+            glycemic_index,
+            recovery_support,
+            meal_type,
+            cuisine,
+            prep_time_minutes,
+            cost_level,
+            difficulty,
+            sodium_level,
+            added_sugar_level,
+            meal_goal_tags,
+            avoid_if,
+            diet_compatibility,
+            allergens,
+            ingredients,
+            scientific_source,
+            evidence_level
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+          `,
+          [
+            recipe.name,
+            recipe.description,
+            recipe.servingSize,
+            recipe.calories,
+            recipe.protein,
+            recipe.carbs,
+            recipe.fats,
+            recipe.fiber,
+            recipe.satietyScore,
+            recipe.nutrientDensity,
+            recipe.processingLevel,
+            recipe.glycemicIndex,
+            recipe.recoverySupportScore,
+            recipe.mealType,
+            recipe.cuisine,
+            recipe.prepTimeMinutes,
+            recipe.costLevel,
+            recipe.difficulty,
+            recipe.sodiumLevel,
+            recipe.addedSugarLevel,
+            recipe.mealGoalTags,
+            recipe.avoidIf,
+            recipe.dietCompatibility,
+            recipe.allergens,
+            JSON.stringify(recipe.ingredients),
+            recipe.scientificSource,
+            recipe.evidenceLevel
+          ]
+        );
+        summary.inserted += 1;
+      }
+
+      res.json(summary);
+    } catch (error) {
+      console.error('Temporary recipe seed error:', error);
+      res.status(500).json({ error: 'Failed to seed recipes' });
+    }
+  });
+
   router.get('/temp-pipeline/export-recipes', requireTemporaryPipelineToken, async (req, res) => {
     if (!pool) return res.status(501).json({ error: 'Database pool not configured' });
 
