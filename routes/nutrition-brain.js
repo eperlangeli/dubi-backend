@@ -422,6 +422,83 @@ module.exports = (pool = null) => {
     }
   });
 
+  router.post('/temp-pipeline/upsert-refs', requireTemporaryPipelineToken, async (req, res) => {
+    if (!pool) return res.status(501).json({ error: 'Database pool not configured' });
+
+    const references = Array.isArray(req.body?.references) ? req.body.references.slice(0, 100) : [];
+    if (!references.length) return res.status(400).json({ error: 'references array is required' });
+
+    const summary = { received: references.length, saved: 0, skipped: 0, errors: 0 };
+
+    for (const reference of references) {
+      const ingredientKey = normalizeIngredientKey(reference.ingredient_key || reference.display_name);
+      if (!ingredientKey || !reference.display_name || !reference.source_id || !reference.source_food_id) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      try {
+        const confidence = Number(reference.confidence_score) || scoreIngredientReference({
+          ...reference,
+          preparation_match: true,
+          locale_match: false
+        });
+        await pool.query(`
+          INSERT INTO nutrition_ingredient_refs (
+            ingredient_key,
+            display_name,
+            source_id,
+            source_food_id,
+            source_food_name,
+            locale,
+            preparation_state,
+            calories_per_100g,
+            protein_per_100g,
+            carbs_per_100g,
+            fats_per_100g,
+            fiber_per_100g,
+            confidence_score,
+            source_payload,
+            updated_at
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,'generic',$7,$8,$9,$10,$11,$12,$13,CURRENT_TIMESTAMP)
+          ON CONFLICT (ingredient_key, source_id, source_food_id, preparation_state)
+          DO UPDATE SET
+            display_name = EXCLUDED.display_name,
+            source_food_name = EXCLUDED.source_food_name,
+            locale = EXCLUDED.locale,
+            calories_per_100g = EXCLUDED.calories_per_100g,
+            protein_per_100g = EXCLUDED.protein_per_100g,
+            carbs_per_100g = EXCLUDED.carbs_per_100g,
+            fats_per_100g = EXCLUDED.fats_per_100g,
+            fiber_per_100g = EXCLUDED.fiber_per_100g,
+            confidence_score = EXCLUDED.confidence_score,
+            source_payload = EXCLUDED.source_payload,
+            updated_at = CURRENT_TIMESTAMP
+        `, [
+          ingredientKey,
+          reference.display_name,
+          reference.source_id,
+          String(reference.source_food_id),
+          reference.source_food_name,
+          reference.locale || 'global',
+          reference.calories_per_100g,
+          reference.protein_per_100g,
+          reference.carbs_per_100g,
+          reference.fats_per_100g,
+          reference.fiber_per_100g,
+          confidence,
+          JSON.stringify(reference.source_payload || reference)
+        ]);
+        summary.saved += 1;
+      } catch (error) {
+        summary.errors += 1;
+      }
+    }
+
+    res.json(summary);
+  });
+
   router.get('/temp-pipeline/export-recipes', requireTemporaryPipelineToken, async (req, res) => {
     if (!pool) return res.status(501).json({ error: 'Database pool not configured' });
 
