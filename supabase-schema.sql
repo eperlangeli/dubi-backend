@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS user_onboarding (
   daily_steps VARCHAR(50),
   sedentary_days INT,
   diet VARCHAR(50),
+  diet_intensity VARCHAR(50) DEFAULT 'balanced',
   allergies TEXT,
   sport VARCHAR(100),
   training_time VARCHAR(50),
@@ -216,6 +217,7 @@ ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS data_date DATE;
 ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS provider VARCHAR(50);
 ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'created';
 ALTER TABLE openwearables_connections ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS diet_intensity VARCHAR(50) DEFAULT 'balanced';
 ALTER TABLE nps_responses ADD COLUMN IF NOT EXISTS comment TEXT;
 ALTER TABLE nps_responses ADD COLUMN IF NOT EXISTS context VARCHAR(50) DEFAULT 'beta_settings';
 

@@ -59,6 +59,7 @@ module.exports = (pool) => {
         daily_steps,
         sedentary_days,
         diet,
+        diet_intensity,
         allergies,
         sport,
         training_time,
@@ -95,6 +96,7 @@ module.exports = (pool) => {
           daily_steps,
           sedentary_days,
           diet,
+          diet_intensity,
           allergies,
           sport,
           training_time,
@@ -108,7 +110,7 @@ module.exports = (pool) => {
         VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
           $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-          $21, $22, $23, $24, $25, true, CURRENT_TIMESTAMP
+          $21, $22, $23, $24, $25, $26, true, CURRENT_TIMESTAMP
         )
         ON CONFLICT (user_id)
         DO UPDATE SET
@@ -129,6 +131,7 @@ module.exports = (pool) => {
           daily_steps = EXCLUDED.daily_steps,
           sedentary_days = EXCLUDED.sedentary_days,
           diet = EXCLUDED.diet,
+          diet_intensity = EXCLUDED.diet_intensity,
           allergies = EXCLUDED.allergies,
           sport = EXCLUDED.sport,
           training_time = EXCLUDED.training_time,
@@ -159,6 +162,7 @@ module.exports = (pool) => {
           daily_steps,
           sedentary_days,
           diet,
+          diet_intensity || 'balanced',
           allergies,
           sport,
           training_time,
