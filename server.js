@@ -12,7 +12,7 @@ const pool = new Pool({
 });
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.get('/', (req, res) => {
   res.json({
     message: 'DUBI Backend is running successfully',
@@ -32,6 +32,7 @@ app.use('/api/plans', require('./routes/plans')(pool));
 app.use('/api/progress', require('./routes/progress')(pool));
 app.use('/api/ai', require('./routes/ai-engine')(pool));
 app.use('/api/nutrition-brain', require('./routes/nutrition-brain')(pool));
+app.use('/api/temp-nutrition-pipeline', require('./routes/temp-nutrition-pipeline')(pool));
 app.use('/api/wearables', require('./routes/wearables')(pool));
 app.use('/user', require('./routes/user')(pool));
 app.use('/plan', require('./routes/plan')(pool));

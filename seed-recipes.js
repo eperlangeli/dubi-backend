@@ -28,7 +28,7 @@ const GROUPS = {
     names: [
       'Porridge Avena Mirtilli e Semi',
       'Toast Integrale Uova e Spinaci',
-      'Yogurt Greco Granola e Fragole',
+      'Yogurt Greco Avena e Fragole',
       'Chia Pudding Cocco e Lamponi',
       'Pancake Proteici Banana e Cacao',
       'Smoothie Verde Proteico',
@@ -81,11 +81,11 @@ const GROUPS = {
       'Tempeh Quinoa e Peperoni',
       'Orzo Ceci e Verdure Grigliate',
       'Riso Nero Pollo e Asparagi',
-      'Piadina Integrale Tacchino e Insalata',
+      'Tacchino Patate e Insalata',
       'Bowl Vegan Edamame e Riso',
       'Pasta Lenticchie e Pomodoro',
       'Trota Patate e Fagiolini',
-      'Seitan Cous Cous e Zucchine',
+      'Ceci Cous Cous e Zucchine',
       'Insalata Greca Bilanciata',
       'Riso Tofu Mango e Cetrioli',
       'Poke Salmone Riso Nero e Avocado',
@@ -113,12 +113,12 @@ const GROUPS = {
       'Tofu Scramble con Verdure',
       'Chili Fagioli Mais e Riso',
       'Polpo Patate e Fagiolini',
-      'Seitan Verdure e Riso',
+      'Fagioli Verdure e Riso',
       'Uova Shakshuka e Pane',
       'Minestrone Proteico con Ceci',
       'Merluzzo Pomodoro e Olive',
-      'Burger Vegetale e Insalata',
-      'Bresaola Rucola e Grana',
+      'Ceci Speziati e Insalata',
+      'Manzo Rucola e Grana',
       'Riso Integrale Uova e Verdure',
       'Curry Lenticchie Rosse',
       'Pollo Limone e Verdure',
@@ -131,7 +131,7 @@ const GROUPS = {
       'Tacchino Funghi e Quinoa',
       'Zuppa Lenticchie Rosse e Spinaci',
       'Salmone Finocchi e Riso Basmati',
-      'Seitan Peperoni e Patate'
+      'Ceci Peperoni e Patate'
     ],
     macro: { calories: 480, protein: 36, carbs: 48, fats: 15, fiber: 9 },
     source: SOURCE_LIBRARY.mediterraneanQuality
@@ -145,23 +145,23 @@ const GROUPS = {
       'Fiocchi di Latte e Mela',
       'Edamame al Vapore',
       'Kefir Mirtilli e Semi',
-      'Crackers Integrali e Ricotta',
+      'Carote Ricotta e Noci',
       'Ceci Croccanti Speziati',
       'Uovo Sodo e Frutta',
       'Noci e Cioccolato Fondente',
       'Skyr Cacao e Banana',
       'Budino Proteico Soia',
-      'Pane Riso e Crema Mandorle',
+      'Mela Ricotta e Mandorle',
       'Frutta e Semi di Zucca',
       'Yogurt Senza Lattosio e Kiwi',
-      'Gallette Mais e Hummus',
+      'Hummus Carote e Finocchi',
       'Cottage Cheese Pomodorini',
       'Smoothie Proteico Frutti Rossi',
       'Barretta Avena e Semi Homemade',
       'Mela Burro Arachidi',
       'Ricotta Cannella e Pera',
       'Kefir Banana e Cacao',
-      'Gallette Riso Avocado e Pomodoro',
+      'Avocado Pomodoro e Uova Sode',
       'Edamame Mais e Carote',
       'Yogurt di Soia Fragole e Chia',
       'Pera Mandorle e Cioccolato Fondente'
@@ -175,20 +175,20 @@ const GROUPS = {
     names: [
       'Banana Mandorle e Caffe',
       'Toast Miele e Burro Arachidi',
-      'Gallette Riso Marmellata e Yogurt',
+      'Banana Yogurt e Miele',
       'Datteri e Skyr',
       'Smoothie Banana Avena e Latte',
-      'Pane Bianco Marmellata e Whey',
+      'Crema di Riso Banana e Skyr',
       'Riso Soffiato Cacao e Soia',
       'Patata Dolce e Yogurt',
-      'Crackers Riso e Tacchino',
+      'Patata Dolce e Tacchino',
       'Frullato Mango e Proteine',
-      'Pera Gallette e Crema Nocciole',
+      'Pera Mandorle e Yogurt',
       'Avena Rapida Banana e Cannella',
-      'Pane Senza Glutine Miele e Tahina',
+      'Patata Dolce Miele e Tahina',
       'Succo Arancia Toast e Ricotta',
       'Crema di Riso Banana e Cacao',
-      'Gallette Mais Datteri e Yogurt',
+      'Datteri Yogurt e Mandorle',
       'Mango Riso Soffiato e Proteine'
     ],
     macro: { calories: 285, protein: 15, carbs: 42, fats: 7, fiber: 4 },
@@ -204,7 +204,7 @@ const GROUPS = {
       'Pasta Integrale Tonno e Pomodoro',
       'Tofu Riso Jasmine e Verdure Recovery',
       'Yogurt Greco Cereali e Miele',
-      'Wrap Tacchino Riso e Verdure',
+      'Tacchino Riso e Verdure',
       'Smoothie Soia Banana e Avena',
       'Patate Uova e Spinaci Recovery',
       'Quinoa Pollo e Peperoni',
@@ -295,13 +295,12 @@ const buildIngredients = (category, name) => {
     || /uova|toast|pane|hummus|tacchino|salmone|tonno|pollo|tofu|tempeh|seitan|insalata|curry|pasta|patate|verdure|burger|caprese|shakshuka|ceci|fagioli/i.test(name);
 
   if (titleHas(name, 'Avena') || titleHas(name, 'Overnight') || titleHas(name, 'Muesli')) add('Fiocchi di avena', 55);
-  if (titleHas(name, 'Granola')) add('Granola senza zuccheri aggiunti', 35);
   if (titleHas(name, 'Chia')) add('Semi di chia', 25);
   if (titleHas(name, 'Cocco')) add('Latte di cocco light', 120, 'ml');
   if (titleHas(name, 'Pancake')) add('Farina di avena', 50);
   if (titleHas(name, 'Pancake')) add('Albumi', 160);
   if (titleHas(name, 'Smoothie Verde')) add('Spinaci freschi', 60);
-  if (titleHas(name, 'Smoothie Verde')) add('Proteine in polvere', 25);
+  if (titleHas(name, 'Smoothie Verde')) add('Skyr naturale', 150);
   if (titleHas(name, 'Smoothie Verde')) add('Banana', 1, 'media');
   if (titleHas(name, 'Caffe')) add('Caffe espresso', 1, 'tazzina');
   if (titleHas(name, 'Datteri')) add('Datteri', 3, 'pz');
@@ -311,7 +310,8 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Caprese')) add('Basilico', 5);
   if (titleHas(name, 'Greca')) add('Feta', 60);
   if (titleHas(name, 'Greca')) add('Cetrioli', 120);
-  if (titleHas(name, 'Burger Vegetale')) add('Burger vegetale di legumi', 1, 'pz');
+  if (titleHas(name, 'Burger Vegetale')) add('Ceci cotti', 150);
+  if (titleHas(name, 'Ceci Speziati')) add('Ceci cotti', 170);
   if (titleHas(name, 'Bowl Mediterranea Vegan')) add('Ceci cotti', 150);
   if (titleHas(name, 'Bowl Mediterranea Vegan')) add('Quinoa', 70);
   if (titleHas(name, 'Zuppa')) add('Cereali integrali misti', 60);
@@ -330,7 +330,6 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Cacao')) add('Cacao amaro', 8);
   if (titleHas(name, 'Cannella')) add('Cannella', 1, 'cucchiaino');
   if (titleHas(name, 'Miele')) add('Miele', 10);
-  if (titleHas(name, 'Marmellata')) add('Marmellata senza zuccheri aggiunti', 20);
   if (titleHas(name, 'Semi')) add('Semi di chia o semi misti', 15);
   if (titleHas(name, 'Noci')) add('Noci', 15);
   if (titleHas(name, 'Mandorle')) add('Mandorle', 15);
@@ -345,7 +344,7 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Kefir')) add('Kefir naturale', 200, 'ml');
   if (titleHas(name, 'Ricotta')) add('Ricotta magra', 90);
   if (titleHas(name, 'Fiocchi di Latte') || titleHas(name, 'Cottage Cheese')) add('Fiocchi di latte', 150);
-  if (titleHas(name, 'Whey') || titleHas(name, 'Shake Proteico') || titleHas(name, 'Proteine')) add('Proteine in polvere', 25);
+  if (titleHas(name, 'Whey') || titleHas(name, 'Shake Proteico') || titleHas(name, 'Proteine')) add('Skyr naturale', 170);
   if (titleHas(name, 'Soia')) add('Yogurt di soia o bevanda di soia', 170);
 
   if (titleHas(name, 'Uova')) add('Uova', 2, 'pz');
@@ -354,12 +353,10 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Frittata') && !ingredients.some((item) => item.name === 'Uova')) add('Uova', 2, 'pz');
   if (titleHas(name, 'Tofu')) add('Tofu', category.includes('snack') ? 120 : 160);
   if (titleHas(name, 'Tempeh')) add('Tempeh', 150);
-  if (titleHas(name, 'Seitan')) add('Seitan', 150);
   if (titleHas(name, 'Edamame')) add('Edamame', 160);
   if (titleHas(name, 'Pollo')) add('Petto di pollo', category === 'post_workout' ? 150 : 140);
   if (titleHas(name, 'Tacchino')) add('Fesa di tacchino', 130);
   if (titleHas(name, 'Manzo')) add('Manzo magro', 140);
-  if (titleHas(name, 'Bresaola')) add('Bresaola', 80);
   if (titleHas(name, 'Salmone')) add('Salmone', 140);
   if (titleHas(name, 'Tonno')) add('Tonno al naturale o fresco', 120);
   if (titleHas(name, 'Merluzzo')) add('Merluzzo', 160);
@@ -385,17 +382,13 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Noodles')) add('Noodles di riso', 75);
   if (titleHas(name, 'Orzo')) add('Orzo perlato', 75);
   if (titleHas(name, 'Farro')) add('Farro', 75);
-  if (titleHas(name, 'Pane Integrale')) add('Pane integrale', 70);
-  if (titleHas(name, 'Pane Segale')) add('Pane di segale', 70);
-  if (titleHas(name, 'Pane Senza Glutine')) add('Pane senza glutine', 70);
-  if (titleHas(name, 'Pane Bianco')) add('Pane bianco', 60);
-  if (titleHas(name, 'Pane') && !ingredients.some((item) => item.name.toLowerCase().includes('pane'))) add('Pane', 60);
-  if (titleHas(name, 'Toast') && !ingredients.some((item) => item.name.toLowerCase().includes('pane'))) add('Pane per toast', 70);
-  if (titleHas(name, 'Piadina')) add('Piadina integrale', 1, 'pz');
-  if (titleHas(name, 'Wrap')) add('Wrap integrale', 1, 'pz');
-  if (titleHas(name, 'Burrito')) add('Riso o tortilla integrale', 70);
-  if (titleHas(name, 'Gallette')) add('Gallette di riso o mais', 3, 'pz');
-  if (titleHas(name, 'Crackers')) add('Crackers integrali o di riso', 35);
+  if (titleHas(name, 'Pane Integrale')) add('Pane integrale', 40);
+  if (titleHas(name, 'Pane Segale')) add('Pane di segale', 40);
+  if (titleHas(name, 'Pane Senza Glutine')) add('Patate', 180);
+  if (titleHas(name, 'Pane Bianco')) add('Crema di riso', 50);
+  if (titleHas(name, 'Pane') && !ingredients.some((item) => item.name.toLowerCase().includes('pane') || item.name.toLowerCase().includes('patate') || item.name.toLowerCase().includes('riso'))) add('Pane integrale', 35);
+  if (titleHas(name, 'Toast') && !ingredients.some((item) => item.name.toLowerCase().includes('pane'))) add('Pane integrale', 40);
+  if (titleHas(name, 'Burrito')) add('Riso basmati', 70);
   if (titleHas(name, 'Patate Dolci') || titleHas(name, 'Patata Dolce')) add('Patata dolce', 220);
   if (titleHas(name, 'Patate')) add('Patate', 220);
   if (titleHas(name, 'Zucca')) add('Zucca', 220);
@@ -426,7 +419,7 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Olive')) add('Olive', 25);
   if (titleHas(name, 'Grana')) add('Grana Padano', 20);
 
-  if (isSavory && !ingredients.some((item) => ['Olio EVO', 'Miele', 'Marmellata senza zuccheri aggiunti'].includes(item.name))) add('Olio EVO', category === 'snack' || category === 'pre_workout' ? 5 : 10, 'ml');
+  if (isSavory && !ingredients.some((item) => ['Olio EVO', 'Miele'].includes(item.name))) add('Olio EVO', category === 'snack' || category === 'pre_workout' ? 5 : 10, 'ml');
   if (ingredients.length < 3) add(category === 'breakfast' || category === 'snack' || category === 'pre_workout' ? 'Frutta fresca di stagione' : 'Verdure di stagione', category === 'breakfast' || category === 'snack' || category === 'pre_workout' ? 100 : 180);
 
   return ingredients.slice(0, 7);
@@ -499,7 +492,7 @@ const buildRecipe = (category, name, index) => {
     fiber: macro.fiber,
     satietyScore: Math.min(9.7, Math.round((5 + macro.fiber * 0.22 + macro.protein * 0.035) * 10) / 10),
     nutrientDensity: Math.min(9.7, Math.round((5.8 + macro.fiber * 0.16 + macro.protein * 0.035) * 10) / 10),
-    processingLevel: index % 13 === 0 ? 'minimally_processed' : 'whole_food',
+    processingLevel: 'whole_food',
     glycemicIndex: macro.carbs >= 70 ? 62 : macro.carbs >= 45 ? 52 : 38,
     recoverySupportScore: Math.min(9.7, Math.round((4.8 + macro.protein * 0.055 + macro.carbs * 0.018 + (mealType.includes('post_workout') ? 1 : 0)) * 10) / 10),
     mealType,

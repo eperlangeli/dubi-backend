@@ -290,7 +290,6 @@ const INGREDIENT_SWAP_LIBRARY = [
       { name: 'Merluzzo', quantity: 160, unit: 'g', diets: ['omnivore', 'pescatarian'], allergens: ['fish'] },
       { name: 'Tofu', quantity: 170, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['soy'] },
       { name: 'Tempeh', quantity: 150, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['soy'] },
-      { name: 'Seitan', quantity: 150, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['gluten'] },
       { name: 'Yogurt greco 0-2%', quantity: 170, unit: 'g', diets: ['omnivore', 'vegetarian', 'pescatarian'], allergens: ['dairy'] },
       { name: 'Skyr naturale', quantity: 170, unit: 'g', diets: ['omnivore', 'vegetarian', 'pescatarian'], allergens: ['dairy'] },
       { name: 'Proteine vegetali in polvere', quantity: 25, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] }
@@ -306,7 +305,6 @@ const INGREDIENT_SWAP_LIBRARY = [
       { name: 'Pasta integrale', quantity: 80, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['gluten'] },
       { name: 'Cous cous', quantity: 75, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['gluten'] },
       { name: 'Pane senza glutine', quantity: 70, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
-      { name: 'Gallette di riso', quantity: 3, unit: 'pz', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
       { name: 'Fiocchi di avena certificati senza glutine', quantity: 55, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] }
     ]
   },
@@ -475,6 +473,7 @@ const scoreRecipe = (recipe, slot, physiologicalState) => {
   const satietyBonus = goalTags.includes('satiety') ? 2 : 0;
   const sodiumPenalty = recipe.sodium_level === 'high' ? 4 : recipe.sodium_level === 'medium' ? 1 : 0;
   const sugarPenalty = recipe.added_sugar_level === 'high' ? 4 : recipe.added_sugar_level === 'medium' ? 1.5 : 0;
+  const wholeFoodBonus = recipe.processing_level === 'whole_food' ? 5 : 0;
   const qualityScore =
     Number(recipe.nutrient_density || 5) * 2 +
     Number(recipe.satiety_score || 5) * 1.5 +
@@ -485,7 +484,7 @@ const scoreRecipe = (recipe, slot, physiologicalState) => {
   const nutritionAudit = getRecipeNutritionAuditStatus(recipe);
   const officialSourceBonus = nutritionAudit.readyForPrecisionPlan ? 6 : 0;
 
-  return qualityScore + slotBonus + recoveryBonus + trainingBonus + satietyBonus + officialSourceBonus -
+  return qualityScore + wholeFoodBonus + slotBonus + recoveryBonus + trainingBonus + satietyBonus + officialSourceBonus -
     calorieDistance * 0.045 -
     proteinDistance * 0.08 -
     carbDistance * 0.025 -
@@ -758,6 +757,7 @@ module.exports = (pool) => {
       WHERE is_active = true
         AND (diet_compatibility IS NULL OR diet_compatibility @> ARRAY[$1]::varchar[])
         AND (meal_type IS NULL OR meal_type && ARRAY[$2]::varchar[])
+        AND COALESCE(processing_level, 'whole_food') = 'whole_food'
         AND (
           $3::varchar[] = ARRAY[]::varchar[]
           OR allergens IS NULL
@@ -782,6 +782,7 @@ module.exports = (pool) => {
       FROM recipes
       WHERE is_active = true
         AND (diet_compatibility IS NULL OR diet_compatibility @> ARRAY[$1]::varchar[])
+        AND COALESCE(processing_level, 'whole_food') = 'whole_food'
         AND (
           $2::varchar[] = ARRAY[]::varchar[]
           OR allergens IS NULL
