@@ -35,16 +35,19 @@ const calculateTrend = (values) => {
 
 const getSleepHours = (day) => {
   const value = day?.sleep_duration ?? day?.sleep_hours;
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
+  const numeric = toFiniteNumberOrNull(value);
+  return numeric && numeric > 0 ? numeric : null;
 };
 
 const getRecoveryScore = (day) => {
-  const numeric = Number(day?.recovery_score);
-  return Number.isFinite(numeric) ? numeric : null;
+  const numeric = toFiniteNumberOrNull(day?.recovery_score);
+  return numeric && numeric > 0 ? numeric : null;
 };
 
 const classifyRecoveryStatus = ({ hrvTrend, sleepTrend, recoveryTrend, poorSleepDays }) => {
+  const hasRecoverySignal = [hrvTrend, sleepTrend, recoveryTrend].some((trend) => trend?.status === 'ok' && trend.value != null);
+  if (!hasRecoverySignal) return 'normal';
+
   if (recoveryTrend.value != null) {
     if (recoveryTrend.value < 50) return 'compromised';
     if (recoveryTrend.value > 70 && poorSleepDays === 0 && !(hrvTrend.isDecreasing && hrvTrend.difference <= -4)) {
