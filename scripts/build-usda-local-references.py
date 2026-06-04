@@ -83,7 +83,6 @@ QUERY_MAP = {
     "pane": "bread whole-wheat",
     "pane di segale": "bread rye",
     "pane per toast": "bread whole-wheat",
-    "pane senza glutine": "bread gluten-free",
     "passata di pomodoro": "tomato puree",
     "pasta": "pasta whole-wheat dry",
     "pasta di lenticchie": "lentils raw",
