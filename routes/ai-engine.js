@@ -1,14 +1,20 @@
 const express = require('express');
 const { getRecipeNutritionAuditStatus } = require('../services/nutrition-brain');
 
+const toFiniteNumberOrNull = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
 const average = (values) => {
-  const clean = values.map(Number).filter(Number.isFinite);
+  const clean = values.map(toFiniteNumberOrNull).filter((value) => value !== null);
   if (clean.length === 0) return null;
   return clean.reduce((sum, value) => sum + value, 0) / clean.length;
 };
 
 const calculateTrend = (values) => {
-  const clean = values.map(Number).filter(Number.isFinite);
+  const clean = values.map(toFiniteNumberOrNull).filter((value) => value !== null);
   if (clean.length < 3) {
     return { value: average(clean), isDecreasing: null, difference: 0, status: 'insufficient_data' };
   }
