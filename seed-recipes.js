@@ -44,7 +44,7 @@ const GROUPS = {
       'Overnight Oats Cacao e Pera',
       'Budino Soia Chia e Fragole',
       'Yogurt Lactose Free e Kiwi',
-      'Pane Senza Glutine Uova e Avocado',
+      'Patate Uova e Avocado',
       'Muesli Proteico Senza Lattosio',
       'Crespelle Avena e Albumi',
       'Hummus Toast Mediterraneo',
@@ -53,7 +53,7 @@ const GROUPS = {
       'Porridge Proteico Mela e Cannella',
       'Toast Tofu Avocado e Pomodoro',
       'Skyr Mango e Semi di Chia',
-      'Omelette Spinaci e Pane Senza Glutine',
+      'Omelette Spinaci e Patate',
       'Smoothie Soia Banana e Cacao',
       'Quinoa Breakfast Bowl Fragole e Mandorle'
     ],
@@ -358,7 +358,7 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Tacchino')) add('Fesa di tacchino', 130);
   if (titleHas(name, 'Manzo')) add('Manzo magro', 140);
   if (titleHas(name, 'Salmone')) add('Salmone', 140);
-  if (titleHas(name, 'Tonno')) add('Tonno al naturale o fresco', 120);
+  if (titleHas(name, 'Tonno')) add('Tonno fresco', 140);
   if (titleHas(name, 'Merluzzo')) add('Merluzzo', 160);
   if (titleHas(name, 'Branzino')) add('Branzino', 160);
   if (titleHas(name, 'Sgombro')) add('Sgombro', 130);
@@ -384,8 +384,6 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Farro')) add('Farro', 75);
   if (titleHas(name, 'Pane Integrale')) add('Pane integrale', 40);
   if (titleHas(name, 'Pane Segale')) add('Pane di segale', 40);
-  if (titleHas(name, 'Pane Senza Glutine')) add('Patate', 180);
-  if (titleHas(name, 'Pane Bianco')) add('Crema di riso', 50);
   if (titleHas(name, 'Pane') && !ingredients.some((item) => item.name.toLowerCase().includes('pane') || item.name.toLowerCase().includes('patate') || item.name.toLowerCase().includes('riso'))) add('Pane integrale', 35);
   if (titleHas(name, 'Toast') && !ingredients.some((item) => item.name.toLowerCase().includes('pane'))) add('Pane integrale', 40);
   if (titleHas(name, 'Burrito')) add('Riso basmati', 70);

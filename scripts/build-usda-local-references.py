@@ -115,7 +115,7 @@ QUERY_MAP = {
     "tahina": "sesame butter tahini",
     "tempeh": "tempeh",
     "tofu": "tofu firm",
-    "tonno al o": "fish tuna light canned in water",
+    "tonno": "fish tuna fresh raw",
     "trota": "fish trout rainbow raw",
     "uova": "egg whole raw fresh",
     "verdure di stagione": "vegetables mixed frozen",

@@ -281,30 +281,29 @@ const decideAnomalyAction = (attribution) => {
 const INGREDIENT_SWAP_LIBRARY = [
   {
     role: 'protein',
-    match: /pollo|tacchino|manzo|bresaola|uova|albumi|salmone|tonno|merluzzo|branzino|sgombro|polpo|gamberi|trota|nasello|tofu|tempeh|seitan|edamame|yogurt|skyr|kefir|ricotta|fiocchi di latte|proteine/i,
+    match: /pollo|tacchino|manzo|uova|albumi|salmone|tonno|merluzzo|branzino|sgombro|polpo|gamberi|trota|nasello|tofu|tempeh|edamame|yogurt|skyr|kefir|ricotta|fiocchi di latte/i,
     options: [
       { name: 'Petto di pollo', quantity: 150, unit: 'g', diets: ['omnivore'], allergens: [] },
       { name: 'Fesa di tacchino', quantity: 150, unit: 'g', diets: ['omnivore'], allergens: [] },
       { name: 'Uova', quantity: 2, unit: 'pz', diets: ['omnivore', 'vegetarian'], allergens: ['eggs'] },
-      { name: 'Tonno al naturale', quantity: 120, unit: 'g', diets: ['omnivore', 'pescatarian'], allergens: ['fish'] },
+      { name: 'Tonno fresco', quantity: 140, unit: 'g', diets: ['omnivore', 'pescatarian'], allergens: ['fish'] },
       { name: 'Merluzzo', quantity: 160, unit: 'g', diets: ['omnivore', 'pescatarian'], allergens: ['fish'] },
       { name: 'Tofu', quantity: 170, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['soy'] },
       { name: 'Tempeh', quantity: 150, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['soy'] },
       { name: 'Yogurt greco 0-2%', quantity: 170, unit: 'g', diets: ['omnivore', 'vegetarian', 'pescatarian'], allergens: ['dairy'] },
-      { name: 'Skyr naturale', quantity: 170, unit: 'g', diets: ['omnivore', 'vegetarian', 'pescatarian'], allergens: ['dairy'] },
-      { name: 'Proteine vegetali in polvere', quantity: 25, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] }
+      { name: 'Skyr naturale', quantity: 170, unit: 'g', diets: ['omnivore', 'vegetarian', 'pescatarian'], allergens: ['dairy'] }
     ]
   },
   {
     role: 'carb',
-    match: /riso|pasta|quinoa|cous cous|orzo|farro|pane|toast|piadina|wrap|gallette|crackers|patate|zucca|avena|granola|crema di riso/i,
+    match: /riso|pasta|quinoa|cous cous|orzo|farro|pane|toast|patate|zucca|avena|crema di riso/i,
     options: [
       { name: 'Riso basmati', quantity: 75, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
       { name: 'Quinoa', quantity: 75, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
       { name: 'Patate', quantity: 220, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
       { name: 'Pasta integrale', quantity: 80, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['gluten'] },
       { name: 'Cous cous', quantity: 75, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: ['gluten'] },
-      { name: 'Pane senza glutine', quantity: 70, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
+      { name: 'Patata dolce', quantity: 220, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] },
       { name: 'Fiocchi di avena certificati senza glutine', quantity: 55, unit: 'g', diets: ['omnivore', 'vegetarian', 'vegan', 'pescatarian'], allergens: [] }
     ]
   },
