@@ -571,40 +571,76 @@ module.exports = (pool) => {
   const { verifyToken } = authModule;
 
   const getUserProfile = async (userId) => {
-    const result = await pool.query(
-      `
-      SELECT
-        u.id,
-        u.email,
-        COALESCE(o.name, '') AS name,
-        COALESCE(o.gender, 'male') AS gender,
-        COALESCE(o.age, u.age) AS age,
-        COALESCE(o.height, u.height) AS height,
-        COALESCE(o.weight, u.weight) AS weight,
-        COALESCE(o.goal, u.goal, 'maintain') AS goal,
-        o.target_weight,
-        o.target_body_fat,
-        o.occupation,
-        o.workout_days,
-        o.workout_duration,
-        o.workout_intensity,
-        o.daily_steps,
-        COALESCE(o.diet, 'omnivore') AS diet_style,
-        o.allergies,
-        o.sport,
-        o.training_time,
-        o.breakfast_pref,
-        o.day_start,
-        o.day_end,
-        COALESCE(o.wearable_provider, 'none') AS wearable_provider
-      FROM users u
-      LEFT JOIN user_onboarding o ON o.user_id = u.id
-      WHERE u.id = $1
-      `,
-      [userId]
-    );
+    try {
+      const result = await pool.query(
+        `
+        SELECT
+          u.id,
+          u.email,
+          COALESCE(o.name, '') AS name,
+          COALESCE(o.gender, 'male') AS gender,
+          COALESCE(o.age, u.age) AS age,
+          COALESCE(o.height, u.height) AS height,
+          COALESCE(o.weight, u.weight) AS weight,
+          COALESCE(o.goal, u.goal, 'maintain') AS goal,
+          o.target_weight,
+          o.target_body_fat,
+          o.occupation,
+          o.workout_days,
+          o.workout_duration,
+          o.workout_intensity,
+          o.daily_steps,
+          COALESCE(o.diet, 'omnivore') AS diet_style,
+          o.allergies,
+          o.sport,
+          o.training_time,
+          o.breakfast_pref,
+          o.day_start,
+          o.day_end,
+          COALESCE(o.wearable_provider, 'none') AS wearable_provider
+        FROM users u
+        LEFT JOIN user_onboarding o ON o.user_id = u.id
+        WHERE u.id = $1
+        `,
+        [userId]
+      );
 
-    return result.rows[0] || null;
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('User onboarding profile read failed, falling back to users table:', error);
+      const fallback = await pool.query(
+        `
+        SELECT
+          id,
+          email,
+          '' AS name,
+          'male' AS gender,
+          age,
+          height,
+          weight,
+          COALESCE(goal, 'maintain') AS goal,
+          NULL AS target_weight,
+          NULL AS target_body_fat,
+          NULL AS occupation,
+          0 AS workout_days,
+          '45-60' AS workout_duration,
+          'moderate' AS workout_intensity,
+          'unknown' AS daily_steps,
+          'omnivore' AS diet_style,
+          '' AS allergies,
+          NULL AS sport,
+          NULL AS training_time,
+          'both' AS breakfast_pref,
+          NULL AS day_start,
+          NULL AS day_end,
+          'none' AS wearable_provider
+        FROM users
+        WHERE id = $1
+        `,
+        [userId]
+      );
+      return fallback.rows[0] || null;
+    }
   };
 
   const getWearableDataLast7Days = async (userId) => {

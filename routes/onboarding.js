@@ -190,7 +190,29 @@ module.exports = (pool) => {
       });
     } catch (error) {
       console.error('Onboarding save error:', error);
-      res.status(500).json({ error: 'Failed to save onboarding data' });
+      try {
+        await pool.query(
+          'UPDATE users SET age = $1, height = $2, weight = $3, goal = $4 WHERE id = $5',
+          [Number(age), Number(height), Number(weight), goal || 'maintain', req.userId]
+        );
+        res.json({
+          message: 'Onboarding essentials saved successfully',
+          onboarding: {
+            user_id: req.userId,
+            name,
+            gender,
+            age,
+            height,
+            weight,
+            goal,
+            diet,
+            fallback_storage: true
+          }
+        });
+      } catch (fallbackError) {
+        console.error('Onboarding fallback save error:', fallbackError);
+        res.status(500).json({ error: 'Failed to save onboarding data' });
+      }
     }
   });
 
