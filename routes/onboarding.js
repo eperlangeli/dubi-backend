@@ -77,6 +77,14 @@ module.exports = (pool) => {
       const cleanAllergies = Array.isArray(allergies)
         ? allergies.filter(Boolean).join(',')
         : (allergies || '');
+      const cleanTime = (value, fallback) => {
+        if (value === null || value === undefined || value === '') return fallback;
+        if (typeof value === 'number' || /^\d{1,2}$/.test(String(value))) {
+          const hour = Math.max(0, Math.min(23, Number(value) || 0));
+          return `${String(hour).padStart(2, '0')}:00`;
+        }
+        return String(value);
+      };
 
       const result = await pool.query(
         `
@@ -104,8 +112,8 @@ module.exports = (pool) => {
           sport,
           training_time,
           breakfast_pref,
-          day_start,
-          day_end,
+          cleanTime(day_start, '07:00'),
+          cleanTime(day_end, '23:00'),
           wearable_provider,
           onboarding_completed,
           updated_at
