@@ -74,6 +74,9 @@ module.exports = (pool) => {
       }
 
       const cleanWearableProvider = wearableMap[wearable_provider] || 'none';
+      const cleanAllergies = Array.isArray(allergies)
+        ? allergies.filter(Boolean).join(',')
+        : (allergies || '');
 
       const result = await pool.query(
         `
@@ -97,7 +100,7 @@ module.exports = (pool) => {
           sedentary_days,
           diet,
           diet_intensity,
-          allergies,
+          cleanAllergies,
           sport,
           training_time,
           breakfast_pref,
