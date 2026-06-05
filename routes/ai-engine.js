@@ -1,5 +1,6 @@
 const express = require('express');
 const { getRecipeNutritionAuditStatus } = require('../services/nutrition-brain');
+const { buildSourceBackedNutritionFromIngredients } = require('../services/ingredient-macros');
 
 const toFiniteNumberOrNull = (value) => {
   if (value === null || value === undefined || value === '') return null;
@@ -382,6 +383,32 @@ const withIngredientSwaps = (ingredients, user) => {
       alternatives
     };
   });
+};
+
+const hasBreadIngredient = (ingredients = []) =>
+  ingredients.some((ingredient) => /pane|toast/i.test(String(ingredient?.name || ingredient || '')));
+
+const buildRuntimeNutrition = (recipe, ingredients) => {
+  const declared = {
+    calories: Number(recipe.calories || 0),
+    protein: Number(recipe.protein || 0),
+    carbs: Number(recipe.carbs || 0),
+    fats: Number(recipe.fats || 0),
+    fiber: Number(recipe.fiber || 0),
+    source: 'recipe_declared'
+  };
+
+  if (!hasBreadIngredient(ingredients)) return declared;
+
+  const ingredientNutrition = buildSourceBackedNutritionFromIngredients(ingredients);
+  if (!ingredientNutrition || ingredientNutrition.sourceCoverage < 75) return declared;
+
+  return {
+    ...ingredientNutrition.totals,
+    source: 'ingredient_runtime_official_average',
+    sourceCoverage: ingredientNutrition.sourceCoverage,
+    sourceIds: ingredientNutrition.sourceIds
+  };
 };
 
 const timeToHour = (value, fallback) => {
@@ -850,13 +877,15 @@ module.exports = (pool) => {
 
     const selected = sorted[0];
     const selectedNutritionAudit = getRecipeNutritionAuditStatus(selected);
+    const displayIngredients = withIngredientSwaps(selected.ingredients || [], user);
+    const runtimeNutrition = buildRuntimeNutrition(selected, displayIngredients);
     usedRecipeIds.add(String(selected.id));
 
     return {
       id: selected.id,
       name: selected.name,
       description: selected.description,
-      ingredients: withIngredientSwaps(selected.ingredients || [], user),
+      ingredients: displayIngredients,
       slot: slot.key,
       mealType: slot.type,
       cuisine: selected.cuisine,
@@ -872,11 +901,14 @@ module.exports = (pool) => {
         fats: slot.fats
       },
       nutrition: {
-        calories: selected.calories,
-        protein: selected.protein,
-        carbs: selected.carbs,
-        fats: selected.fats,
-        fiber: selected.fiber
+        calories: runtimeNutrition.calories,
+        protein: runtimeNutrition.protein,
+        carbs: runtimeNutrition.carbs,
+        fats: runtimeNutrition.fats,
+        fiber: runtimeNutrition.fiber,
+        source: runtimeNutrition.source,
+        sourceCoverage: runtimeNutrition.sourceCoverage,
+        sourceIds: runtimeNutrition.sourceIds
       },
       quality: {
         satietyScore: selected.satiety_score,
@@ -889,7 +921,8 @@ module.exports = (pool) => {
         score: Math.round(selected.dubi_score * 10) / 10,
         nutritionAuditStatus: selectedNutritionAudit.auditStatus,
         nutritionConfidenceScore: selectedNutritionAudit.sourceConfidence,
-        sourceBackedMacros: selectedNutritionAudit.readyForPrecisionPlan
+        sourceBackedMacros: selectedNutritionAudit.readyForPrecisionPlan || runtimeNutrition.source === 'ingredient_runtime_official_average',
+        runtimeMacroSource: runtimeNutrition.source
       },
       filters: {
         level: filterLevel,
