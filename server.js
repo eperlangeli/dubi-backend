@@ -21,8 +21,51 @@ app.get('/', (req, res) => {
 });
 
 // HEALTH CHECK
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
+app.get('/health', async (req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date(),
+    database: { status: 'unknown' },
+    onboardingSchema: { status: 'unknown' }
+  };
+
+  try {
+    await pool.query('SELECT 1');
+    health.database.status = 'ok';
+
+    const schema = await pool.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'user_onboarding'
+        AND column_name = ANY($1::text[])
+    `, [[
+      'user_id',
+      'age',
+      'height',
+      'weight',
+      'goal',
+      'diet',
+      'allergies',
+      'day_start',
+      'day_end',
+      'wearable_provider'
+    ]]);
+
+    const found = schema.rows.map((row) => row.column_name);
+    const required = ['user_id', 'age', 'height', 'weight', 'goal', 'diet', 'allergies', 'day_start', 'day_end', 'wearable_provider'];
+    const missing = required.filter((column) => !found.includes(column));
+    health.onboardingSchema = {
+      status: missing.length ? 'missing_columns' : 'ok',
+      missing
+    };
+
+    if (missing.length) health.status = 'degraded';
+    res.json(health);
+  } catch (error) {
+    health.status = 'degraded';
+    health.database = { status: 'error', error: error.message };
+    res.status(503).json(health);
+  }
 });
 
 // ROUTES
