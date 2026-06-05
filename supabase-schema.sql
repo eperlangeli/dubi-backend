@@ -48,6 +48,34 @@ CREATE TABLE IF NOT EXISTS user_onboarding (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS name VARCHAR(100);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS gender VARCHAR(50);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS age INT;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS height NUMERIC;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS weight NUMERIC;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS goal VARCHAR(50);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS target_weight NUMERIC;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS target_body_fat NUMERIC;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS competition_sport VARCHAR(100);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS competition_date DATE;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS occupation VARCHAR(100);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS workout_days INT;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS workout_duration VARCHAR(50);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS workout_intensity VARCHAR(50);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS daily_steps VARCHAR(50);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS sedentary_days INT;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS diet VARCHAR(50);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS diet_intensity VARCHAR(50) DEFAULT 'balanced';
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS allergies TEXT;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS sport VARCHAR(100);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS training_time VARCHAR(50);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS breakfast_pref VARCHAR(50);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS day_start TIME;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS day_end TIME;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS wearable_provider VARCHAR(50);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
 CREATE TABLE IF NOT EXISTS wearable_data (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
