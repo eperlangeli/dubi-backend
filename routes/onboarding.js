@@ -108,12 +108,12 @@ module.exports = (pool) => {
           sedentary_days,
           diet,
           diet_intensity,
-          cleanAllergies,
+          allergies,
           sport,
           training_time,
           breakfast_pref,
-          cleanTime(day_start, '07:00'),
-          cleanTime(day_end, '23:00'),
+          day_start,
+          day_end,
           wearable_provider,
           onboarding_completed,
           updated_at
@@ -174,12 +174,12 @@ module.exports = (pool) => {
           sedentary_days,
           diet,
           diet_intensity || 'balanced',
-          allergies,
+          cleanAllergies,
           sport,
           training_time,
           breakfast_pref,
-          day_start,
-          day_end,
+          cleanTime(day_start, '07:00'),
+          cleanTime(day_end, '23:00'),
           cleanWearableProvider
         ]
       );
