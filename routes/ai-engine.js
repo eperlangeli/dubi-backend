@@ -80,31 +80,42 @@ const normalizeGender = (gender) => {
   return 'M';
 };
 
+const normalizeGoal = (goal) => {
+  const value = String(goal || 'maintain').toLowerCase().trim();
+  if (['definition', 'definizione', 'cut', 'cutting'].includes(value)) return 'definition';
+  if (['fatloss', 'fat_loss', 'dimagrimento', 'weight_loss', 'lose_weight'].includes(value)) return 'fat_loss';
+  if (['lean_bulk', 'lean bulk', 'massa pulita'].includes(value)) return 'lean_bulk';
+  if (['gain', 'muscle_gain', 'massa', 'bulk', 'bulking'].includes(value)) return 'muscle_gain';
+  return 'maintain';
+};
+
+const parseWorkoutDays = (value) => {
+  const direct = Number(value);
+  if (Number.isFinite(direct)) return Math.max(0, Math.min(7, direct));
+  const match = String(value || '').match(/\d+/);
+  return match ? Math.max(0, Math.min(7, Number(match[0]))) : 0;
+};
+
 const calculateActivityFactor = (user) => {
-  let pal = 1.2;
-  const workoutDays = Number(user.workout_days || 0);
+  const workoutDays = parseWorkoutDays(user.workout_days);
   const intensity = String(user.workout_intensity || '').toLowerCase();
-  const duration = String(user.workout_duration || '').toLowerCase();
-  const steps = String(user.daily_steps || '').toLowerCase();
 
-  if (workoutDays >= 5) pal += 0.3;
-  else if (workoutDays >= 3) pal += 0.2;
-  else if (workoutDays >= 1) pal += 0.1;
+  if (['alta', 'high', 'intense', 'intensa'].includes(intensity)) {
+    return workoutDays >= 7 ? 1.9 : workoutDays >= 5 ? 1.725 : 1.55;
+  }
 
-  if (['intense', 'high', 'alta'].includes(intensity)) pal += 0.15;
-  else if (['moderate', 'moderata'].includes(intensity)) pal += 0.08;
-  else if (['light', 'leggera'].includes(intensity)) pal += 0.03;
+  if (['moderata', 'moderate', 'medium'].includes(intensity)) {
+    return workoutDays >= 3 ? 1.55 : workoutDays >= 1 ? 1.375 : 1.2;
+  }
 
-  if (duration.includes('90')) pal += 0.1;
-  else if (duration.includes('60')) pal += 0.08;
-  else if (duration.includes('45')) pal += 0.05;
+  if (['bassa', 'light', 'leggera', 'low'].includes(intensity)) {
+    return workoutDays >= 1 ? 1.375 : 1.2;
+  }
 
-  if (steps.includes('15000')) pal += 0.25;
-  else if (steps.includes('10000')) pal += 0.2;
-  else if (steps.includes('5000')) pal += 0.1;
-  else pal += 0.08;
-
-  return Math.round(Math.min(pal, 1.9) * 100) / 100;
+  if (workoutDays >= 6) return 1.55;
+  if (workoutDays >= 3) return 1.55;
+  if (workoutDays >= 1) return 1.375;
+  return 1.2;
 };
 
 const calculateMetabolism = (user) => {
@@ -130,51 +141,32 @@ const calculateMetabolism = (user) => {
 };
 
 const calculateBaseMacroTargets = (user, metabolism) => {
-  const goal = user.goal || 'maintain';
+  const goal = normalizeGoal(user.goal);
   const weight = Number(user.weight || 0);
-  const proteinPerKg = {
-    fatLoss: 2.0,
-    fat_loss: 2.0,
-    maintain: 1.6,
-    gain: 2.0,
-    muscle_gain: 2.0,
-    definition: 1.8,
-    cut: 1.8
-  }[goal] || 1.8;
-  const fatRatio = {
-    fatLoss: 0.25,
-    fat_loss: 0.25,
-    maintain: 0.3,
-    gain: 0.28,
-    muscle_gain: 0.28,
-    definition: 0.25,
-    cut: 0.25
-  }[goal] || 0.28;
-  const protein = Math.round(weight * proteinPerKg);
-  const fats = Math.round((metabolism.tdee * fatRatio) / 9);
-  const carbs = Math.max(0, Math.round((metabolism.tdee - protein * 4 - fats * 9) / 4));
+  const gender = normalizeGender(user.gender);
+  const minCalories = gender === 'M' ? 1500 : 1200;
+  const goalConfig = {
+    maintain: { kcalDelta: 0, proteinPerKg: 1.7, fatPerKg: 0.9, floorAtBmr: false },
+    definition: { kcalDelta: -450, proteinPerKg: 2.3, fatPerKg: 0.9, floorAtBmr: false },
+    fat_loss: { kcalDelta: -625, proteinPerKg: 2.0, fatPerKg: 0.85, floorAtBmr: true },
+    lean_bulk: { kcalDelta: 250, proteinPerKg: 2.0, fatPerKg: 1.0, floorAtBmr: false },
+    muscle_gain: { kcalDelta: 500, proteinPerKg: 2.0, fatPerKg: 1.0, floorAtBmr: false }
+  }[goal];
+  const rawCalories = metabolism.tdee + goalConfig.kcalDelta;
+  const calories = Math.round(Math.max(minCalories, goalConfig.floorAtBmr ? Math.max(rawCalories, metabolism.bmr) : rawCalories));
+  const protein = Math.round(weight * goalConfig.proteinPerKg);
+  const fats = Math.round(weight * goalConfig.fatPerKg);
+  const carbs = Math.max(50, Math.round((calories - protein * 4 - fats * 9) / 4));
 
-  return { calories: metabolism.tdee, protein, carbs, fats };
+  return { calories, protein, carbs, fats };
 };
 
 const makeAdaptiveDecisions = (user, metabolism, physiologicalState, weightTrend) => {
-  const goal = user.goal || 'maintain';
   const minCalories = normalizeGender(user.gender) === 'M' ? 1500 : 1200;
-  const goalAdjustments = {
-    fatLoss: -0.2,
-    fat_loss: -0.2,
-    maintain: 0,
-    gain: 0.15,
-    muscle_gain: 0.15,
-    definition: -0.15,
-    cut: -0.15
-  };
+  const goal = normalizeGoal(user.goal);
   const targets = calculateBaseMacroTargets(user, metabolism);
-  const adjustment = goalAdjustments[goal] ?? 0;
 
-  targets.calories = Math.max(minCalories, Math.round(metabolism.tdee * (1 + adjustment)));
-
-  if (weightTrend.status === 'stagnant' && ['fatLoss', 'fat_loss', 'definition', 'cut'].includes(goal)) {
+  if (weightTrend.status === 'stagnant' && ['fat_loss', 'definition'].includes(goal)) {
     targets.calories = Math.max(minCalories, Math.round(targets.calories * 0.95));
   }
 
@@ -185,8 +177,8 @@ const makeAdaptiveDecisions = (user, metabolism, physiologicalState, weightTrend
     targets.recoveryMode = true;
   }
 
-  targets.fats = Math.max(30, Math.round((targets.calories * 0.28) / 9));
-  targets.carbs = Math.max(0, Math.round((targets.calories - targets.protein * 4 - targets.fats * 9) / 4));
+  targets.fats = Math.max(30, targets.fats);
+  targets.carbs = Math.max(50, Math.round((targets.calories - targets.protein * 4 - targets.fats * 9) / 4));
 
   return targets;
 };
@@ -294,7 +286,7 @@ const INGREDIENT_SWAP_LIBRARY = [
     match: /pollo|tacchino|manzo|uova|albumi|salmone|tonno|merluzzo|branzino|sgombro|polpo|gamberi|trota|nasello|tofu|tempeh|edamame|yogurt|skyr|kefir|ricotta|fiocchi di latte/i,
     options: [
       { name: 'Petto di pollo', quantity: 150, unit: 'g', diets: ['omnivore'], allergens: [] },
-      { name: 'Fesa di tacchino', quantity: 150, unit: 'g', diets: ['omnivore'], allergens: [] },
+      { name: 'Petto di tacchino fresco', quantity: 150, unit: 'g', diets: ['omnivore'], allergens: [] },
       { name: 'Uova', quantity: 2, unit: 'pz', diets: ['omnivore', 'vegetarian'], allergens: ['eggs'] },
       { name: 'Tonno fresco', quantity: 140, unit: 'g', diets: ['omnivore', 'pescatarian'], allergens: ['fish'] },
       { name: 'Merluzzo', quantity: 160, unit: 'g', diets: ['omnivore', 'pescatarian'], allergens: ['fish'] },
@@ -385,8 +377,116 @@ const withIngredientSwaps = (ingredients, user) => {
   });
 };
 
+const PROCESSED_MEAT_PATTERN = /fesa di tacchino|affettat|bresaola|prosciutto|salame|salumi|wurstel|mortadella|speck/i;
+const MEAT_PATTERN = /petto di pollo|pollo|manzo|tacchino|vitello|bovino/i;
+const FISH_PATTERN = /salmone|tonno|merluzzo|branzino|sgombro|polpo|gamberi|trota|nasello|pesce/i;
+const EGG_PATTERN = /uova|uovo|albumi|omelette|frittata/i;
+const PLANT_PROTEIN_PATTERN = /tofu|tempeh|edamame|ceci|lenticchie|fagioli|legumi/i;
+const MAIN_CARB_PATTERN = /riso|noodles|pasta|quinoa|cous cous|orzo|farro|pane|toast|patate|patata|crema di riso|avena/i;
+const VEGETABLE_PATTERN = /verdure|zucchine|broccoli|spinaci|funghi|pomodor|carote|asparagi|peperoni|cetrioli|rucola|insalata|fagiolini|finocchi/i;
+const SWEET_BREAKFAST_PATTERN = /porridge|yogurt|skyr|chia|pancake|smoothie|ricotta.*miele|crema di riso|frutta|mirtilli|fragole|lamponi|banana|mela|pera|kiwi|mango|cacao|cannella|muesli|overnight|kefir/i;
+const SAVORY_BREAKFAST_PATTERN = /toast|uova|omelette|frittata|hummus|tacchino|salmone|patate|tofu scramble|avocado toast|pane/i;
+
+const ingredientText = (recipe) => [
+  recipe.name,
+  recipe.description,
+  ...(Array.isArray(recipe.ingredients) ? recipe.ingredients.map((item) => item?.name || item || '') : [])
+].join(' ');
+
+const getMainCarbIngredients = (ingredients = []) => (Array.isArray(ingredients) ? ingredients : [])
+  .filter((ingredient) => MAIN_CARB_PATTERN.test(String(ingredient?.name || ingredient || '')))
+  .filter((ingredient) => !VEGETABLE_PATTERN.test(String(ingredient?.name || ingredient || '')));
+
+const getProteinGroup = (recipe) => {
+  const text = ingredientText(recipe);
+  if (FISH_PATTERN.test(text)) return 'fish';
+  if (MEAT_PATTERN.test(text)) return 'meat';
+  if (EGG_PATTERN.test(text)) return 'eggs';
+  if (PLANT_PROTEIN_PATTERN.test(text)) return 'plant';
+  return 'other';
+};
+
+const matchesBreakfastPreference = (recipe, preference) => {
+  const pref = String(preference || '').toLowerCase();
+  if (!['dolce', 'sweet', 'salata', 'salato', 'savory'].includes(pref)) return true;
+  const text = ingredientText(recipe);
+  if (['dolce', 'sweet'].includes(pref)) return SWEET_BREAKFAST_PATTERN.test(text) && !SAVORY_BREAKFAST_PATTERN.test(text);
+  return SAVORY_BREAKFAST_PATTERN.test(text);
+};
+
+const isTrueSnack = (recipe, slot) => {
+  if (slot.type !== 'snack') return true;
+  const mealTypes = Array.isArray(recipe.meal_type) ? recipe.meal_type : [];
+  if (slot.tag) return mealTypes.includes(slot.tag) || Number(recipe.calories || 0) <= 360;
+  if (mealTypes.some((type) => ['lunch', 'dinner', 'pre_workout', 'post_workout'].includes(type))) return false;
+  if (Number(recipe.calories || 0) > 320) return false;
+  const text = ingredientText(recipe);
+  return !(FISH_PATTERN.test(text) && MAIN_CARB_PATTERN.test(text));
+};
+
+const passesNutritionSenseRules = (recipe, slot, user, dayProteinGroups = new Set()) => {
+  const text = ingredientText(recipe);
+  if (PROCESSED_MEAT_PATTERN.test(text)) return false;
+  if (slot.type === 'breakfast' && !matchesBreakfastPreference(recipe, user.breakfast_pref)) return false;
+  if (!isTrueSnack(recipe, slot)) return false;
+  if (['lunch', 'dinner'].includes(slot.type) && getMainCarbIngredients(recipe.ingredients).length > 1) return false;
+  const proteinGroup = getProteinGroup(recipe);
+  if (['lunch', 'dinner'].includes(slot.type) && ['fish', 'meat'].includes(proteinGroup) && dayProteinGroups.has(proteinGroup)) {
+    return false;
+  }
+  return true;
+};
+
 const hasBreadIngredient = (ingredients = []) =>
   ingredients.some((ingredient) => /pane|toast/i.test(String(ingredient?.name || ingredient || '')));
+
+const hasPanCookedProtein = (ingredients = []) =>
+  ingredients.some((ingredient) => /petto di pollo|manzo|tacchino/i.test(String(ingredient?.name || ingredient || '')));
+
+const buildCookingGuidance = (ingredients = []) => {
+  if (!hasPanCookedProtein(ingredients)) return null;
+  return {
+    fat: 'Burro di ghee',
+    quantity: '5 g',
+    method: 'Cuoci pollo, tacchino fresco o manzo in padella con 5 g di burro di ghee; usa olio EVO solo a crudo o a fine cottura.'
+  };
+};
+
+const scaleQuantity = (ingredient, factor) => {
+  const quantity = Number(ingredient?.quantity);
+  if (!Number.isFinite(quantity) || !['g', 'ml'].includes(String(ingredient?.unit || '').toLowerCase())) return ingredient;
+  return {
+    ...ingredient,
+    quantity: Math.max(1, Math.round(quantity * factor))
+  };
+};
+
+const scaleNutrition = (nutrition, factor) => ({
+  calories: Math.round(Number(nutrition.calories || 0) * factor),
+  protein: Math.round(Number(nutrition.protein || 0) * factor * 10) / 10,
+  carbs: Math.round(Number(nutrition.carbs || 0) * factor * 10) / 10,
+  fats: Math.round(Number(nutrition.fats || 0) * factor * 10) / 10,
+  fiber: Math.round(Number(nutrition.fiber || 0) * factor * 10) / 10,
+  source: nutrition.source,
+  sourceCoverage: nutrition.sourceCoverage,
+  sourceIds: nutrition.sourceIds
+});
+
+const adaptRecipeToSlot = ({ ingredients, nutrition, slot }) => {
+  const calories = Number(nutrition.calories || 0);
+  if (!calories || !slot.calories) return { ingredients, nutrition, portionScale: 1, note: null };
+  const rawFactor = slot.calories / calories;
+  if (rawFactor >= 0.92 && rawFactor <= 1.08) return { ingredients, nutrition, portionScale: 1, note: null };
+  const factor = Math.max(0.75, Math.min(1.25, rawFactor));
+  return {
+    ingredients: ingredients.map((ingredient) => scaleQuantity(ingredient, factor)),
+    nutrition: scaleNutrition(nutrition, factor),
+    portionScale: Math.round(factor * 100) / 100,
+    note: factor < 1
+      ? 'Grammature ridotte per rispettare il target calorico senza rendere il pasto misero.'
+      : 'Grammature aumentate in modo controllato per avvicinare il pasto al target dello slot.'
+  };
+};
 
 const buildRuntimeNutrition = (recipe, ingredients) => {
   const declared = {
@@ -867,7 +967,7 @@ module.exports = (pool) => {
     return result.rows;
   };
 
-  const selectRecipeForSlot = async ({ user, slot, usedRecipeIds, physiologicalState }) => {
+  const selectRecipeForSlot = async ({ user, slot, usedRecipeIds, physiologicalState, dayProteinGroups, weeklyProteinCounts }) => {
     const dietStyle = normalizeDiet(user.diet_style);
     const excludedAllergens = normalizeAllergenList(user.allergies);
     const season = getCurrentSeason();
@@ -879,34 +979,46 @@ module.exports = (pool) => {
     });
     let filterLevel = 'strict';
 
-    candidates = candidates.filter((recipe) => Math.abs(Number(recipe.calories || 0) - slot.calories) <= 180);
+    const applySenseRules = (recipes) => recipes.filter((recipe) => passesNutritionSenseRules(recipe, slot, user, dayProteinGroups));
+
+    candidates = applySenseRules(candidates)
+      .filter((recipe) => Math.abs(Number(recipe.calories || 0) - slot.calories) <= 180);
 
     if (candidates.length === 0) {
-      candidates = await queryRecipes({
+      candidates = applySenseRules(await queryRecipes({
         dietStyle,
         excludedAllergens,
         mealType: slot.type,
         season
-      });
+      }));
       filterLevel = 'relaxed_calories';
     }
 
     if (candidates.length === 0) {
-      candidates = await queryRecipeFallback({
+      candidates = applySenseRules(await queryRecipeFallback({
         dietStyle,
         excludedAllergens,
         mealType: slot.type
-      });
+      }));
       filterLevel = 'diet_allergy_no_season';
     }
 
     if (candidates.length === 0) return null;
 
     const scored = candidates
-      .map((recipe) => ({
-        ...recipe,
-        dubi_score: scoreRecipe(recipe, slot, physiologicalState)
-      }));
+      .map((recipe) => {
+        const proteinGroup = getProteinGroup(recipe);
+        const meatRotationBonus = dietStyle === 'omnivore'
+          && ['lunch', 'dinner'].includes(slot.type)
+          && proteinGroup === 'meat'
+          && Number(weeklyProteinCounts?.meat || 0) < 3
+          ? 8
+          : 0;
+        return {
+          ...recipe,
+          dubi_score: scoreRecipe(recipe, slot, physiologicalState) + meatRotationBonus
+        };
+      });
     const unused = scored.filter((recipe) => !usedRecipeIds.has(String(recipe.id)));
     const poolForSlot = unused.length > 0 ? unused : scored;
     const sorted = poolForSlot.sort((a, b) => b.dubi_score - a.dubi_score);
@@ -915,20 +1027,36 @@ module.exports = (pool) => {
     const selectedNutritionAudit = getRecipeNutritionAuditStatus(selected);
     const displayIngredients = withIngredientSwaps(selected.ingredients || [], user);
     const runtimeNutrition = buildRuntimeNutrition(selected, displayIngredients);
+    const adaptation = adaptRecipeToSlot({
+      ingredients: displayIngredients,
+      nutrition: runtimeNutrition,
+      slot
+    });
+    const finalIngredients = adaptation.ingredients;
+    const finalNutrition = adaptation.nutrition;
+    const cookingGuidance = buildCookingGuidance(finalIngredients);
+    const selectedProteinGroup = getProteinGroup(selected);
+    if (['lunch', 'dinner'].includes(slot.type) && ['fish', 'meat'].includes(selectedProteinGroup)) {
+      dayProteinGroups.add(selectedProteinGroup);
+      weeklyProteinCounts[selectedProteinGroup] = Number(weeklyProteinCounts[selectedProteinGroup] || 0) + 1;
+    }
     usedRecipeIds.add(String(selected.id));
 
     return {
       id: selected.id,
       name: selected.name,
       description: selected.description,
-      ingredients: displayIngredients,
+      ingredients: finalIngredients,
       slot: slot.key,
       mealType: slot.type,
       cuisine: selected.cuisine,
       practical: {
         prepTimeMinutes: selected.prep_time_minutes,
         costLevel: selected.cost_level,
-        difficulty: selected.difficulty
+        difficulty: selected.difficulty,
+        cookingGuidance,
+        portionScale: adaptation.portionScale,
+        portionNote: adaptation.note
       },
       target: {
         calories: slot.calories,
@@ -937,14 +1065,14 @@ module.exports = (pool) => {
         fats: slot.fats
       },
       nutrition: {
-        calories: runtimeNutrition.calories,
-        protein: runtimeNutrition.protein,
-        carbs: runtimeNutrition.carbs,
-        fats: runtimeNutrition.fats,
-        fiber: runtimeNutrition.fiber,
-        source: runtimeNutrition.source,
-        sourceCoverage: runtimeNutrition.sourceCoverage,
-        sourceIds: runtimeNutrition.sourceIds
+        calories: finalNutrition.calories,
+        protein: finalNutrition.protein,
+        carbs: finalNutrition.carbs,
+        fats: finalNutrition.fats,
+        fiber: finalNutrition.fiber,
+        source: finalNutrition.source,
+        sourceCoverage: finalNutrition.sourceCoverage,
+        sourceIds: finalNutrition.sourceIds
       },
       quality: {
         satietyScore: selected.satiety_score,
@@ -957,8 +1085,8 @@ module.exports = (pool) => {
         score: Math.round(selected.dubi_score * 10) / 10,
         nutritionAuditStatus: selectedNutritionAudit.auditStatus,
         nutritionConfidenceScore: selectedNutritionAudit.sourceConfidence,
-        sourceBackedMacros: selectedNutritionAudit.readyForPrecisionPlan || runtimeNutrition.source === 'ingredient_runtime_official_average',
-        runtimeMacroSource: runtimeNutrition.source
+        sourceBackedMacros: selectedNutritionAudit.readyForPrecisionPlan || finalNutrition.source === 'ingredient_runtime_official_average',
+        runtimeMacroSource: finalNutrition.source
       },
       filters: {
         level: filterLevel,
@@ -969,7 +1097,12 @@ module.exports = (pool) => {
         avoidIf: selected.avoid_if || []
       },
       scienceTrace: {
-        reasons: explainRecipeSelection(selected, slot, physiologicalState),
+        reasons: [
+          ...explainRecipeSelection(selected, slot, physiologicalState),
+          'Nutrition sense guard applied: breakfast preference, snack suitability, no processed deli meats, and one main carb source for main meals.',
+          ...(adaptation.note ? [adaptation.note] : []),
+          ...(cookingGuidance ? [cookingGuidance.method] : [])
+        ],
         scoringInputs: {
           satietyScore: selected.satiety_score,
           nutrientDensity: selected.nutrient_density,
@@ -994,16 +1127,20 @@ module.exports = (pool) => {
     const structure = calculateMealStructure(user, targets);
     const days = [];
     const usedRecipeIds = new Set();
+    const weeklyProteinCounts = { meat: 0, fish: 0 };
 
     for (let day = 0; day < 7; day += 1) {
       const meals = [];
+      const dayProteinGroups = new Set();
 
       for (const slot of structure) {
         const selected = await selectRecipeForSlot({
           user,
           slot,
           usedRecipeIds,
-          physiologicalState
+          physiologicalState,
+          dayProteinGroups,
+          weeklyProteinCounts
         });
 
         if (selected) meals.push(selected);
@@ -1037,13 +1174,16 @@ module.exports = (pool) => {
       version: 'fase2-layer4-v1',
       scientificBasis: [
         'Mifflin-St Jeor metabolic estimate',
-        'Dynamic PAL activity adjustment',
+        'Mifflin-St Jeor with nutritionist-reviewed PAL lookup by training days and intensity',
+        'Goal macros from g/kg protein and fat, with carbohydrates calculated by difference',
         'Safety -> Recovery -> Goal -> Performance priority tree',
         'Protein target by body weight and goal',
-        'Recipe filtering by diet, allergens, meal type, seasonality',
+        'Recipe filtering by diet, allergens, meal type, seasonality, breakfast preference, and snack suitability',
         'Recipe scoring by satiety, nutrient density, processing level, glycemic index, recovery support',
         'Weekly diversity guard avoids repeating the same recipe while alternatives exist',
-        'Per-slot macro distance checks calories, protein, carbohydrates, and fats'
+        'Per-slot macro distance checks calories, protein, carbohydrates, and fats',
+        'Meal sense guard: one main carb source, no processed deli meats, no repeated fish/meat twice in one day',
+        'Portion adaptation adjusts gram weights when a recipe is nutritionally right but too high or too low for the slot'
       ],
       slots: structure,
       days
