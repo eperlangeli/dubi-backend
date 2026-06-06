@@ -578,7 +578,7 @@ const calculateMealStructure = (user, targets) => {
 
   if (trainingBias === 'afternoon' || trainingBias === 'evening') {
     slots = slots.map((slot) => slot.key === 'snack_afternoon'
-      ? { ...slot, ratio: slot.ratio + 0.04, tag: 'pre_workout' }
+      ? { ...slot, tag: 'pre_workout' }
       : slot.key === 'dinner'
         ? { ...slot, ratio: slot.ratio + 0.03, tag: 'post_workout' }
         : slot.key === 'breakfast'
