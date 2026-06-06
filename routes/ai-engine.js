@@ -147,7 +147,7 @@ const calculateBaseMacroTargets = (user, metabolism) => {
   const minCalories = gender === 'M' ? 1500 : 1200;
   const goalConfig = {
     maintain: { kcalDelta: 0, proteinPerKg: 1.7, fatPerKg: 0.9, floorAtBmr: false },
-    definition: { kcalDelta: -450, proteinPerKg: 2.3, fatPerKg: 0.9, floorAtBmr: false },
+    definition: { kcalDelta: -450, proteinPerKg: 2.5, fatPerKg: 0.9, floorAtBmr: false },
     fat_loss: { kcalDelta: -625, proteinPerKg: 2.0, fatPerKg: 0.85, floorAtBmr: true },
     lean_bulk: { kcalDelta: 250, proteinPerKg: 2.0, fatPerKg: 1.0, floorAtBmr: false },
     muscle_gain: { kcalDelta: 500, proteinPerKg: 2.0, fatPerKg: 1.0, floorAtBmr: false }
