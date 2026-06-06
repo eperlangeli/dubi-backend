@@ -11,6 +11,19 @@ module.exports = (pool) => {
     apiKey: process.env.OPENWEARABLES_API_KEY
   });
 
+  const parseProviderList = (value = '') => new Set(
+    String(value)
+      .split(',')
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean)
+  );
+
+  const verifiedProviderIds = () => parseProviderList(process.env.WEARABLE_VERIFIED_PROVIDERS || '');
+
+  const normalizeProviderId = (provider) => String(provider || '').trim().toLowerCase();
+
+  const isProviderVerified = (provider) => verifiedProviderIds().has(normalizeProviderId(provider));
+
   const requireOpenWearablesConfig = () => {
     const config = getConfig();
     if (!config.baseUrl || !config.apiKey) {
@@ -230,7 +243,17 @@ module.exports = (pool) => {
   router.get('/providers', verifyToken, async (req, res) => {
     try {
       const providers = await openWearablesRequest('/oauth/providers?enabled_only=true&cloud_only=true');
-      res.json({ providers });
+      const verified = verifiedProviderIds();
+      const list = Array.isArray(providers) ? providers : Object.values(providers || {});
+      const normalizedProviders = list.map((provider) => {
+        const id = normalizeProviderId(provider.provider || provider.id || provider.slug || provider.name);
+        return { ...provider, id, verified: verified.has(id) };
+      });
+      res.json({
+        providers: normalizedProviders,
+        verified_providers: [...verified],
+        requires_provider_credentials: verified.size === 0
+      });
     } catch (error) {
       res.status(error.statusCode || 500).json({ error: error.message, detail: error.payload });
     }
@@ -249,7 +272,13 @@ module.exports = (pool) => {
     try {
       const { provider, redirect_uri } = req.body || {};
       if (!provider) return res.status(400).json({ error: 'provider is required' });
-      const providerId = String(provider).trim().toLowerCase();
+      const providerId = normalizeProviderId(provider);
+      if (!isProviderVerified(providerId)) {
+        return res.status(409).json({
+          error: 'provider_not_verified',
+          message: 'This wearable provider is not enabled for real OAuth yet.'
+        });
+      }
 
       const connection = await getOrCreateOpenWearablesUser(req.userId);
       const redirectUri = redirect_uri || process.env.OPENWEARABLES_REDIRECT_URI || process.env.FRONTEND_URL;
