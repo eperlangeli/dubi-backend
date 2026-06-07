@@ -212,6 +212,13 @@ const normalizeAllergenList = (value) => {
     if (/sesamo|sesame/.test(item)) normalized.add('sesame');
     if (/pesce|fish/.test(item)) normalized.add('fish');
     if (/crostace|gamber|shellfish|crustacean/.test(item)) normalized.add('shellfish');
+    if (/carne rossa|red meat|manzo|bovino|vitello/.test(item)) normalized.add('red_meat');
+    if (/no carne|senza carne|non mangio carne|meat free|no meat/.test(item)) normalized.add('meat');
+    if (/maiale|pork/.test(item)) normalized.add('pork');
+    if (/pollo|chicken/.test(item)) normalized.add('chicken');
+    if (/tacchino|turkey/.test(item)) normalized.add('turkey');
+    if (/vegetarian/.test(item)) normalized.add('vegetarian_request');
+    if (/vegan/.test(item)) normalized.add('vegan_request');
   });
 
   return Array.from(normalized);
@@ -379,13 +386,18 @@ const withIngredientSwaps = (ingredients, user) => {
 
 const PROCESSED_MEAT_PATTERN = /fesa di tacchino|affettat|bresaola|prosciutto|salame|salumi|wurstel|mortadella|speck/i;
 const MEAT_PATTERN = /petto di pollo|pollo|manzo|tacchino|vitello|bovino/i;
+const RED_MEAT_PATTERN = /manzo|vitello|bovino|bistecca|macinato/i;
+const CHICKEN_PATTERN = /petto di pollo|pollo/i;
+const TURKEY_PATTERN = /tacchino/i;
 const FISH_PATTERN = /salmone|tonno|merluzzo|branzino|sgombro|polpo|gamberi|trota|nasello|pesce/i;
 const EGG_PATTERN = /uova|uovo|albumi|omelette|frittata/i;
+const DAIRY_PATTERN = /yogurt|skyr|kefir|ricotta|latte|fiocchi di latte|parmigiano|formaggio/i;
 const PLANT_PROTEIN_PATTERN = /tofu|tempeh|edamame|ceci|lenticchie|fagioli|legumi/i;
 const MAIN_CARB_PATTERN = /riso|noodles|pasta|quinoa|cous cous|orzo|farro|pane|toast|patate|patata|crema di riso|avena/i;
 const VEGETABLE_PATTERN = /verdure|zucchine|broccoli|spinaci|funghi|pomodor|carote|asparagi|peperoni|cetrioli|rucola|insalata|fagiolini|finocchi/i;
 const SWEET_BREAKFAST_PATTERN = /porridge|yogurt|skyr|chia|pancake|smoothie|ricotta.*miele|crema di riso|frutta|mirtilli|fragole|lamponi|banana|mela|pera|kiwi|mango|cacao|cannella|muesli|overnight|kefir/i;
 const SAVORY_BREAKFAST_PATTERN = /toast|uova|omelette|frittata|hummus|tacchino|salmone|patate|tofu scramble|avocado toast|pane/i;
+const MAJOR_PROTEIN_PATTERN = /salmone|tonno|merluzzo|branzino|sgombro|polpo|gamberi|trota|nasello|pesce|petto di pollo|pollo|manzo|tacchino|vitello|bovino|uova|uovo|albumi|tofu|tempeh|edamame|ceci|lenticchie|fagioli/i;
 
 const ingredientText = (recipe) => [
   recipe.name,
@@ -404,6 +416,33 @@ const getProteinGroup = (recipe) => {
   if (EGG_PATTERN.test(text)) return 'eggs';
   if (PLANT_PROTEIN_PATTERN.test(text)) return 'plant';
   return 'other';
+};
+
+const hasAmbiguousProteinBlend = (ingredients = []) => (Array.isArray(ingredients) ? ingredients : [])
+  .some((ingredient) => {
+    const name = String(ingredient?.name || ingredient || '');
+    const matches = name.match(new RegExp(MAJOR_PROTEIN_PATTERN.source, 'gi')) || [];
+    return matches.length > 1 && /,|\/|\s\+\s|\se\s|\sand\s/i.test(name);
+  });
+
+const violatesUserFoodRestrictions = (recipe, user) => {
+  const restrictions = normalizeAllergenList(user?.allergies);
+  if (!restrictions.length) return false;
+  const text = ingredientText(recipe);
+  if (restrictions.includes('gluten') && /glutine|pasta|pane|toast|cous cous|orzo|farro|seitan/i.test(text)) return true;
+  if (restrictions.includes('dairy') && DAIRY_PATTERN.test(text)) return true;
+  if (restrictions.includes('lactose') && DAIRY_PATTERN.test(text)) return true;
+  if (restrictions.includes('eggs') && EGG_PATTERN.test(text)) return true;
+  if (restrictions.includes('fish') && FISH_PATTERN.test(text)) return true;
+  if (restrictions.includes('shellfish') && /gamberi|crostace|polpo|shellfish/i.test(text)) return true;
+  if (restrictions.includes('red_meat') && RED_MEAT_PATTERN.test(text)) return true;
+  if (restrictions.includes('meat') && MEAT_PATTERN.test(text)) return true;
+  if (restrictions.includes('pork') && /maiale|pork|prosciutto|salame|speck/i.test(text)) return true;
+  if (restrictions.includes('chicken') && CHICKEN_PATTERN.test(text)) return true;
+  if (restrictions.includes('turkey') && TURKEY_PATTERN.test(text)) return true;
+  if (restrictions.includes('vegetarian_request') && (MEAT_PATTERN.test(text) || FISH_PATTERN.test(text))) return true;
+  if (restrictions.includes('vegan_request') && (MEAT_PATTERN.test(text) || FISH_PATTERN.test(text) || EGG_PATTERN.test(text) || DAIRY_PATTERN.test(text))) return true;
+  return false;
 };
 
 const matchesBreakfastPreference = (recipe, preference) => {
@@ -427,10 +466,16 @@ const isTrueSnack = (recipe, slot) => {
 const passesNutritionSenseRules = (recipe, slot, user, dayProteinGroups = new Set()) => {
   const text = ingredientText(recipe);
   if (PROCESSED_MEAT_PATTERN.test(text)) return false;
+  if (violatesUserFoodRestrictions(recipe, user)) return false;
+  if (hasAmbiguousProteinBlend(recipe.ingredients)) return false;
   if (slot.type === 'breakfast' && !matchesBreakfastPreference(recipe, user.breakfast_pref)) return false;
   if (!isTrueSnack(recipe, slot)) return false;
   if (['lunch', 'dinner'].includes(slot.type) && getMainCarbIngredients(recipe.ingredients).length > 1) return false;
   const proteinGroup = getProteinGroup(recipe);
+  const dietStyle = normalizeDiet(user?.diet_style || user?.diet);
+  if (dietStyle === 'omnivore' && ['lunch', 'dinner'].includes(slot.type) && ['plant', 'other'].includes(proteinGroup)) {
+    return false;
+  }
   if (['lunch', 'dinner'].includes(slot.type) && ['fish', 'meat'].includes(proteinGroup) && dayProteinGroups.has(proteinGroup)) {
     return false;
   }
