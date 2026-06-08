@@ -4,7 +4,7 @@
   "description": "DUBI Backend - Node.js + Express + PostgreSQL",
   "main": "server.js",
   "scripts": {
-    "prestart": "node init-db.js",
+    "prestart": "node init-db.js && node seed-recipes.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "init-db": "node init-db.js",
@@ -12,6 +12,8 @@
     "ingest-usda": "node scripts/ingest-usda-ingredients.js",
     "import-nutrition-csv": "node scripts/import-official-nutrition-csv.js",
     "audit-recipes": "node scripts/audit-recipes-with-sources.js",
+    "audit-dubi-recipes": "node scripts/audit-dubi-recipes.js",
+    "verify-dubi-engine-cases": "node scripts/verify-dubi-engine-cases.js",
     "export-recipes-pdf-data": "node scripts/export-recipes-pdf-data.js"
   },
   "dependencies": {

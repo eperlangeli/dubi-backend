@@ -286,6 +286,29 @@ const ingredient = (name, quantity, unit) => ({ name, quantity, unit });
 
 const titleHas = (name, term) => name.toLowerCase().includes(term.toLowerCase());
 
+const energyFromMacros = (macro) => Math.round(
+  Number(macro.protein || 0) * 4 +
+  Number(macro.carbs || 0) * 4 +
+  Number(macro.fats || 0) * 9
+);
+
+const stableArrayJson = (value) => JSON.stringify([...(value || [])].map(String).sort());
+const stableIngredientsJson = (value) => JSON.stringify((value || []).map((item) => ({
+  name: String(item.name || ''),
+  quantity: Number(item.quantity || 0),
+  unit: String(item.unit || 'g')
+})));
+
+const recipesAreEquivalent = (existing, recipe) => (
+  Number(existing.calories) === Number(recipe.calories) &&
+  Number(existing.protein) === Number(recipe.protein) &&
+  Number(existing.carbs) === Number(recipe.carbs) &&
+  Number(existing.fats) === Number(recipe.fats) &&
+  stableIngredientsJson(existing.ingredients) === stableIngredientsJson(recipe.ingredients) &&
+  stableArrayJson(existing.diet_compatibility) === stableArrayJson(recipe.dietCompatibility) &&
+  stableArrayJson(existing.allergens) === stableArrayJson(recipe.allergens)
+);
+
 const buildIngredients = (category, name) => {
   const ingredients = [];
   const add = (itemName, quantity, unit = 'g') => {
@@ -355,7 +378,7 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Tempeh')) add('Tempeh', 150);
   if (titleHas(name, 'Edamame')) add('Edamame', 160);
   if (titleHas(name, 'Pollo')) add('Petto di pollo', category === 'post_workout' ? 150 : 140);
-  if (titleHas(name, 'Tacchino')) add('Fesa di tacchino', 130);
+  if (titleHas(name, 'Tacchino')) add('Petto di tacchino fresco', 130);
   if (titleHas(name, 'Manzo')) add('Manzo magro', 140);
   if (titleHas(name, 'Salmone')) add('Salmone', 140);
   if (titleHas(name, 'Tonno')) add('Tonno fresco', 140);
@@ -373,7 +396,7 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Riso Jasmine')) add('Riso jasmine', 75);
   if (titleHas(name, 'Riso Soffiato')) add('Riso soffiato', 35);
   if (titleHas(name, 'Crema di Riso') || titleHas(name, 'Crema Riso')) add('Crema di riso', 60);
-  if (titleHas(name, 'Riso') && !ingredients.some((item) => item.name.toLowerCase().includes('riso'))) add('Riso', 70);
+  if (titleHas(name, 'Riso') && !titleHas(name, 'Noodles') && !ingredients.some((item) => item.name.toLowerCase().includes('riso'))) add('Riso basmati', 70);
   if (titleHas(name, 'Quinoa')) add('Quinoa', 75);
   if (titleHas(name, 'Pasta Integrale')) add('Pasta integrale', 80);
   if (titleHas(name, 'Pasta Lenticchie')) add('Pasta di lenticchie', 80);
@@ -388,7 +411,7 @@ const buildIngredients = (category, name) => {
   if (titleHas(name, 'Toast') && !ingredients.some((item) => item.name.toLowerCase().includes('pane'))) add('Pane integrale', 40);
   if (titleHas(name, 'Burrito')) add('Riso basmati', 70);
   if (titleHas(name, 'Patate Dolci') || titleHas(name, 'Patata Dolce')) add('Patata dolce', 220);
-  if (titleHas(name, 'Patate')) add('Patate', 220);
+  if (titleHas(name, 'Patate') && !titleHas(name, 'Patate Dolci') && !titleHas(name, 'Patata Dolce')) add('Patate', 220);
   if (titleHas(name, 'Zucca')) add('Zucca', 220);
 
   if (titleHas(name, 'Ceci')) add('Ceci cotti', 150);
@@ -463,12 +486,13 @@ const buildRecipe = (category, name, index) => {
   const group = GROUPS[category];
   const adjustment = CATEGORY_ADJUSTMENTS[category][index % CATEGORY_ADJUSTMENTS[category].length];
   const macro = {
-    calories: clamp(group.macro.calories + (adjustment.calories || 0), 120),
+    calories: 0,
     protein: clamp(group.macro.protein + (adjustment.protein || 0), 5),
     carbs: clamp(group.macro.carbs + (adjustment.carbs || 0), 5),
     fats: clamp(group.macro.fats + (adjustment.fats || 0), 2),
     fiber: clamp(group.macro.fiber + (adjustment.fiber || 0), 1)
   };
+  macro.calories = clamp(energyFromMacros(macro), 120);
   const mealType = [...group.mealType];
 
   if (category === 'breakfast' && index % 6 === 0) mealType.push('post_workout');
@@ -529,8 +553,80 @@ const seedRecipes = async () => {
 
   try {
     for (const recipe of recipeRows) {
-      const existing = await pool.query('SELECT id FROM recipes WHERE name = $1 LIMIT 1', [recipe.name]);
-      if (existing.rows.length > 0) continue;
+      const existing = await pool.query(
+        'SELECT id, calories, protein, carbs, fats, ingredients, diet_compatibility, allergens FROM recipes WHERE name = $1 LIMIT 1',
+        [recipe.name]
+      );
+      if (existing.rows.length > 0) {
+        if (recipesAreEquivalent(existing.rows[0], recipe)) continue;
+        await pool.query(
+          `
+          UPDATE recipes
+          SET
+            description = $2,
+            serving_size = $3,
+            calories = $4,
+            protein = $5,
+            carbs = $6,
+            fats = $7,
+            fiber = $8,
+            satiety_score = $9,
+            nutrient_density = $10,
+            processing_level = $11,
+            glycemic_index = $12,
+            recovery_support = $13,
+            meal_type = $14,
+            cuisine = $15,
+            prep_time_minutes = $16,
+            cost_level = $17,
+            difficulty = $18,
+            sodium_level = $19,
+            added_sugar_level = $20,
+            meal_goal_tags = $21,
+            avoid_if = $22,
+            diet_compatibility = $23,
+            allergens = $24,
+            ingredients = $25,
+            scientific_source = $26,
+            evidence_level = $27,
+            nutrition_audit_status = 'pending',
+            nutrition_confidence_score = 50,
+            nutrition_source_ids = ARRAY[]::varchar[],
+            nutrition_audit_payload = '{}'::jsonb
+          WHERE id = $1
+          `,
+          [
+            existing.rows[0].id,
+            recipe.description,
+            recipe.servingSize,
+            recipe.calories,
+            recipe.protein,
+            recipe.carbs,
+            recipe.fats,
+            recipe.fiber,
+            recipe.satietyScore,
+            recipe.nutrientDensity,
+            recipe.processingLevel,
+            recipe.glycemicIndex,
+            recipe.recoverySupportScore,
+            recipe.mealType,
+            recipe.cuisine,
+            recipe.prepTimeMinutes,
+            recipe.costLevel,
+            recipe.difficulty,
+            recipe.sodiumLevel,
+            recipe.addedSugarLevel,
+            recipe.mealGoalTags,
+            recipe.avoidIf,
+            recipe.dietCompatibility,
+            recipe.allergens,
+            JSON.stringify(recipe.ingredients),
+            recipe.scientificSource,
+            recipe.evidenceLevel
+          ]
+        );
+        continue;
+      }
 
       await pool.query(
         `
