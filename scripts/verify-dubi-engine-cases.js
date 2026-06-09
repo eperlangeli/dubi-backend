@@ -34,6 +34,15 @@ const normalizeRestrictions = (value = '') => String(value)
     if (/pesce|fish/.test(item)) out.push('fish');
     if (/carne rossa|red meat|manzo|vitello|bovino/.test(item)) out.push('red_meat');
     if (/no carne|senza carne|non mangio carne|no meat/.test(item)) out.push('meat');
+    if (/diabet|insulino|insulin|glicem|prediabet/.test(item)) out.push('diabetes');
+    if (/pressione alta|ipertension|hypertension/.test(item)) out.push('hypertension');
+    if (/colesterol|cholesterol|ldl/.test(item)) out.push('hypercholesterolemia');
+    if (/colon irritabile|ibs|fodmap|gonfiore cronico/.test(item)) out.push('low_fodmap');
+    if (/reflusso|gastrite|gerd|acidit|reflux/.test(item)) out.push('reflux');
+    if (/istamina|histamine/.test(item)) out.push('histamine');
+    if (/gotta|gout|uric|acido urico|iperuricemia/.test(item)) out.push('gout');
+    if (/renale|rene|kidney|renal|nefropat|dialisi/.test(item)) out.push('renal_caution');
+    if (/nichel|nickel/.test(item)) out.push('nickel');
     return out;
   });
 
@@ -75,6 +84,11 @@ const isTrueSnack = (recipe, slot) => {
 
 const violatesRestrictions = (recipe, restrictions) => {
   const text = textOf(recipe);
+  const gi = Number(recipe.glycemicIndex || recipe.glycemic_index || 0);
+  const sugar = String(recipe.addedSugarLevel || recipe.added_sugar_level || '').toLowerCase();
+  const sodium = String(recipe.sodiumLevel || recipe.sodium_level || '').toLowerCase();
+  const protein = Number(recipe.protein || 0);
+  const fats = Number(recipe.fats || 0);
   return (
     (restrictions.includes('gluten') && /glutine|pasta|pane|toast|cous cous|orzo|farro|seitan/i.test(text)) ||
     (restrictions.includes('dairy') && DAIRY_PATTERN.test(text)) ||
@@ -82,7 +96,16 @@ const violatesRestrictions = (recipe, restrictions) => {
     (restrictions.includes('eggs') && EGG_PATTERN.test(text)) ||
     (restrictions.includes('fish') && FISH_PATTERN.test(text)) ||
     (restrictions.includes('red_meat') && RED_MEAT_PATTERN.test(text)) ||
-    (restrictions.includes('meat') && MEAT_PATTERN.test(text))
+    (restrictions.includes('meat') && MEAT_PATTERN.test(text)) ||
+    (restrictions.includes('diabetes') && (sugar === 'high' || (sugar === 'medium' && /miele|succo|datteri|riso soffiato/i.test(text)) || (gi >= 68 && protein < 22))) ||
+    (restrictions.includes('hypertension') && sodium === 'high') ||
+    (restrictions.includes('hypercholesterolemia') && (/burro|ghee|pancetta|salame|prosciutto|formaggio stagionato|grana|pecorino/i.test(text) || (fats > 28 && /uova|formaggio|manzo/i.test(text)))) ||
+    (restrictions.includes('low_fodmap') && /ceci|lenticchie|fagioli|legumi|hummus|latte\b|ricotta|kefir|yogurt|mela|pera|mango|avocado|pane|pasta|farro|orzo|cous cous/i.test(text)) ||
+    (restrictions.includes('reflux') && /caffe|caffè|cacao|cioccolato|arancia|succo|pomodoro|speziat|curry|limone|menta/i.test(text)) ||
+    (restrictions.includes('histamine') && /kefir|yogurt|formaggio|ricotta|pomodoro|spinaci|avocado|cioccolato|cacao|tonno|sgombro|salmone affumicato/i.test(text)) ||
+    (restrictions.includes('gout') && /manzo|vitello|bovino|sgombro|tonno|salmone|gamberi|polpo|crostace|frutti di mare/i.test(text)) ||
+    (restrictions.includes('renal_caution') && (protein > 45 || /proteine in polvere|whey|shake proteico/i.test(text))) ||
+    (restrictions.includes('nickel') && /ceci|lenticchie|fagioli|legumi|soia|tofu|tempeh|edamame|avena|farro|orzo|cacao|cioccolato|noci|mandorle|semi|spinaci|pomodoro/i.test(text))
   );
 };
 
@@ -109,6 +132,13 @@ const cases = [
   { name: 'onnivoro_colazione_salata_no_carne_rossa', diet: 'omnivore', allergies: 'no carne rossa', breakfastPref: 'salata', min: { breakfast: 3, lunch: 5, dinner: 5, snack: 8 } },
   { name: 'celiaco_onnivoro', diet: 'omnivore', allergies: 'celiaco', breakfastPref: 'entrambi', min: { breakfast: 5, lunch: 5, dinner: 5, snack: 8 } },
   { name: 'vegetariano_no_lattosio', diet: 'vegetarian', allergies: 'lattosio', breakfastPref: 'dolce', min: { breakfast: 2, lunch: 4, dinner: 4, snack: 5 } },
+  { name: 'onnivoro_diabete', diet: 'omnivore', allergies: 'diabete tipo 2 insulino resistenza', breakfastPref: 'entrambi', min: { breakfast: 5, lunch: 8, dinner: 8, snack: 8 } },
+  { name: 'onnivoro_reflusso', diet: 'omnivore', allergies: 'reflusso gastrite', breakfastPref: 'entrambi', min: { breakfast: 5, lunch: 8, dinner: 8, snack: 8 } },
+  { name: 'onnivoro_ibs_low_fodmap', diet: 'omnivore', allergies: 'colon irritabile low fodmap', breakfastPref: 'entrambi', min: { breakfast: 3, lunch: 5, dinner: 5, snack: 5 } },
+  { name: 'onnivoro_istamina', diet: 'omnivore', allergies: 'intolleranza istamina', breakfastPref: 'entrambi', min: { breakfast: 3, lunch: 5, dinner: 5, snack: 5 } },
+  { name: 'onnivoro_gotta', diet: 'omnivore', allergies: 'gotta acido urico alto', breakfastPref: 'entrambi', min: { breakfast: 5, lunch: 5, dinner: 5, snack: 8 } },
+  { name: 'onnivoro_cautela_renale', diet: 'omnivore', allergies: 'patologia renale', breakfastPref: 'entrambi', min: { breakfast: 5, lunch: 5, dinner: 5, snack: 8 } },
+  { name: 'onnivoro_nichel', diet: 'omnivore', allergies: 'intolleranza nichel', breakfastPref: 'entrambi', min: { breakfast: 2, lunch: 4, dinner: 4, snack: 4 } },
   { name: 'vegano', diet: 'vegan', allergies: '', breakfastPref: 'entrambi', min: { breakfast: 3, lunch: 5, dinner: 5, snack: 5 } },
   { name: 'pescetariano_no_glutine', diet: 'pescatarian', allergies: 'glutine', breakfastPref: 'entrambi', min: { breakfast: 5, lunch: 5, dinner: 5, snack: 8 } }
 ];

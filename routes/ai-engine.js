@@ -219,6 +219,15 @@ const normalizeAllergenList = (value) => {
     if (/tacchino|turkey/.test(item)) normalized.add('turkey');
     if (/vegetarian/.test(item)) normalized.add('vegetarian_request');
     if (/vegan/.test(item)) normalized.add('vegan_request');
+    if (/diabet|insulino|insulin|glicem|glycem|prediabet/.test(item)) normalized.add('diabetes');
+    if (/pressione alta|ipertension|hypertension|blood pressure/.test(item)) normalized.add('hypertension');
+    if (/colesterol|cholesterol|ipercolesterol|ldl/.test(item)) normalized.add('hypercholesterolemia');
+    if (/colon irritabile|ibs|fodmap|intestino irritabile|gonfiore cronico/.test(item)) normalized.add('low_fodmap');
+    if (/reflusso|gastrite|gerd|acidit|reflux/.test(item)) normalized.add('reflux');
+    if (/istamina|histamine/.test(item)) normalized.add('histamine');
+    if (/gotta|gout|uric|acido urico|iperuricemia/.test(item)) normalized.add('gout');
+    if (/renale|rene|kidney|renal|nefropat|dialisi/.test(item)) normalized.add('renal_caution');
+    if (/nichel|nickel/.test(item)) normalized.add('nickel');
   });
 
   return Array.from(normalized);
@@ -447,13 +456,69 @@ const ingredientOptionViolatesRestrictions = (option, user, dietStyle, excludedA
   if (violatesUserFoodRestrictions(pseudoRecipe, user)) return true;
   if (excludedAllergens.includes('gluten') && containsGlutenRisk(text)) return true;
   if ((excludedAllergens.includes('dairy') || excludedAllergens.includes('lactose')) && containsDairy(text)) return true;
+  if (excludedAllergens.includes('low_fodmap') && /ceci|lenticchie|fagioli|legumi|hummus|latte|yogurt|kefir|ricotta|pane|pasta|farro|orzo|cous cous/i.test(text)) return true;
+  if (excludedAllergens.includes('histamine') && /kefir|yogurt|formaggio|pomodoro|spinaci|avocado|cioccolato|cacao|tonno|sgombro|salmone affumicato/i.test(text)) return true;
+  if (excludedAllergens.includes('nickel') && /legumi|ceci|lenticchie|fagioli|soia|tofu|tempeh|edamame|avena|cacao|cioccolato|noci|mandorle|semi/i.test(text)) return true;
   if (dietStyle === 'vegetarian' && (MEAT_PATTERN.test(text) || FISH_PATTERN.test(text))) return true;
   if (dietStyle === 'vegan' && (MEAT_PATTERN.test(text) || FISH_PATTERN.test(text) || EGG_PATTERN.test(text) || containsDairy(text) || /miele/i.test(text))) return true;
   if (dietStyle === 'pescatarian' && MEAT_PATTERN.test(text)) return true;
   return false;
 };
 
-const violatesUserFoodRestrictions = (recipe, user) => {
+const violatesClinicalRestrictions = (recipe, user, slot = null) => {
+  const restrictions = normalizeAllergenList(user?.allergies);
+  if (!restrictions.length) return false;
+
+  const text = ingredientText(recipe);
+  const gi = Number(recipe.glycemic_index || 0);
+  const sugar = String(recipe.added_sugar_level || '').toLowerCase();
+  const sodium = String(recipe.sodium_level || '').toLowerCase();
+  const protein = Number(recipe.protein || recipe.nutrition?.protein || 0);
+  const fats = Number(recipe.fats || recipe.nutrition?.fats || 0);
+  const isTrainingFuel = slot?.tag === 'pre_workout' || slot?.tag === 'post_workout';
+
+  if (restrictions.includes('diabetes')) {
+    if (sugar === 'high') return true;
+    if (!isTrainingFuel && sugar === 'medium' && /miele|succo|datteri|riso soffiato/i.test(text)) return true;
+    if (!isTrainingFuel && gi >= 68 && Number(recipe.protein || 0) < 22) return true;
+  }
+
+  if (restrictions.includes('hypertension') && sodium === 'high') return true;
+
+  if (restrictions.includes('hypercholesterolemia')) {
+    if (/burro|ghee|pancetta|salame|prosciutto|formaggio stagionato|grana|pecorino/i.test(text)) return true;
+    if (fats > 28 && /uova|formaggio|manzo/i.test(text)) return true;
+  }
+
+  if (restrictions.includes('low_fodmap')) {
+    if (/ceci|lenticchie|fagioli|legumi|hummus|latte\b|ricotta|kefir|yogurt|mela|pera|mango|avocado|pane|pasta|farro|orzo|cous cous/i.test(text)) return true;
+  }
+
+  if (restrictions.includes('reflux')) {
+    if (/caffe|caffè|cacao|cioccolato|arancia|succo|pomodoro|speziat|curry|limone|menta/i.test(text)) return true;
+  }
+
+  if (restrictions.includes('histamine')) {
+    if (/kefir|yogurt|formaggio|ricotta|pomodoro|spinaci|avocado|cioccolato|cacao|tonno|sgombro|salmone affumicato|cibo fermentato/i.test(text)) return true;
+  }
+
+  if (restrictions.includes('gout')) {
+    if (/manzo|vitello|bovino|sgombro|tonno|salmone|gamberi|polpo|crostace|frutti di mare/i.test(text)) return true;
+  }
+
+  if (restrictions.includes('renal_caution')) {
+    if (protein > 45) return true;
+    if (/proteine in polvere|whey|shake proteico|alto contenuto proteico/i.test(text)) return true;
+  }
+
+  if (restrictions.includes('nickel')) {
+    if (/ceci|lenticchie|fagioli|legumi|soia|tofu|tempeh|edamame|avena|farro|orzo|cacao|cioccolato|noci|mandorle|semi|spinaci|pomodoro/i.test(text)) return true;
+  }
+
+  return false;
+};
+
+const violatesUserFoodRestrictions = (recipe, user, slot = null) => {
   const restrictions = normalizeAllergenList(user?.allergies);
   if (!restrictions.length) return false;
   const text = ingredientText(recipe);
@@ -470,6 +535,7 @@ const violatesUserFoodRestrictions = (recipe, user) => {
   if (restrictions.includes('turkey') && TURKEY_PATTERN.test(text)) return true;
   if (restrictions.includes('vegetarian_request') && (MEAT_PATTERN.test(text) || FISH_PATTERN.test(text))) return true;
   if (restrictions.includes('vegan_request') && (MEAT_PATTERN.test(text) || FISH_PATTERN.test(text) || EGG_PATTERN.test(text) || containsDairy(text))) return true;
+  if (violatesClinicalRestrictions(recipe, user, slot)) return true;
   return false;
 };
 
@@ -498,7 +564,7 @@ const isTrueSnack = (recipe, slot) => {
 const passesNutritionSenseRules = (recipe, slot, user, dayProteinGroups = new Set()) => {
   const text = ingredientText(recipe);
   if (PROCESSED_MEAT_PATTERN.test(text)) return false;
-  if (violatesUserFoodRestrictions(recipe, user)) return false;
+  if (violatesUserFoodRestrictions(recipe, user, slot)) return false;
   if (hasAmbiguousProteinBlend(recipe.ingredients)) return false;
   if (slot.type === 'breakfast' && !matchesBreakfastPreference(recipe, user.breakfast_pref)) return false;
   if (!isTrueSnack(recipe, slot)) return false;
