@@ -185,7 +185,7 @@ const GROUPS = {
       'Frullato Mango e Proteine',
       'Pera Mandorle e Yogurt',
       'Avena Rapida Banana e Cannella',
-      'Patata Dolce Miele e Tahina',
+      'Banana Yogurt e Mandorle',
       'Succo Arancia Toast e Ricotta',
       'Crema di Riso Banana e Cacao',
       'Datteri Yogurt e Mandorle',

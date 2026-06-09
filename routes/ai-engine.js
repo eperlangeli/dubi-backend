@@ -393,6 +393,7 @@ const TURKEY_PATTERN = /tacchino/i;
 const FISH_PATTERN = /salmone|tonno|merluzzo|branzino|sgombro|polpo|gamberi|trota|nasello|pesce/i;
 const EGG_PATTERN = /uova|uovo|albumi|omelette|frittata/i;
 const DAIRY_PATTERN = /yogurt|skyr|kefir|ricotta|latte|fiocchi di latte|parmigiano|formaggio/i;
+const VEGAN_RECIPE_PATTERN = /vegan|vegano|plant[-\s]?based|tofu scramble/i;
 const PLANT_DAIRY_PATTERN = /(latte|yogurt|bevanda)\s+(di\s+)?(soia|mandorla|avena|riso|cocco)|bevanda vegetale/i;
 const PLANT_PROTEIN_PATTERN = /tofu|tempeh|edamame|ceci|lenticchie|fagioli|legumi/i;
 const MAIN_CARB_PATTERN = /riso|noodles|pasta|quinoa|cous cous|orzo|farro|pane|toast|patate|patata|crema di riso|avena/i;
@@ -483,10 +484,14 @@ const matchesBreakfastPreference = (recipe, preference) => {
 const isTrueSnack = (recipe, slot) => {
   if (slot.type !== 'snack') return true;
   const mealTypes = Array.isArray(recipe.meal_type) ? recipe.meal_type : [];
+  const text = ingredientText(recipe);
+  if (/patat/i.test(text) && /tahin|miele/i.test(text)) return false;
+  if (MAIN_CARB_PATTERN.test(text) && /tahin|olio|avocado|burro di arachidi/i.test(text) && !/(yogurt|skyr|kefir|ricotta|uova|albumi)/i.test(text)) {
+    return false;
+  }
   if (slot.tag) return mealTypes.includes(slot.tag) || Number(recipe.calories || 0) <= 360;
   if (mealTypes.some((type) => ['lunch', 'dinner', 'pre_workout', 'post_workout'].includes(type))) return false;
   if (Number(recipe.calories || 0) > 320) return false;
-  const text = ingredientText(recipe);
   return !(FISH_PATTERN.test(text) && MAIN_CARB_PATTERN.test(text));
 };
 
@@ -505,7 +510,10 @@ const passesNutritionSenseRules = (recipe, slot, user, dayProteinGroups = new Se
   }
   if (dietStyle === 'vegetarian' && (MEAT_PATTERN.test(text) || FISH_PATTERN.test(text))) return false;
   if (dietStyle === 'pescatarian' && MEAT_PATTERN.test(text)) return false;
-  if (dietStyle === 'omnivore' && ['lunch', 'dinner'].includes(slot.type) && ['plant', 'other'].includes(proteinGroup)) {
+  if (dietStyle === 'omnivore' && (VEGAN_RECIPE_PATTERN.test(text) || proteinGroup === 'plant')) {
+    return false;
+  }
+  if (dietStyle === 'omnivore' && ['lunch', 'dinner'].includes(slot.type) && proteinGroup === 'other') {
     return false;
   }
   if (['lunch', 'dinner'].includes(slot.type) && ['fish', 'meat'].includes(proteinGroup) && dayProteinGroups.has(proteinGroup)) {
@@ -1089,8 +1097,8 @@ module.exports = (pool) => {
         const meatRotationBonus = dietStyle === 'omnivore'
           && ['lunch', 'dinner'].includes(slot.type)
           && proteinGroup === 'meat'
-          && Number(weeklyProteinCounts?.meat || 0) < 3
-          ? 8
+          && Number(weeklyProteinCounts?.meat || 0) < 4
+          ? 18
           : 0;
         return {
           ...recipe,
@@ -1356,8 +1364,19 @@ module.exports = (pool) => {
 
   router.post('/generate-plan', verifyToken, async (req, res) => {
     try {
+      const { force = false, reason = null } = req.body || {};
+      const regenerationDecision = force
+        ? decideRegenerationFromWeight({
+          user: await getUserProfile(req.userId),
+          weightTrend: null,
+          latestWeight: null,
+          force: true,
+          reason: reason || 'manual_generate_forced'
+        })
+        : null;
       const { plan, savedPlan } = await generateAdaptivePlan(req.userId, {
-        triggeredBy: 'manual_generate'
+        regenerationDecision,
+        triggeredBy: force ? 'manual_generate_forced' : 'manual_generate'
       });
 
       res.json({ success: true, plan, savedPlanId: savedPlan.id });

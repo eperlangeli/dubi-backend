@@ -6,6 +6,7 @@ const RED_MEAT_PATTERN = /manzo|vitello|bovino|bistecca|macinato/i;
 const FISH_PATTERN = /salmone|tonno|merluzzo|branzino|sgombro|polpo|gamberi|trota|nasello|pesce/i;
 const EGG_PATTERN = /uova|uovo|albumi|omelette|frittata/i;
 const DAIRY_PATTERN = /yogurt|skyr|kefir|ricotta|latte|fiocchi di latte|parmigiano|formaggio|mozzarella|feta|grana/i;
+const VEGAN_RECIPE_PATTERN = /vegan|vegano|plant[-\s]?based|tofu scramble/i;
 const PLANT_PROTEIN_PATTERN = /tofu|tempeh|edamame|ceci|lenticchie|fagioli|legumi/i;
 const MAIN_CARB_PATTERN = /riso|noodles|pasta|quinoa|cous cous|orzo|farro|pane|toast|patate|patata|crema di riso|avena/i;
 const VEGETABLE_PATTERN = /verdure|zucchine|broccoli|spinaci|funghi|pomodor|carote|asparagi|peperoni|cetrioli|rucola|insalata|fagiolini|finocchi/i;
@@ -60,6 +61,18 @@ const matchesBreakfastPreference = (recipe, preference) => {
   return SAVORY_BREAKFAST_PATTERN.test(text);
 };
 
+const isTrueSnack = (recipe, slot) => {
+  if (slot !== 'snack') return true;
+  const types = mealTypes(recipe);
+  const text = textOf(recipe);
+  if (/patat/i.test(text) && /tahin|miele/i.test(text)) return false;
+  if (MAIN_CARB_PATTERN.test(text) && /tahin|olio|avocado|burro di arachidi/i.test(text) && !/(yogurt|skyr|kefir|ricotta|uova|albumi)/i.test(text)) {
+    return false;
+  }
+  if (types.some((type) => ['lunch', 'dinner', 'pre_workout', 'post_workout'].includes(type))) return false;
+  return Number(recipe.calories || 0) <= 320 && !(FISH_PATTERN.test(text) && MAIN_CARB_PATTERN.test(text));
+};
+
 const violatesRestrictions = (recipe, restrictions) => {
   const text = textOf(recipe);
   return (
@@ -82,9 +95,11 @@ const candidatesFor = ({ diet, allergies, breakfastPref, slot }) => {
     if (PROCESSED_MEAT_PATTERN.test(textOf(recipe))) return false;
     if (violatesRestrictions(recipe, restrictions)) return false;
     if (slot === 'breakfast' && !matchesBreakfastPreference(recipe, breakfastPref)) return false;
+    if (!isTrueSnack(recipe, slot)) return false;
     if (['lunch', 'dinner'].includes(slot) && mainCarbs(recipe).length > 1) return false;
     const group = proteinGroup(recipe);
-    if (normalizedDiet === 'omnivore' && ['lunch', 'dinner'].includes(slot) && ['plant', 'other'].includes(group)) return false;
+    if (normalizedDiet === 'omnivore' && (VEGAN_RECIPE_PATTERN.test(textOf(recipe)) || group === 'plant')) return false;
+    if (normalizedDiet === 'omnivore' && ['lunch', 'dinner'].includes(slot) && group === 'other') return false;
     return true;
   });
 };
