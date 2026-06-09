@@ -49,7 +49,7 @@ const GROUPS = {
       'Crespelle Avena e Albumi',
       'Hummus Toast Mediterraneo',
       'Kefir Mirtilli e Fiocchi Avena',
-      'Bowl Riso Latte e Cannella',
+      'Bowl Riso Latte di Cocco e Cannella',
       'Porridge Proteico Mela e Cannella',
       'Toast Tofu Avocado e Pomodoro',
       'Skyr Mango e Semi di Chia',
@@ -446,15 +446,20 @@ const buildIngredients = (category, name) => {
   return ingredients.slice(0, 7);
 };
 
+const stripPlantDairyTerms = (text = '') => String(text)
+  .replace(/(latte|yogurt|bevanda)\s+(di\s+)?(soia|mandorla|avena|riso|cocco)|bevanda vegetale/gi, '')
+  .replace(/yogurt di soia|latte di soia|latte di cocco|latte di mandorla|latte di avena|latte di riso|bevanda di soia/gi, '');
+
 const inferDietMetadata = (name, ingredients) => {
   const text = `${name} ${ingredients.map((item) => item.name).join(' ')}`.toLowerCase();
+  const dairyText = stripPlantDairyTerms(text);
   const allergens = new Set();
 
   const hasMeat = /(pollo|tacchino|manzo|bresaola)/.test(text);
   const hasFish = /(salmone|tonno|merluzzo|branzino|sgombro|trota|nasello)/.test(text);
   const hasShellfish = /(gamberi|polpo)/.test(text);
   const hasEggs = /(uovo|uova|albumi|omelette|frittata)/.test(text);
-  const hasDairy = /(yogurt|skyr|kefir|ricotta|fiocchi di latte|mozzarella|feta|grana|whey|latte parzialmente|latte vaccino)/.test(text);
+  const hasDairy = /(yogurt|skyr|kefir|ricotta|fiocchi di latte|mozzarella|feta|grana|whey|latte parzialmente|latte vaccino)/.test(dairyText);
   const hasGluten = /(pasta integrale|cous cous|seitan|pane|piadina|wrap|crackers|farro|orzo)/.test(text)
     && !/(senza glutine|certificati senza glutine)/.test(text);
   const hasNuts = /(mandorle|noci|nocciole|frutta secca)/.test(text);

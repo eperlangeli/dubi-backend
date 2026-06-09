@@ -87,13 +87,20 @@ const buildSourceBackedNutritionFromIngredients = (ingredients = []) => {
     contributions.push(contribution);
   }
 
+  const roundedProtein = Math.round(totals.protein * 10) / 10;
+  const roundedCarbs = Math.round(totals.carbs * 10) / 10;
+  const roundedFats = Math.round(totals.fats * 10) / 10;
+  const roundedFiber = Math.round(totals.fiber * 10) / 10;
+  const atwaterCalories = Math.round(roundedProtein * 4 + roundedCarbs * 4 + roundedFats * 9);
+
   return {
     totals: {
-      calories: Math.round(totals.calories),
-      protein: Math.round(totals.protein * 10) / 10,
-      carbs: Math.round(totals.carbs * 10) / 10,
-      fats: Math.round(totals.fats * 10) / 10,
-      fiber: Math.round(totals.fiber * 10) / 10
+      calories: atwaterCalories,
+      sourceCalories: Math.round(totals.calories),
+      protein: roundedProtein,
+      carbs: roundedCarbs,
+      fats: roundedFats,
+      fiber: roundedFiber
     },
     sourceCoverage: Math.round((contributions.length / ingredients.length) * 100),
     sourceIds: [...new Set(contributions.map((item) => item.sourceId))],

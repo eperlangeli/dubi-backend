@@ -8,11 +8,15 @@ const EGG_PATTERN = /uova|uovo|albumi|omelette|frittata/i;
 const PLANT_PROTEIN_PATTERN = /tofu|tempeh|edamame|ceci|lenticchie|fagioli|legumi/i;
 const DAIRY_PATTERN = /yogurt|skyr|kefir|ricotta|latte parzialmente|fiocchi di latte|mozzarella|feta|grana|formaggio|whey/i;
 const PROCESSED_MEAT_PATTERN = /fesa di tacchino|affettat|bresaola|prosciutto|salame|salumi|wurstel|mortadella|speck/i;
+const PLANT_DAIRY_PATTERN = /(latte|yogurt|bevanda)\s+(di\s+)?(soia|mandorla|avena|riso|cocco)|bevanda vegetale/i;
 
 const mealTypes = (recipe) => recipe.mealType || recipe.meal_type || [];
 const dietCompatibility = (recipe) => recipe.dietCompatibility || recipe.diet_compatibility || [];
 const ingredientNames = (recipe) => (recipe.ingredients || []).map((ingredient) => ingredient.name || String(ingredient));
 const recipeText = (recipe) => `${recipe.name} ${ingredientNames(recipe).join(' ')}`;
+const stripPlantDairyTerms = (text = '') => String(text)
+  .replace(PLANT_DAIRY_PATTERN, '')
+  .replace(/yogurt di soia|latte di soia|latte di cocco|latte di mandorla|latte di avena|latte di riso|bevanda di soia/gi, '');
 
 const proteinGroup = (recipe) => {
   const text = recipeText(recipe);
@@ -87,7 +91,7 @@ const auditRecipes = () => {
     }
 
     if (dietCompatibility(recipe).includes('vegan') &&
-      (MEAT_PATTERN.test(text) || FISH_PATTERN.test(text) || EGG_PATTERN.test(text) || DAIRY_PATTERN.test(text) || /miele/i.test(text))) {
+      (MEAT_PATTERN.test(text) || FISH_PATTERN.test(text) || EGG_PATTERN.test(text) || DAIRY_PATTERN.test(stripPlantDairyTerms(text)) || /miele/i.test(text))) {
       pushIssue(issues, 'high', 'bad_vegan_compatibility', recipe);
     }
   });
