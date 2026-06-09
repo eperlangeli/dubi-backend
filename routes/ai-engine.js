@@ -514,9 +514,6 @@ const passesNutritionSenseRules = (recipe, slot, user, dayProteinGroups = new Se
   return true;
 };
 
-const hasBreadIngredient = (ingredients = []) =>
-  ingredients.some((ingredient) => /pane|toast/i.test(String(ingredient?.name || ingredient || '')));
-
 const hasPanCookedProtein = (ingredients = []) =>
   ingredients.some((ingredient) => /petto di pollo|manzo|tacchino/i.test(String(ingredient?.name || ingredient || '')));
 
@@ -580,8 +577,6 @@ const buildRuntimeNutrition = (recipe, ingredients) => {
     fiber: Number(recipe.fiber || 0),
     source: 'recipe_declared'
   };
-
-  if (!hasBreadIngredient(ingredients)) return declared;
 
   const ingredientNutrition = buildSourceBackedNutritionFromIngredients(ingredients);
   if (!ingredientNutrition || ingredientNutrition.sourceCoverage < 75) return declared;

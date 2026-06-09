@@ -1,8 +1,31 @@
+const fs = require('fs');
+const path = require('path');
 const { normalizeIngredientKey, estimatePortionGrams } = require('./recipe-audit');
+
+const loadUsdaReferenceMacros = () => {
+  try {
+    const filePath = path.join(__dirname, '..', 'data', 'usda-ingredient-references.json');
+    const payload = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return Object.fromEntries((payload.references || []).map((reference) => [
+      normalizeIngredientKey(reference.ingredient_key || reference.display_name),
+      {
+        calories: Number(reference.calories_per_100g || 0),
+        protein: Number(reference.protein_per_100g || 0),
+        carbs: Number(reference.carbs_per_100g || 0),
+        fats: Number(reference.fats_per_100g || 0),
+        fiber: Number(reference.fiber_per_100g || 0),
+        source_id: reference.source_id,
+        source_food_name: reference.source_food_name
+      }
+    ]));
+  } catch (error) {
+    return {};
+  }
+};
 
 // Official-source aligned averages per 100 g/ml.
 // Used as a runtime guard when recipe-level macros are older than ingredient portions.
-const MACROS_PER_100G = Object.freeze({
+const MANUAL_MACRO_OVERRIDES = {
   pane: { calories: 247, protein: 13.0, carbs: 41.0, fats: 4.2, fiber: 7.0, source_id: 'usda_sr_legacy', source_food_name: 'Bread, whole-wheat' },
   'pane integrale': { calories: 247, protein: 13.0, carbs: 41.0, fats: 4.2, fiber: 7.0, source_id: 'usda_sr_legacy', source_food_name: 'Bread, whole-wheat' },
   'pane di segale': { calories: 259, protein: 8.5, carbs: 48.3, fats: 3.3, fiber: 5.8, source_id: 'usda_sr_legacy', source_food_name: 'Bread, rye' },
@@ -40,6 +63,11 @@ const MACROS_PER_100G = Object.freeze({
   zucchine: { calories: 17, protein: 1.2, carbs: 3.1, fats: 0.3, fiber: 1.0, source_id: 'usda_foundation', source_food_name: 'Zucchini, raw' },
   'verdure miste': { calories: 28, protein: 1.5, carbs: 5.5, fats: 0.3, fiber: 2.2, source_id: 'crea', source_food_name: 'Mixed vegetables average' },
   'verdure di stagione': { calories: 28, protein: 1.5, carbs: 5.5, fats: 0.3, fiber: 2.2, source_id: 'crea', source_food_name: 'Mixed vegetables average' }
+};
+
+const MACROS_PER_100G = Object.freeze({
+  ...loadUsdaReferenceMacros(),
+  ...MANUAL_MACRO_OVERRIDES
 });
 
 const findMacroReference = (ingredientName = '') => {

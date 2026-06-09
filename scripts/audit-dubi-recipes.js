@@ -1,4 +1,5 @@
 const recipes = require('../seed-recipes');
+const { buildSourceBackedNutritionFromIngredients } = require('../services/ingredient-macros');
 
 const MAIN_CARB_PATTERN = /riso|noodles|pasta|quinoa|cous cous|orzo|farro|pane|toast|patate|patata|crema di riso|avena/i;
 const VEGETABLE_PATTERN = /verdure|zucchine|broccoli|spinaci|funghi|pomodor|carote|asparagi|peperoni|cetrioli|rucola|insalata|fagiolini|finocchi/i;
@@ -51,6 +52,8 @@ const auditRecipes = () => {
     byMealType: {},
     byDiet: {},
     byProteinGroup: {},
+    sourceBackedRecipes: 0,
+    fullySourceBackedRecipes: 0,
     issueTypes: {}
   };
 
@@ -71,6 +74,10 @@ const auditRecipes = () => {
     const isMainMeal = mealTypes(recipe).some((type) => ['lunch', 'dinner'].includes(type));
     const isPureSnack = mealTypes(recipe).includes('snack') &&
       !mealTypes(recipe).some((type) => ['pre_workout', 'post_workout'].includes(type));
+    const sourceNutrition = buildSourceBackedNutritionFromIngredients(recipe.ingredients || []);
+    const sourceCoverage = sourceNutrition?.sourceCoverage || 0;
+    if (sourceCoverage >= 75) summary.sourceBackedRecipes += 1;
+    if (sourceCoverage === 100) summary.fullySourceBackedRecipes += 1;
 
     const declaredEnergy = Number(recipe.calories || 0);
     const calculatedEnergy = atwaterCalories(recipe);
@@ -88,6 +95,10 @@ const auditRecipes = () => {
 
     if (PROCESSED_MEAT_PATTERN.test(text)) {
       pushIssue(issues, 'high', 'processed_meat', recipe);
+    }
+
+    if (!sourceNutrition || sourceCoverage < 100) {
+      pushIssue(issues, 'high', 'missing_source_macro_refs', recipe, { sourceCoverage });
     }
 
     if (dietCompatibility(recipe).includes('vegan') &&
