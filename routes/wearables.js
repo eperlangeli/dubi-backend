@@ -508,6 +508,26 @@ module.exports = (pool) => {
     }
   });
 
+  router.delete('/openwearables/disconnect', verifyToken, async (req, res) => {
+    try {
+      const connection = await pool.query(
+        'SELECT provider, openwearables_user_id FROM openwearables_connections WHERE user_id = $1 LIMIT 1',
+        [req.userId]
+      );
+
+      await pool.query('DELETE FROM wearable_data WHERE user_id = $1', [req.userId]);
+      await pool.query('DELETE FROM openwearables_connections WHERE user_id = $1', [req.userId]);
+
+      res.json({
+        success: true,
+        provider: connection.rows[0]?.provider || null,
+        message: 'Wearable disconnected and local wearable data deleted.'
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   router.get('/current', verifyToken, async (req, res) => {
     try {
       const latest = await pool.query(
