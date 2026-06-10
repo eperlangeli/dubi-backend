@@ -687,6 +687,32 @@ const getTrainingBias = (user) => {
   return 'neutral';
 };
 
+const normalizeTrainingTime = (value) => {
+  const time = String(value || '').trim().toLowerCase();
+  if (['morning', 'mattina'].includes(time)) return 'morning';
+  if (['lunch', 'pranzo', 'pausa pranzo'].includes(time)) return 'lunch';
+  if (['afternoon', 'pomeriggio'].includes(time)) return 'afternoon';
+  if (['evening', 'sera'].includes(time)) return 'evening';
+  return 'varies';
+};
+
+const makePlanProfileSignature = (user = {}) => JSON.stringify({
+  goal: String(user.goal || ''),
+  target_weight: String(user.target_weight ?? ''),
+  target_body_fat: String(user.target_body_fat ?? ''),
+  weight: Number(user.weight || 0),
+  diet: String(user.diet || ''),
+  allergies: String(user.allergies || '').trim().toLowerCase(),
+  sport: String(user.sport || '').trim().toLowerCase(),
+  training_time: normalizeTrainingTime(user.training_time),
+  workout_days: String(user.workout_days ?? ''),
+  workout_duration: String(user.workout_duration ?? ''),
+  workout_intensity: String(user.workout_intensity ?? ''),
+  breakfast_pref: String(user.breakfast_pref ?? ''),
+  day_start: timeToHour(user.day_start, 7),
+  day_end: timeToHour(user.day_end, 22)
+});
+
 const calculateMealStructure = (user, targets) => {
   const dayStart = timeToHour(user.day_start, 7);
   const dayEnd = timeToHour(user.day_end, 22);
@@ -1390,6 +1416,7 @@ module.exports = (pool) => {
     const plan = {
       userId,
       generatedAt: new Date().toISOString(),
+      profileSignature: makePlanProfileSignature(user),
       goal: user.goal,
       bmr: metabolism.bmr,
       tdee: metabolism.tdee,
