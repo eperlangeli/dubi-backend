@@ -74,6 +74,7 @@ app.use('/api/onboarding', require('./routes/onboarding')(pool));
 app.use('/api/plans', require('./routes/plans')(pool));
 app.use('/api/progress', require('./routes/progress')(pool));
 app.use('/api/ai', require('./routes/ai-engine')(pool));
+app.use('/api/ask-dubi', require('./routes/ask-dubi')(pool));
 app.use('/api/nutrition-brain', require('./routes/nutrition-brain')(pool));
 app.use('/api/wearables', require('./routes/wearables')(pool));
 app.use('/user', require('./routes/user')(pool));
