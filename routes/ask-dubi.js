@@ -180,10 +180,85 @@ const buildLocalExplanationAnswer = ({ message, todayMeals = [], lang = 'it' }) 
   };
 };
 
+const buildCookingAnswer = ({ message, todayMeals = [], lang = 'it' }) => {
+  const l = getLang(lang);
+  const text = normalize(message);
+  const asksCooking = /(come cucin|cuoc|cottura|padella|forno|griglia|bollit|branzino|salmone|pollo|ghee|olio|burro|cook|cooking|pan|oven|grill)/.test(text);
+  if (!asksCooking) return null;
+
+  const mealId = detectMealId(message);
+  const meal = mealId ? findMeal(todayMeals, mealId) : compactMeals(todayMeals).find((m) => (m.items || []).some((item) => /(branzino|salmone|pesce|pollo|manzo|fish|salmon|chicken|beef)/i.test(item)));
+  const mealLine = meal?.items?.length
+    ? `${(mealLabels[l] || mealLabels.it)[meal.id] || meal.id}: ${meal.items.join(', ')}${meal.macros ? ` (${formatMacros(meal.macros)})` : ''}.`
+    : null;
+
+  if (l === 'en') {
+    return {
+      title: 'Cooking method guidance',
+      body: [
+        mealLine || 'For fish or lean meat, choose a simple cooking method and keep the fat measured.',
+        'For seabass/branzino: oven or pan on medium heat works well. Use ghee only if you need higher heat; use extra virgin olive oil raw or at the end of cooking.',
+        'Keep the meal structure intact: one protein source, one main carb if planned, vegetables, and measured fats.'
+      ],
+      source: 'DUBI cooking guidance',
+      intent: 'cooking'
+    };
+  }
+
+  return {
+    title: 'Metodo di cottura consigliato',
+    body: [
+      mealLine || 'Per pesce o carne magra scegli una cottura semplice e tieni misurati i grassi.',
+      'Per branzino/orata: forno o padella a fiamma media. Usa ghee solo se devi cuocere a temperatura piu alta; usa olio EVO a crudo o a fine cottura.',
+      'Mantieni la struttura del pasto: una proteina, un carboidrato principale se previsto, verdure e grassi dosati.'
+    ],
+    source: 'DUBI - guida cottura',
+    intent: 'cooking'
+  };
+};
+
+const buildCanEatAnswer = ({ message, todayMeals = [], plan = {}, lang = 'it' }) => {
+  const l = getLang(lang);
+  const text = normalize(message);
+  const asksCanEat = /(posso mangiare|posso farmi|mi posso mangiare|vorrei mangiare|voglio mangiare|mi va|stasera.*(pizza|sushi|burger|hamburger|pasta)|can i eat|can i have|i want to eat)/.test(text);
+  if (!asksCanEat) return null;
+  const requestedMatch = text.match(/(?:posso mangiare|posso farmi|mi posso mangiare|vorrei mangiare|voglio mangiare|can i eat|can i have|i want to eat)\s+(?:la |il |lo |un |una |dei |del |della |delle |some |a |an |the )?([a-z0-9\s]+?)(?:\s+(?:stasera|oggi|a cena|per cena|tonight|today|for dinner)|[?.!,]|$)/);
+  const requestedFood = safeText(requestedMatch?.[1], text.includes('pizza') ? 'pizza' : (l === 'en' ? 'that food' : 'quel cibo'));
+  const dinner = findMeal(todayMeals, 'cena');
+  const dinnerLine = dinner?.items?.length
+    ? `Cena prevista: ${dinner.items.join(', ')}${dinner.macros ? ` (${formatMacros(dinner.macros)})` : ''}.`
+    : null;
+  const kcal = plan.calories || plan.caloriesTarget || null;
+
+  if (l === 'en') {
+    return {
+      title: `${requestedFood} tonight, managed well`,
+      body: [
+        dinnerLine || 'Yes, but manage it inside the day, not as a second dinner.',
+        kcal ? `Your daily target is about ${kcal} kcal: keep the rest of the day lighter and prioritize protein/vegetables around ${requestedFood}.` : `Keep the rest of the day lighter and prioritize protein/vegetables around ${requestedFood}.`,
+        `Best choice: keep ${requestedFood} simple, avoid fried sides and creamy extras. If this replaces dinner, DUBI can rebalance the meal block.`
+      ],
+      source: 'DUBI flexible adherence logic',
+      intent: 'can_eat'
+    };
+  }
+
+  return {
+    title: `${requestedFood} stasera, gestito bene`,
+    body: [
+      dinnerLine || 'Si, ma va gestita dentro la giornata, non aggiunta come seconda cena.',
+      kcal ? `Il tuo target e circa ${kcal} kcal: tieni piu leggeri gli altri extra e dai priorita a proteine/verdure intorno a ${requestedFood}.` : `Tieni piu leggeri gli altri extra e dai priorita a proteine/verdure intorno a ${requestedFood}.`,
+      `Scelta migliore: ${requestedFood} semplice, evita fritti e aggiunte cremose. Se sostituisce la cena, DUBI puo ribilanciare quel blocco.`
+    ],
+    source: 'DUBI - aderenza flessibile',
+    intent: 'can_eat'
+  };
+};
+
 const buildDeterministicAnswer = (payload) => {
   if (isGreetingOnly(payload.message)) return buildGreetingAnswer(payload);
   if (hasMealReplacementIntent(payload.message)) return buildReplacementAnswer(payload);
-  return buildLocalExplanationAnswer(payload);
+  return buildCookingAnswer(payload) || buildCanEatAnswer(payload) || buildLocalExplanationAnswer(payload);
 };
 
 const buildOpenAiMessages = ({ message, userData = {}, plan = {}, todayMeals = [], context = null, lang = 'it' }) => {
@@ -223,6 +298,7 @@ const buildOpenAiMessages = ({ message, userData = {}, plan = {}, todayMeals = [
         'Answer only about DUBI, the user plan, meals, ingredients, macros, training timing, wearable data usage, settings and app support.',
         'Use only the supplied context. If data is missing, say it is missing. Never invent biometric data, diagnoses, clinical prescriptions or exact provider data.',
         'Be practical, direct and agent-like. If the user clearly asks to change a meal, return a replace_meal planChange with the correct mealId.',
+        'Handle natural questions directly: "can I eat pizza tonight?", cooking methods, ghee vs olive oil, substitutions without explicit meal names, and meal logic questions.',
         'For replacements, do not invent a full recipe unless supplied. Explain that DUBI will preserve the original macro block.',
         'Keep health disclaimer light: DUBI is educational and does not replace a clinician.',
         'Return JSON only with this shape: {"title":string,"body":string[],"source":string,"intent":string,"needsClarification":boolean,"planChange":null|{"action":string,"mealId":string,"banner":string,"planNote":string,"confirmLabel":string}}.',
@@ -321,7 +397,7 @@ module.exports = (pool) => {
       if (!payload.message) return res.status(400).json({ error: 'Message required' });
 
       const deterministic = buildDeterministicAnswer(payload);
-      if (deterministic?.planChange || isGreetingOnly(payload.message)) {
+      if (deterministic?.planChange || deterministic?.intent || isGreetingOnly(payload.message)) {
         return res.json({ success: true, mode: 'deterministic', answer: sanitizeAnswer(deterministic) });
       }
 
