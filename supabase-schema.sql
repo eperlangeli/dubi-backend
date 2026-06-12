@@ -320,7 +320,108 @@ ALTER TABLE recipe_nutrition_audits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE weight_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE adherence ENABLE ROW LEVEL SECURITY;
 ALTER TABLE nps_responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_ingredient_swaps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_anomaly_events ENABLE ROW LEVEL SECURITY;
 
--- Policies are intentionally not created here yet because the current app uses
--- backend-issued JWTs, not Supabase Auth JWTs. Access should stay backend-only
--- until the auth strategy is finalized.
+CREATE OR REPLACE FUNCTION app_current_user_id()
+RETURNS integer
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('app.current_user_id', true), '')::integer;
+$$;
+
+CREATE OR REPLACE FUNCTION app_shared_write_enabled()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT current_setting('app.allow_shared_write', true) = 'true';
+$$;
+
+DROP POLICY IF EXISTS users_isolation ON users;
+CREATE POLICY users_isolation ON users
+  FOR SELECT USING (id = app_current_user_id());
+
+DROP POLICY IF EXISTS users_update_self ON users;
+CREATE POLICY users_update_self ON users
+  FOR UPDATE USING (id = app_current_user_id())
+  WITH CHECK (id = app_current_user_id());
+
+DROP POLICY IF EXISTS users_delete_self ON users;
+CREATE POLICY users_delete_self ON users
+  FOR DELETE USING (id = app_current_user_id());
+
+DROP POLICY IF EXISTS user_onboarding_isolation ON user_onboarding;
+CREATE POLICY user_onboarding_isolation ON user_onboarding
+  FOR ALL USING (user_id = app_current_user_id())
+  WITH CHECK (user_id = app_current_user_id());
+
+DROP POLICY IF EXISTS wearable_data_isolation ON wearable_data;
+CREATE POLICY wearable_data_isolation ON wearable_data
+  FOR ALL USING (user_id = app_current_user_id())
+  WITH CHECK (user_id = app_current_user_id());
+
+DROP POLICY IF EXISTS openwearables_connections_isolation ON openwearables_connections;
+CREATE POLICY openwearables_connections_isolation ON openwearables_connections
+  FOR ALL USING (user_id = app_current_user_id())
+  WITH CHECK (user_id = app_current_user_id());
+
+DROP POLICY IF EXISTS user_plans_isolation ON user_plans;
+CREATE POLICY user_plans_isolation ON user_plans
+  FOR ALL USING (user_id = app_current_user_id())
+  WITH CHECK (user_id = app_current_user_id());
+
+DROP POLICY IF EXISTS user_progress_isolation ON user_progress;
+CREATE POLICY user_progress_isolation ON user_progress
+  FOR ALL USING (user_id = app_current_user_id())
+  WITH CHECK (user_id = app_current_user_id());
+
+DROP POLICY IF EXISTS weight_history_isolation ON weight_history;
+CREATE POLICY weight_history_isolation ON weight_history
+  FOR ALL USING (user_id = app_current_user_id())
+  WITH CHECK (user_id = app_current_user_id());
+
+DROP POLICY IF EXISTS adherence_isolation ON adherence;
+CREATE POLICY adherence_isolation ON adherence
+  FOR ALL USING (user_id = app_current_user_id())
+  WITH CHECK (user_id = app_current_user_id());
+
+DROP POLICY IF EXISTS nps_responses_isolation ON nps_responses;
+CREATE POLICY nps_responses_isolation ON nps_responses
+  FOR ALL USING (user_id = app_current_user_id())
+  WITH CHECK (user_id = app_current_user_id());
+
+DROP POLICY IF EXISTS user_ingredient_swaps_isolation ON user_ingredient_swaps;
+CREATE POLICY user_ingredient_swaps_isolation ON user_ingredient_swaps
+  FOR ALL USING (user_id = app_current_user_id())
+  WITH CHECK (user_id = app_current_user_id());
+
+DROP POLICY IF EXISTS user_anomaly_events_isolation ON user_anomaly_events;
+CREATE POLICY user_anomaly_events_isolation ON user_anomaly_events
+  FOR ALL USING (user_id = app_current_user_id())
+  WITH CHECK (user_id = app_current_user_id());
+
+DROP POLICY IF EXISTS recipes_read ON recipes;
+CREATE POLICY recipes_read ON recipes FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS recipes_shared_write ON recipes;
+CREATE POLICY recipes_shared_write ON recipes
+  FOR ALL USING (app_shared_write_enabled())
+  WITH CHECK (app_shared_write_enabled());
+
+DROP POLICY IF EXISTS nutrition_ingredient_refs_read ON nutrition_ingredient_refs;
+CREATE POLICY nutrition_ingredient_refs_read ON nutrition_ingredient_refs FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS nutrition_ingredient_refs_shared_write ON nutrition_ingredient_refs;
+CREATE POLICY nutrition_ingredient_refs_shared_write ON nutrition_ingredient_refs
+  FOR ALL USING (app_shared_write_enabled())
+  WITH CHECK (app_shared_write_enabled());
+
+DROP POLICY IF EXISTS recipe_nutrition_audits_read ON recipe_nutrition_audits;
+CREATE POLICY recipe_nutrition_audits_read ON recipe_nutrition_audits FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS recipe_nutrition_audits_shared_write ON recipe_nutrition_audits;
+CREATE POLICY recipe_nutrition_audits_shared_write ON recipe_nutrition_audits
+  FOR ALL USING (app_shared_write_enabled())
+  WITH CHECK (app_shared_write_enabled());

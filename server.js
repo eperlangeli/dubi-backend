@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { Pool } = require('pg');
+const { createScopedPool, withAuthenticatedDbContext } = require('./services/db-context');
 
 dotenv.config();
 
@@ -10,9 +11,11 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
+const scopedPool = createScopedPool(pool);
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+app.use(withAuthenticatedDbContext(pool));
 app.get('/', (req, res) => {
   res.json({
     message: 'DUBI Backend is running successfully',
@@ -69,19 +72,19 @@ app.get('/health', async (req, res) => {
 });
 
 // ROUTES
-app.use('/auth', require('./routes/auth')(pool));
-app.use('/api/onboarding', require('./routes/onboarding')(pool));
-app.use('/api/plans', require('./routes/plans')(pool));
-app.use('/api/progress', require('./routes/progress')(pool));
-app.use('/api/ai', require('./routes/ai-engine')(pool));
-app.use('/api/ask-dubi', require('./routes/ask-dubi')(pool));
-app.use('/api/nutrition-brain', require('./routes/nutrition-brain')(pool));
-app.use('/api/wearables', require('./routes/wearables')(pool));
-app.use('/user', require('./routes/user')(pool));
-app.use('/plan', require('./routes/plan')(pool));
-app.use('/adherence', require('./routes/adherence')(pool));
-app.use('/weight', require('./routes/weight')(pool));
-app.use('/nps', require('./routes/nps')(pool));
+app.use('/auth', require('./routes/auth')(scopedPool));
+app.use('/api/onboarding', require('./routes/onboarding')(scopedPool));
+app.use('/api/plans', require('./routes/plans')(scopedPool));
+app.use('/api/progress', require('./routes/progress')(scopedPool));
+app.use('/api/ai', require('./routes/ai-engine')(scopedPool));
+app.use('/api/ask-dubi', require('./routes/ask-dubi')(scopedPool));
+app.use('/api/nutrition-brain', require('./routes/nutrition-brain')(scopedPool));
+app.use('/api/wearables', require('./routes/wearables')(scopedPool));
+app.use('/user', require('./routes/user')(scopedPool));
+app.use('/plan', require('./routes/plan')(scopedPool));
+app.use('/adherence', require('./routes/adherence')(scopedPool));
+app.use('/weight', require('./routes/weight')(scopedPool));
+app.use('/nps', require('./routes/nps')(scopedPool));
 
 // ERROR HANDLER
 app.use((err, req, res, next) => {

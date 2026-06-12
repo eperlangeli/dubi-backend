@@ -4,6 +4,7 @@ require('dotenv').config();
 const { searchUsdaFood } = require('../services/usda-client');
 const { normalizeIngredientKey } = require('../services/recipe-audit');
 const { scoreIngredientReference } = require('../services/nutrition-brain');
+const { withSharedWriteContext } = require('../services/db-context');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -11,9 +12,10 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
+let db = pool;
 
 const getIngredientDisplayMap = async () => {
-  const result = await pool.query(`
+  const result = await db.query(`
     SELECT ingredients
     FROM recipes
     WHERE is_active = true
@@ -38,7 +40,7 @@ const saveReference = async (ingredientKey, displayName, reference) => {
     locale_match: false
   });
 
-  await pool.query(`
+  await db.query(`
     INSERT INTO nutrition_ingredient_refs (
       ingredient_key,
       display_name,
@@ -90,32 +92,39 @@ const run = async () => {
     throw new Error('USDA_FDC_API_KEY is required');
   }
 
-  const limit = Number(process.env.USDA_INGEST_LIMIT || process.argv[2] || 0);
-  const ingredientMap = await getIngredientDisplayMap();
-  const entries = [...ingredientMap.entries()].slice(0, limit > 0 ? limit : undefined);
-  const summary = { total: entries.length, saved: 0, missing: 0, errors: 0 };
-
-  for (const [ingredientKey, displayName] of entries) {
+  await withSharedWriteContext(pool, async (client) => {
+    db = client;
     try {
-      const results = await searchUsdaFood(displayName, { pageSize: 5 });
-      const best = results[0];
-      if (!best) {
-        summary.missing += 1;
-        console.log(`MISS ${ingredientKey} -> ${displayName}`);
-      } else {
-        await saveReference(ingredientKey, displayName, best);
-        summary.saved += 1;
-        console.log(`SAVE ${ingredientKey} -> ${best.source_food_name} (${best.source_id})`);
-      }
-      await sleep(250);
-    } catch (error) {
-      summary.errors += 1;
-      console.error(`ERROR ${ingredientKey}: ${error.message}`);
-      await sleep(500);
-    }
-  }
+      const limit = Number(process.env.USDA_INGEST_LIMIT || process.argv[2] || 0);
+      const ingredientMap = await getIngredientDisplayMap();
+      const entries = [...ingredientMap.entries()].slice(0, limit > 0 ? limit : undefined);
+      const summary = { total: entries.length, saved: 0, missing: 0, errors: 0 };
 
-  console.log(JSON.stringify(summary, null, 2));
+      for (const [ingredientKey, displayName] of entries) {
+        try {
+          const results = await searchUsdaFood(displayName, { pageSize: 5 });
+          const best = results[0];
+          if (!best) {
+            summary.missing += 1;
+            console.log(`MISS ${ingredientKey} -> ${displayName}`);
+          } else {
+            await saveReference(ingredientKey, displayName, best);
+            summary.saved += 1;
+            console.log(`SAVE ${ingredientKey} -> ${best.source_food_name} (${best.source_id})`);
+          }
+          await sleep(250);
+        } catch (error) {
+          summary.errors += 1;
+          console.error(`ERROR ${ingredientKey}: ${error.message}`);
+          await sleep(500);
+        }
+      }
+
+      console.log(JSON.stringify(summary, null, 2));
+    } finally {
+      db = pool;
+    }
+  });
 };
 
 run()

@@ -2,15 +2,17 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 const { buildRecipeAuditFromReferences, normalizeIngredientKey } = require('../services/recipe-audit');
+const { withSharedWriteContext } = require('../services/db-context');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
+let db = pool;
 
 const getReferenceMap = async (ingredientKeys) => {
   if (!ingredientKeys.length) return {};
-  const result = await pool.query(`
+  const result = await db.query(`
     SELECT DISTINCT ON (ingredient_key)
       ingredient_key,
       source_id,
@@ -32,7 +34,7 @@ const getReferenceMap = async (ingredientKeys) => {
 
 const saveAudit = async (recipe, audit) => {
   const sourceIds = [...new Set(audit.contributions.map((item) => item.sourceId).filter(Boolean))];
-  await pool.query(`
+  await db.query(`
     INSERT INTO recipe_nutrition_audits (
       recipe_id,
       recipe_name,
@@ -73,7 +75,7 @@ const saveAudit = async (recipe, audit) => {
     JSON.stringify(audit)
   ]);
 
-  await pool.query(`
+  await db.query(`
     UPDATE recipes
     SET
       calories = CASE WHEN $1 = 'approved' OR ($1 = 'needs_macro_adjustment' AND $11 = 100) THEN $2 ELSE calories END,
@@ -102,25 +104,32 @@ const saveAudit = async (recipe, audit) => {
 };
 
 const run = async () => {
-  const recipes = await pool.query(`
-    SELECT id, name, calories, protein, carbs, fats, fiber, ingredients
-    FROM recipes
-    WHERE is_active = true
-    ORDER BY name
-  `);
+  await withSharedWriteContext(pool, async (client) => {
+    db = client;
+    try {
+      const recipes = await db.query(`
+        SELECT id, name, calories, protein, carbs, fats, fiber, ingredients
+        FROM recipes
+        WHERE is_active = true
+        ORDER BY name
+      `);
 
-  const summary = {};
-  for (const recipe of recipes.rows) {
-    const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
-    const keys = ingredients.map((item) => normalizeIngredientKey(item.name)).filter(Boolean);
-    const refs = await getReferenceMap(keys);
-    const audit = buildRecipeAuditFromReferences(recipe, refs);
-    await saveAudit(recipe, audit);
-    summary[audit.status] = (summary[audit.status] || 0) + 1;
-    console.log(`${audit.status.toUpperCase()} ${recipe.name} coverage=${audit.sourceCoverage}% delta=${audit.calorieDelta}`);
-  }
+      const summary = {};
+      for (const recipe of recipes.rows) {
+        const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+        const keys = ingredients.map((item) => normalizeIngredientKey(item.name)).filter(Boolean);
+        const refs = await getReferenceMap(keys);
+        const audit = buildRecipeAuditFromReferences(recipe, refs);
+        await saveAudit(recipe, audit);
+        summary[audit.status] = (summary[audit.status] || 0) + 1;
+        console.log(`${audit.status.toUpperCase()} ${recipe.name} coverage=${audit.sourceCoverage}% delta=${audit.calorieDelta}`);
+      }
 
-  console.log(JSON.stringify(summary, null, 2));
+      console.log(JSON.stringify(summary, null, 2));
+    } finally {
+      db = pool;
+    }
+  });
 };
 
 run()

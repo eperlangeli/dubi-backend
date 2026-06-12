@@ -4,11 +4,13 @@ require('dotenv').config();
 
 const { normalizeIngredientKey } = require('../services/recipe-audit');
 const { scoreIngredientReference } = require('../services/nutrition-brain');
+const { withSharedWriteContext } = require('../services/db-context');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
+let db = pool;
 
 const parseCsv = (text, delimiter = ',') => {
   const rows = [];
@@ -84,7 +86,7 @@ const importRow = async (header, row, sourceId, locale) => {
     preparation_match: true
   });
 
-  await pool.query(`
+  await db.query(`
     INSERT INTO nutrition_ingredient_refs (
       ingredient_key,
       display_name,
@@ -144,17 +146,24 @@ const run = async () => {
   if (!sourceId) throw new Error('NUTRITION_CSV_SOURCE_ID is required, for example ciqual, crea, bls, or eurofir');
   if (!csvPath) throw new Error('NUTRITION_CSV_PATH or first command argument is required');
 
-  const rows = parseCsv(fs.readFileSync(csvPath, 'utf8'), delimiter);
-  const header = rows.shift().map((name) => String(name).trim());
-  const summary = { sourceId, total: rows.length, imported: 0, skipped: 0 };
+  await withSharedWriteContext(pool, async (client) => {
+    db = client;
+    try {
+      const rows = parseCsv(fs.readFileSync(csvPath, 'utf8'), delimiter);
+      const header = rows.shift().map((name) => String(name).trim());
+      const summary = { sourceId, total: rows.length, imported: 0, skipped: 0 };
 
-  for (const row of rows) {
-    const imported = await importRow(header, row, sourceId, locale);
-    if (imported) summary.imported += 1;
-    else summary.skipped += 1;
-  }
+      for (const row of rows) {
+        const imported = await importRow(header, row, sourceId, locale);
+        if (imported) summary.imported += 1;
+        else summary.skipped += 1;
+      }
 
-  console.log(JSON.stringify(summary, null, 2));
+      console.log(JSON.stringify(summary, null, 2));
+    } finally {
+      db = pool;
+    }
+  });
 };
 
 run()

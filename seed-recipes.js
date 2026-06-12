@@ -551,20 +551,24 @@ const seedRecipes = async () => {
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
   });
+  const client = await pool.connect();
 
   if (recipeRows.length !== 150) {
     throw new Error(`Expected 150 recipes, found ${recipeRows.length}`);
   }
 
   try {
+    await client.query('BEGIN');
+    await client.query("SELECT set_config('app.allow_shared_write', 'true', true)");
+
     for (const recipe of recipeRows) {
-      const existing = await pool.query(
+      const existing = await client.query(
         'SELECT id, calories, protein, carbs, fats, ingredients, diet_compatibility, allergens FROM recipes WHERE name = $1 LIMIT 1',
         [recipe.name]
       );
       if (existing.rows.length > 0) {
         if (recipesAreEquivalent(existing.rows[0], recipe)) continue;
-        await pool.query(
+        await client.query(
           `
           UPDATE recipes
           SET
@@ -633,7 +637,7 @@ const seedRecipes = async () => {
         continue;
       }
 
-      await pool.query(
+      await client.query(
         `
         INSERT INTO recipes (
           name,
@@ -665,6 +669,7 @@ const seedRecipes = async () => {
           evidence_level
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+        ON CONFLICT DO NOTHING
         `,
         [
           recipe.name,
@@ -697,7 +702,12 @@ const seedRecipes = async () => {
         ]
       );
     }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
+    client.release();
     await pool.end();
   }
 
