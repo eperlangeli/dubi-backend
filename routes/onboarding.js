@@ -39,6 +39,163 @@ module.exports = (pool) => {
     none: 'none'
   };
 
+  const cleanKey = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ');
+
+  const canonicalFromMap = (value, map, fallback = '') => {
+    const key = cleanKey(value);
+    return map[key] || fallback || key;
+  };
+
+  const goalMap = {
+    fatloss: 'fat_loss',
+    'fat loss': 'fat_loss',
+    dimagrimento: 'fat_loss',
+    'perdita grasso': 'fat_loss',
+    'weight loss': 'fat_loss',
+    gain: 'muscle_gain',
+    muscle: 'muscle_gain',
+    'muscle gain': 'muscle_gain',
+    massa: 'muscle_gain',
+    'massa muscolare': 'muscle_gain',
+    'aumento muscolare': 'muscle_gain',
+    maintain: 'maintenance',
+    maintenance: 'maintenance',
+    mantenimento: 'maintenance',
+    definition: 'definition',
+    definizione: 'definition',
+    competition: 'competition',
+    gara: 'competition'
+  };
+
+  const dietMap = {
+    onnivoro: 'omnivore',
+    omnivore: 'omnivore',
+    omnivoro: 'omnivore',
+    pescetariano: 'pescatarian',
+    pescetarian: 'pescatarian',
+    pescatarian: 'pescatarian',
+    vegetariano: 'vegetarian',
+    vegetarian: 'vegetarian',
+    vegano: 'vegan',
+    vegan: 'vegan'
+  };
+
+  const intensityMap = {
+    leggera: 'low',
+    bassa: 'low',
+    light: 'low',
+    low: 'low',
+    moderata: 'moderate',
+    media: 'moderate',
+    moderate: 'moderate',
+    medium: 'moderate',
+    alta: 'high',
+    intensa: 'high',
+    high: 'high',
+    intense: 'high'
+  };
+
+  const breakfastMap = {
+    dolce: 'sweet',
+    sweet: 'sweet',
+    salata: 'savory',
+    salato: 'savory',
+    savory: 'savory',
+    savoury: 'savory',
+    salty: 'savory',
+    entrambi: 'both',
+    both: 'both',
+    none: 'none',
+    nessuna: 'none'
+  };
+
+  const sportMap = {
+    palestra: 'gym',
+    gym: 'gym',
+    'weight training': 'gym',
+    bodybuilding: 'gym',
+    corsa: 'running',
+    running: 'running',
+    run: 'running',
+    ciclismo: 'cycling',
+    bici: 'cycling',
+    cycling: 'cycling',
+    bike: 'cycling',
+    nuoto: 'swimming',
+    swimming: 'swimming',
+    yoga: 'yoga',
+    crossfit: 'crossfit',
+    calcio: 'football',
+    football: 'football',
+    soccer: 'football',
+    tennis: 'tennis',
+    altro: 'other',
+    other: 'other'
+  };
+
+  const allergyMap = {
+    uovo: 'egg',
+    uova: 'egg',
+    egg: 'egg',
+    eggs: 'egg',
+    glutine: 'gluten',
+    gluten: 'gluten',
+    celiaco: 'gluten',
+    celiachia: 'gluten',
+    celiac: 'gluten',
+    latte: 'dairy',
+    lattosio: 'dairy',
+    lactose: 'dairy',
+    dairy: 'dairy',
+    milk: 'dairy',
+    'frutta secca': 'nuts',
+    noci: 'nuts',
+    mandorle: 'nuts',
+    arachidi: 'nuts',
+    peanuts: 'nuts',
+    nuts: 'nuts',
+    crostacei: 'shellfish',
+    gamberi: 'shellfish',
+    shellfish: 'shellfish',
+    soia: 'soy',
+    soy: 'soy',
+    sesamo: 'sesame',
+    sesame: 'sesame',
+    pesce: 'fish',
+    fish: 'fish'
+  };
+
+  const canonicalList = (value) => {
+    const raw = Array.isArray(value) ? value : String(value || '').split(/[,;\n]+/);
+    return [...new Set(raw
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+      .map((item) => canonicalFromMap(item, allergyMap, cleanKey(item)))
+      .filter(Boolean))].join(', ');
+  };
+
+  const normalizeTrainingTime = (value) => canonicalFromMap(value, {
+    mattina: 'morning',
+    morning: 'morning',
+    pranzo: 'lunch',
+    lunch: 'lunch',
+    'pausa pranzo': 'lunch',
+    pomeriggio: 'afternoon',
+    afternoon: 'afternoon',
+    sera: 'evening',
+    evening: 'evening',
+    varia: 'varies',
+    varie: 'varies',
+    variable: 'varies',
+    varies: 'varies'
+  }, 'varies');
+
   router.post('/save', verifyToken, async (req, res) => {
     try {
       const {
@@ -74,9 +231,13 @@ module.exports = (pool) => {
       }
 
       const cleanWearableProvider = wearableMap[wearable_provider] || 'none';
-      const cleanAllergies = Array.isArray(allergies)
-        ? allergies.filter(Boolean).join(',')
-        : (allergies || '');
+      const cleanGoal = canonicalFromMap(goal, goalMap, 'maintenance');
+      const cleanDiet = canonicalFromMap(diet, dietMap, 'omnivore');
+      const cleanWorkoutIntensity = canonicalFromMap(workout_intensity, intensityMap, 'moderate');
+      const cleanBreakfastPref = canonicalFromMap(breakfast_pref, breakfastMap, 'both');
+      const cleanSport = canonicalFromMap(sport, sportMap, cleanKey(sport));
+      const cleanAllergies = canonicalList(allergies);
+      const cleanTrainingTime = normalizeTrainingTime(training_time);
       const cleanTime = (value, fallback) => {
         if (value === null || value === undefined || value === '') return fallback;
         if (typeof value === 'number' || /^\d{1,2}$/.test(String(value))) {
@@ -95,7 +256,7 @@ module.exports = (pool) => {
           age,
           height,
           weight,
-          goal,
+          cleanGoal,
           target_weight,
           target_body_fat,
           competition_sport,
@@ -103,10 +264,10 @@ module.exports = (pool) => {
           occupation,
           workout_days,
           workout_duration,
-          workout_intensity,
+          cleanWorkoutIntensity,
           daily_steps,
           sedentary_days,
-          diet,
+          cleanDiet,
           diet_intensity,
           allergies,
           sport,
@@ -175,9 +336,9 @@ module.exports = (pool) => {
           diet,
           diet_intensity || 'balanced',
           cleanAllergies,
-          sport,
-          training_time,
-          breakfast_pref,
+          cleanSport,
+          cleanTrainingTime,
+          cleanBreakfastPref,
           cleanTime(day_start, '07:00'),
           cleanTime(day_end, '23:00'),
           cleanWearableProvider
@@ -191,21 +352,23 @@ module.exports = (pool) => {
     } catch (error) {
       console.error('Onboarding save error:', error);
       try {
+        const fallbackGoal = canonicalFromMap(req.body.goal, goalMap, 'maintenance');
+        const fallbackDiet = canonicalFromMap(req.body.diet, dietMap, 'omnivore');
         await pool.query(
           'UPDATE users SET age = $1, height = $2, weight = $3, goal = $4 WHERE id = $5',
-          [Number(age), Number(height), Number(weight), goal || 'maintain', req.userId]
+          [Number(req.body.age), Number(req.body.height), Number(req.body.weight), fallbackGoal, req.userId]
         );
         res.json({
           message: 'Onboarding essentials saved successfully',
           onboarding: {
             user_id: req.userId,
-            name,
-            gender,
-            age,
-            height,
-            weight,
-            goal,
-            diet,
+            name: req.body.name,
+            gender: req.body.gender,
+            age: req.body.age,
+            height: req.body.height,
+            weight: req.body.weight,
+            goal: fallbackGoal,
+            diet: fallbackDiet,
             fallback_storage: true
           }
         });

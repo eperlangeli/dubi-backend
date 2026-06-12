@@ -201,7 +201,10 @@ const normalizeAllergenList = (value) => {
       normalized.add('dairy');
       normalized.add('lactose');
     }
-    if (/uov|egg/.test(item)) normalized.add('eggs');
+    if (/uov|egg/.test(item)) {
+      normalized.add('egg');
+      normalized.add('eggs');
+    }
     if (/glutin|gluten|celiach|celiac/.test(item)) normalized.add('gluten');
     if (/arachid|peanut/.test(item)) {
       normalized.add('peanuts');
@@ -525,7 +528,7 @@ const violatesUserFoodRestrictions = (recipe, user, slot = null) => {
   if (restrictions.includes('gluten') && containsGlutenRisk(text)) return true;
   if (restrictions.includes('dairy') && containsDairy(text)) return true;
   if (restrictions.includes('lactose') && containsDairy(text)) return true;
-  if (restrictions.includes('eggs') && EGG_PATTERN.test(text)) return true;
+  if ((restrictions.includes('egg') || restrictions.includes('eggs')) && EGG_PATTERN.test(text)) return true;
   if (restrictions.includes('fish') && FISH_PATTERN.test(text)) return true;
   if (restrictions.includes('shellfish') && /gamberi|crostace|polpo|shellfish/i.test(text)) return true;
   if (restrictions.includes('red_meat') && RED_MEAT_PATTERN.test(text)) return true;
