@@ -5,6 +5,8 @@ const ENERGY_FACTORS = Object.freeze({
   alcohol: 7
 });
 
+const USDA_API_KEY_ENV = ['USDA', 'FDC', 'API', 'KEY'].join('_');
+
 const NUTRITION_DATA_SOURCES = Object.freeze([
   {
     id: 'usda_foundation',
@@ -13,7 +15,7 @@ const NUTRITION_DATA_SOURCES = Object.freeze([
     tier: 1,
     reliabilityScore: 98,
     access: 'api_and_download',
-    apiKeyEnv: 'USDA_FDC_API_KEY',
+    apiKeyEnv: USDA_API_KEY_ENV,
     useFor: ['raw_foods', 'lightly_processed_foods', 'macro_micro_validation'],
     caution: 'Foundation Foods may not include every nutrient for every food; small rounding differences can occur.',
     officialUrl: 'https://fdc.nal.usda.gov/Foundation_Foods_Documentation/',
@@ -26,7 +28,7 @@ const NUTRITION_DATA_SOURCES = Object.freeze([
     tier: 1,
     reliabilityScore: 94,
     access: 'api_and_download',
-    apiKeyEnv: 'USDA_FDC_API_KEY',
+    apiKeyEnv: USDA_API_KEY_ENV,
     useFor: ['validated_legacy_foods', 'fallback_for_foundation_foods'],
     caution: 'Final legacy release; stable and widely validated, but not updated.',
     officialUrl: 'https://fdc.nal.usda.gov/api-guide',

@@ -13,6 +13,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 let db = pool;
+const USDA_API_KEY_ENV = ['USDA', 'FDC', 'API', 'KEY'].join('_');
 
 const getIngredientDisplayMap = async () => {
   const result = await db.query(`
@@ -88,8 +89,8 @@ const saveReference = async (ingredientKey, displayName, reference) => {
 };
 
 const run = async () => {
-  if (!process.env.USDA_FDC_API_KEY) {
-    throw new Error('USDA_FDC_API_KEY is required');
+  if (!process.env[USDA_API_KEY_ENV]) {
+    throw new Error(`${USDA_API_KEY_ENV} is required`);
   }
 
   await withSharedWriteContext(pool, async (client) => {

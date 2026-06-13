@@ -43,6 +43,14 @@ CREATE TABLE IF NOT EXISTS user_onboarding (
   day_start TIME,
   day_end TIME,
   wearable_provider VARCHAR(50),
+  terms_accepted BOOLEAN DEFAULT FALSE,
+  privacy_accepted BOOLEAN DEFAULT FALSE,
+  health_data_consent BOOLEAN DEFAULT FALSE,
+  privacy_policy_version VARCHAR(100),
+  terms_version VARCHAR(100),
+  health_disclaimer_version VARCHAR(100),
+  legal_accepted_at TIMESTAMP,
+  health_data_consent_at TIMESTAMP,
   onboarding_completed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -73,6 +81,14 @@ ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS breakfast_pref VARCHAR(50);
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS day_start TIME;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS day_end TIME;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS wearable_provider VARCHAR(50);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS terms_accepted BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS privacy_accepted BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS health_data_consent BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS privacy_policy_version VARCHAR(100);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS terms_version VARCHAR(100);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS health_disclaimer_version VARCHAR(100);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMP;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS health_data_consent_at TIMESTAMP;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
@@ -323,14 +339,6 @@ ALTER TABLE nps_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_ingredient_swaps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_anomaly_events ENABLE ROW LEVEL SECURITY;
 
-CREATE OR REPLACE FUNCTION app_current_user_id()
-RETURNS integer
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT NULLIF(current_setting('app.current_user_id', true), '')::integer;
-$$;
-
 CREATE OR REPLACE FUNCTION app_shared_write_enabled()
 RETURNS boolean
 LANGUAGE sql
@@ -341,66 +349,66 @@ $$;
 
 DROP POLICY IF EXISTS users_isolation ON users;
 CREATE POLICY users_isolation ON users
-  FOR SELECT USING (id = app_current_user_id());
+  FOR SELECT USING (id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS users_update_self ON users;
 CREATE POLICY users_update_self ON users
-  FOR UPDATE USING (id = app_current_user_id())
-  WITH CHECK (id = app_current_user_id());
+  FOR UPDATE USING (id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS users_delete_self ON users;
 CREATE POLICY users_delete_self ON users
-  FOR DELETE USING (id = app_current_user_id());
+  FOR DELETE USING (id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS user_onboarding_isolation ON user_onboarding;
 CREATE POLICY user_onboarding_isolation ON user_onboarding
-  FOR ALL USING (user_id = app_current_user_id())
-  WITH CHECK (user_id = app_current_user_id());
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS wearable_data_isolation ON wearable_data;
 CREATE POLICY wearable_data_isolation ON wearable_data
-  FOR ALL USING (user_id = app_current_user_id())
-  WITH CHECK (user_id = app_current_user_id());
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS openwearables_connections_isolation ON openwearables_connections;
 CREATE POLICY openwearables_connections_isolation ON openwearables_connections
-  FOR ALL USING (user_id = app_current_user_id())
-  WITH CHECK (user_id = app_current_user_id());
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS user_plans_isolation ON user_plans;
 CREATE POLICY user_plans_isolation ON user_plans
-  FOR ALL USING (user_id = app_current_user_id())
-  WITH CHECK (user_id = app_current_user_id());
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS user_progress_isolation ON user_progress;
 CREATE POLICY user_progress_isolation ON user_progress
-  FOR ALL USING (user_id = app_current_user_id())
-  WITH CHECK (user_id = app_current_user_id());
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS weight_history_isolation ON weight_history;
 CREATE POLICY weight_history_isolation ON weight_history
-  FOR ALL USING (user_id = app_current_user_id())
-  WITH CHECK (user_id = app_current_user_id());
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS adherence_isolation ON adherence;
 CREATE POLICY adherence_isolation ON adherence
-  FOR ALL USING (user_id = app_current_user_id())
-  WITH CHECK (user_id = app_current_user_id());
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS nps_responses_isolation ON nps_responses;
 CREATE POLICY nps_responses_isolation ON nps_responses
-  FOR ALL USING (user_id = app_current_user_id())
-  WITH CHECK (user_id = app_current_user_id());
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS user_ingredient_swaps_isolation ON user_ingredient_swaps;
 CREATE POLICY user_ingredient_swaps_isolation ON user_ingredient_swaps
-  FOR ALL USING (user_id = app_current_user_id())
-  WITH CHECK (user_id = app_current_user_id());
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS user_anomaly_events_isolation ON user_anomaly_events;
 CREATE POLICY user_anomaly_events_isolation ON user_anomaly_events
-  FOR ALL USING (user_id = app_current_user_id())
-  WITH CHECK (user_id = app_current_user_id());
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 DROP POLICY IF EXISTS recipes_read ON recipes;
 CREATE POLICY recipes_read ON recipes FOR SELECT USING (true);
@@ -425,3 +433,112 @@ DROP POLICY IF EXISTS recipe_nutrition_audits_shared_write ON recipe_nutrition_a
 CREATE POLICY recipe_nutrition_audits_shared_write ON recipe_nutrition_audits
   FOR ALL USING (app_shared_write_enabled())
   WITH CHECK (app_shared_write_enabled());
+
+-- ============================================================
+-- INGREDIENT-BASED MEAL ENGINE - tables created 2026-06-13
+-- Already applied to Supabase directly; kept here as schema record.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS ingredients (
+  id                      SERIAL PRIMARY KEY,
+  name                    TEXT NOT NULL UNIQUE,
+  name_en                 TEXT,
+  category                TEXT NOT NULL,
+  subcategory             TEXT,
+  calories_per_100g       NUMERIC(6,1),
+  protein_g               NUMERIC(5,1),
+  carbs_g                 NUMERIC(5,1),
+  fat_g                   NUMERIC(5,1),
+  fiber_g                 NUMERIC(5,1),
+  glycemic_index          TEXT DEFAULT 'medium' CHECK (glycemic_index IN ('low','medium','high')),
+  typical_portion_g       INTEGER DEFAULT 100,
+  meal_timing             TEXT[] DEFAULT ARRAY['breakfast','lunch','dinner','snack'],
+  template_slots          TEXT[] NOT NULL DEFAULT '{}',
+  compatible_omnivore     BOOLEAN DEFAULT true,
+  compatible_pescatarian  BOOLEAN DEFAULT true,
+  compatible_vegetarian   BOOLEAN DEFAULT true,
+  compatible_vegan        BOOLEAN DEFAULT false,
+  allergen_gluten         BOOLEAN DEFAULT false,
+  allergen_dairy          BOOLEAN DEFAULT false,
+  allergen_lactose        BOOLEAN DEFAULT false,
+  allergen_eggs           BOOLEAN DEFAULT false,
+  allergen_fish           BOOLEAN DEFAULT false,
+  allergen_shellfish      BOOLEAN DEFAULT false,
+  allergen_nuts           BOOLEAN DEFAULT false,
+  allergen_peanuts        BOOLEAN DEFAULT false,
+  allergen_soy            BOOLEAN DEFAULT false,
+  allergen_sesame         BOOLEAN DEFAULT false,
+  ok_celiac               BOOLEAN DEFAULT true,
+  ok_lactose_intolerant   BOOLEAN DEFAULT true,
+  ok_diabetic             BOOLEAN DEFAULT true,
+  ok_gerd                 BOOLEAN DEFAULT true,
+  ok_ibs_fodmap           BOOLEAN DEFAULT true,
+  ok_histamine            BOOLEAN DEFAULT true,
+  ok_gout                 BOOLEAN DEFAULT true,
+  ok_renal                BOOLEAN DEFAULT true,
+  ok_nickel               BOOLEAN DEFAULT true,
+  is_active               BOOLEAN DEFAULT true,
+  nutritionist_validated  BOOLEAN DEFAULT false,
+  source_id               TEXT,
+  source_food_id          TEXT,
+  source_food_name        TEXT,
+  source_confidence       NUMERIC(3,2),
+  last_verified_at        TIMESTAMPTZ,
+  notes                   TEXT,
+  created_at              TIMESTAMPTZ DEFAULT NOW(),
+  updated_at              TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ingredients_category ON ingredients(category);
+CREATE INDEX IF NOT EXISTS idx_ingredients_active ON ingredients(is_active);
+
+CREATE TABLE IF NOT EXISTS meal_templates (
+  id              SERIAL PRIMARY KEY,
+  meal_type       TEXT NOT NULL UNIQUE,
+  display_name    TEXT NOT NULL,
+  display_name_en TEXT,
+  slots           JSONB NOT NULL,
+  notes           TEXT
+);
+
+CREATE TABLE IF NOT EXISTS daily_plans (
+  id           SERIAL PRIMARY KEY,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan_date    DATE NOT NULL,
+  plan_data    JSONB NOT NULL,
+  generated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, plan_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_plans_user ON daily_plans(user_id, plan_date DESC);
+
+ALTER TABLE ingredients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE meal_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_plans ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS ingredients_select ON ingredients;
+DROP POLICY IF EXISTS templates_select ON meal_templates;
+DROP POLICY IF EXISTS daily_plans_select ON daily_plans;
+DROP POLICY IF EXISTS daily_plans_insert ON daily_plans;
+DROP POLICY IF EXISTS daily_plans_update ON daily_plans;
+
+CREATE POLICY ingredients_select ON ingredients
+  FOR SELECT USING (is_active = true);
+
+CREATE POLICY templates_select ON meal_templates
+  FOR SELECT USING (true);
+
+CREATE POLICY daily_plans_select ON daily_plans
+  FOR SELECT USING (user_id = current_setting('app.current_user_id', true)::integer);
+
+CREATE POLICY daily_plans_insert ON daily_plans
+  FOR INSERT WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
+
+CREATE POLICY daily_plans_update ON daily_plans
+  FOR UPDATE USING (user_id = current_setting('app.current_user_id', true)::integer);
+
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS source_id TEXT;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS source_food_id TEXT;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS source_food_name TEXT;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS source_confidence NUMERIC(3,2);
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS last_verified_at TIMESTAMPTZ;

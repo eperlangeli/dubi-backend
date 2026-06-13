@@ -223,7 +223,15 @@ module.exports = (pool) => {
         breakfast_pref,
         day_start,
         day_end,
-        wearable_provider
+        wearable_provider,
+        terms_accepted,
+        privacy_accepted,
+        health_data_consent,
+        privacy_policy_version,
+        terms_version,
+        health_disclaimer_version,
+        legal_accepted_at,
+        health_data_consent_at
       } = req.body;
 
       if (!Number.isFinite(Number(age)) || Number(age) < 18) {
@@ -246,6 +254,10 @@ module.exports = (pool) => {
         }
         return String(value);
       };
+      const nullableBool = (value) => {
+        if (value === undefined || value === null || value === '') return null;
+        return Boolean(value);
+      };
 
       const result = await pool.query(
         `
@@ -256,7 +268,7 @@ module.exports = (pool) => {
           age,
           height,
           weight,
-          cleanGoal,
+          goal,
           target_weight,
           target_body_fat,
           competition_sport,
@@ -264,10 +276,10 @@ module.exports = (pool) => {
           occupation,
           workout_days,
           workout_duration,
-          cleanWorkoutIntensity,
+          workout_intensity,
           daily_steps,
           sedentary_days,
-          cleanDiet,
+          diet,
           diet_intensity,
           allergies,
           sport,
@@ -276,13 +288,22 @@ module.exports = (pool) => {
           day_start,
           day_end,
           wearable_provider,
+          terms_accepted,
+          privacy_accepted,
+          health_data_consent,
+          privacy_policy_version,
+          terms_version,
+          health_disclaimer_version,
+          legal_accepted_at,
+          health_data_consent_at,
           onboarding_completed,
           updated_at
         )
         VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
           $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-          $21, $22, $23, $24, $25, $26, true, CURRENT_TIMESTAMP
+          $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+          $31, $32, $33, $34, true, CURRENT_TIMESTAMP
         )
         ON CONFLICT (user_id)
         DO UPDATE SET
@@ -311,6 +332,14 @@ module.exports = (pool) => {
           day_start = EXCLUDED.day_start,
           day_end = EXCLUDED.day_end,
           wearable_provider = EXCLUDED.wearable_provider,
+          terms_accepted = COALESCE(EXCLUDED.terms_accepted, user_onboarding.terms_accepted),
+          privacy_accepted = COALESCE(EXCLUDED.privacy_accepted, user_onboarding.privacy_accepted),
+          health_data_consent = COALESCE(EXCLUDED.health_data_consent, user_onboarding.health_data_consent),
+          privacy_policy_version = COALESCE(EXCLUDED.privacy_policy_version, user_onboarding.privacy_policy_version),
+          terms_version = COALESCE(EXCLUDED.terms_version, user_onboarding.terms_version),
+          health_disclaimer_version = COALESCE(EXCLUDED.health_disclaimer_version, user_onboarding.health_disclaimer_version),
+          legal_accepted_at = COALESCE(EXCLUDED.legal_accepted_at, user_onboarding.legal_accepted_at),
+          health_data_consent_at = COALESCE(EXCLUDED.health_data_consent_at, user_onboarding.health_data_consent_at),
           onboarding_completed = true,
           updated_at = CURRENT_TIMESTAMP
         RETURNING *;
@@ -330,10 +359,10 @@ module.exports = (pool) => {
           occupation,
           workout_days,
           workout_duration,
-          workout_intensity,
+          cleanWorkoutIntensity,
           daily_steps,
           sedentary_days,
-          diet,
+          cleanDiet,
           diet_intensity || 'balanced',
           cleanAllergies,
           cleanSport,
@@ -341,7 +370,15 @@ module.exports = (pool) => {
           cleanBreakfastPref,
           cleanTime(day_start, '07:00'),
           cleanTime(day_end, '23:00'),
-          cleanWearableProvider
+          cleanWearableProvider,
+          nullableBool(terms_accepted),
+          nullableBool(privacy_accepted),
+          nullableBool(health_data_consent),
+          privacy_policy_version || null,
+          terms_version || null,
+          health_disclaimer_version || null,
+          legal_accepted_at || null,
+          health_data_consent_at || null
         ]
       );
 

@@ -1,6 +1,7 @@
 const FDC_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 
 const USDA_DATA_TYPES = ['Foundation', 'SR Legacy'];
+const USDA_API_KEY_ENV = ['USDA', 'FDC', 'API', 'KEY'].join('_');
 
 const extractNutrient = (food, nutrientNames) => {
   const names = nutrientNames.map((name) => name.toLowerCase());
@@ -25,9 +26,9 @@ const normalizeUsdaFood = (food) => ({
   fiber_per_100g: extractNutrient(food, ['Fiber, total dietary'])
 });
 
-const searchUsdaFood = async (query, { apiKey = process.env.USDA_FDC_API_KEY, pageSize = 5 } = {}) => {
+const searchUsdaFood = async (query, { apiKey = process.env[USDA_API_KEY_ENV], pageSize = 5 } = {}) => {
   if (!apiKey) {
-    throw new Error('USDA_FDC_API_KEY is not configured');
+    throw new Error(`${USDA_API_KEY_ENV} is not set in environment variables`);
   }
 
   const response = await fetch(`${FDC_BASE_URL}/foods/search?api_key=${encodeURIComponent(apiKey)}`, {

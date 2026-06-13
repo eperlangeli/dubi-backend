@@ -1,4 +1,5 @@
 const express = require('express');
+const { generateDayPlan } = require('../services/mealEngine');
 
 // Formule scientifiche DUBI
 const calculateBMR = (weight, height, age, sex = 'male') => {
@@ -113,6 +114,85 @@ module.exports = (pool) => {
       }
 
       res.json(result.rows[0]);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate ingredient-based day plan
+  router.post('/ingredient-plan/generate', verifyToken, async (req, res) => {
+    try {
+      const { date } = req.body || {};
+      const targetDate = date || new Date().toISOString().split('T')[0];
+
+      const profileResult = await pool.query(
+        `SELECT uo.*, u.age, u.weight, u.height, u.goal
+         FROM user_onboarding uo
+         JOIN users u ON u.id = uo.user_id
+         WHERE uo.user_id = $1
+         ORDER BY uo.created_at DESC LIMIT 1`,
+        [req.userId]
+      );
+
+      if (profileResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User profile not found. Complete onboarding first.' });
+      }
+
+      const row = profileResult.rows[0];
+      const macroResult = await pool.query(
+        `SELECT calories, protein
+         FROM meal_plans
+         WHERE user_id = $1
+         ORDER BY created_at DESC LIMIT 1`,
+        [req.userId]
+      );
+
+      const dailyCalorieTarget = Number(macroResult.rows[0]?.calories)
+        || (row.weight ? Math.round(Number(row.weight) * 30) : 2000);
+      const dailyProteinTarget = Number(macroResult.rows[0]?.protein)
+        || Math.round((dailyCalorieTarget * 0.25) / 4);
+
+      const userProfile = {
+        userId: req.userId,
+        dietaryStyle: row.diet || 'omnivore',
+        allergiesText: row.allergies || '',
+        workoutDays: Number(row.workout_days) || 0,
+        trainingTime: row.training_time || null,
+        dailyCalorieTarget,
+        dailyProteinTarget,
+      };
+
+      const plan = await generateDayPlan(pool, userProfile, targetDate);
+
+      await pool.query(
+        `INSERT INTO daily_plans (user_id, plan_date, plan_data)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, plan_date)
+         DO UPDATE SET plan_data = EXCLUDED.plan_data, generated_at = NOW()`,
+        [req.userId, targetDate, JSON.stringify(plan)]
+      );
+
+      res.json(plan);
+    } catch (error) {
+      console.error('[plan] ingredient-plan generate error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get saved ingredient-based day plan
+  router.get('/ingredient-plan/:date?', verifyToken, async (req, res) => {
+    try {
+      const targetDate = req.params.date || new Date().toISOString().split('T')[0];
+      const result = await pool.query(
+        'SELECT plan_data FROM daily_plans WHERE user_id = $1 AND plan_date = $2',
+        [req.userId, targetDate]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'No plan found for this date. Call POST /plan/ingredient-plan/generate first.' });
+      }
+
+      res.json(result.rows[0].plan_data);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
