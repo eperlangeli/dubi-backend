@@ -57,6 +57,31 @@ const calculateMacros = (tdee, goal) => {
   return { calories, protein, carbs, fat };
 };
 
+const normalizePathologyToken = (value = '') =>
+  String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/^ok_/, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+const extractUserPathologies = (healthProfile) => {
+  if (!healthProfile) return [];
+
+  const list = Array.isArray(healthProfile)
+    ? healthProfile
+    : Array.isArray(healthProfile.pathologies)
+      ? healthProfile.pathologies
+      : typeof healthProfile === 'object'
+        ? Object.entries(healthProfile)
+          .filter(([, enabled]) => enabled === true)
+          .map(([key]) => key)
+        : [];
+
+  return [...new Set(list.map(normalizePathologyToken).filter(Boolean))];
+};
+
 module.exports = (pool) => {
   const router = express.Router();
   const authModule = require('./auth')(pool);
@@ -126,7 +151,7 @@ module.exports = (pool) => {
       const targetDate = date || new Date().toISOString().split('T')[0];
 
       const profileResult = await pool.query(
-        `SELECT uo.*, u.age, u.weight, u.height, u.goal
+        `SELECT uo.*, u.age, u.weight, u.height, u.goal, u.health_profile
          FROM user_onboarding uo
          JOIN users u ON u.id = uo.user_id
          WHERE uo.user_id = $1
@@ -157,6 +182,7 @@ module.exports = (pool) => {
         goal: row.goal || 'maintenance',
         dietaryStyle: row.diet || 'omnivore',
         allergiesText: row.allergies || '',
+        pathologies: extractUserPathologies(row.health_profile),
         workoutDays: Number(row.workout_days) || 0,
         trainingTime: row.training_time || null,
         dailyCalorieTarget,
@@ -196,6 +222,14 @@ module.exports = (pool) => {
       const plan = result.rows[0].plan_data || {};
       if (!plan.gi_summary && Array.isArray(plan.meals)) {
         plan.gi_summary = calcDailyGiSummary(plan.meals);
+      }
+      if (!plan.pathology_filter) {
+        plan.pathology_filter = {
+          activePathologies: [],
+          excludedCount: 0,
+          totalPool: null,
+          filteredPool: null,
+        };
       }
 
       res.json(plan);

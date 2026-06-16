@@ -146,6 +146,16 @@ function parseRestrictions(allergiesText) {
   };
 }
 
+function normalizeUserPathologies(userPathologies) {
+  if (!Array.isArray(userPathologies)) return [];
+
+  return [...new Set(
+    userPathologies
+      .map((value) => normalizeToken(value).replace(/^ok\s+/, '').replace(/\s+/g, '_'))
+      .filter(Boolean)
+  )];
+}
+
 function buildDayStructure(trainingTime) {
   const base = ['breakfast', 'lunch', 'snack', 'dinner'];
   if (!trainingTime) return base;
@@ -252,6 +262,58 @@ function normalizeDbArray(value) {
       .filter(Boolean);
   }
   return [];
+}
+
+function pathologyFlagCount(candidate, userPathologies) {
+  return normalizeUserPathologies(userPathologies)
+    .reduce((count, pathology) => count + (candidate[`ok_${pathology}`] === false ? 1 : 0), 0);
+}
+
+function rawPathologyFilter(candidates, userPathologies) {
+  const normalizedPathologies = normalizeUserPathologies(userPathologies);
+  if (normalizedPathologies.length === 0) return Array.isArray(candidates) ? candidates : [];
+
+  return (Array.isArray(candidates) ? candidates : []).filter((candidate) =>
+    normalizedPathologies.every((pathology) => candidate[`ok_${pathology}`] !== false)
+  );
+}
+
+function applyPathologyFilter(candidates, userPathologies) {
+  const sourceCandidates = Array.isArray(candidates) ? candidates : [];
+  const normalizedPathologies = normalizeUserPathologies(userPathologies);
+  if (normalizedPathologies.length === 0) return sourceCandidates;
+
+  const filtered = rawPathologyFilter(sourceCandidates, normalizedPathologies);
+  if (filtered.length >= 3 || sourceCandidates.length <= 3) return filtered;
+
+  console.warn(
+    `[mealEngine] Pathology filter relaxed for ${normalizedPathologies.join(', ')}: ` +
+    `${filtered.length}/${sourceCandidates.length} safe candidates available`
+  );
+
+  return [...sourceCandidates]
+    .sort((a, b) => {
+      const delta = pathologyFlagCount(a, normalizedPathologies) - pathologyFlagCount(b, normalizedPathologies);
+      if (delta !== 0) return delta;
+      if (Boolean(a.nutritionist_validated) !== Boolean(b.nutritionist_validated)) {
+        return a.nutritionist_validated ? -1 : 1;
+      }
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    })
+    .slice(0, Math.min(5, sourceCandidates.length));
+}
+
+function calcPathologyExclusions(allIngredients, userPathologies) {
+  const normalizedPathologies = normalizeUserPathologies(userPathologies);
+  const sourceIngredients = Array.isArray(allIngredients) ? allIngredients : [];
+  const filteredIngredients = rawPathologyFilter(sourceIngredients, normalizedPathologies);
+
+  return {
+    activePathologies: normalizedPathologies,
+    excludedCount: sourceIngredients.length - filteredIngredients.length,
+    totalPool: sourceIngredients.length,
+    filteredPool: filteredIngredients.length,
+  };
 }
 
 function buildVarietyTracker() {
@@ -404,7 +466,7 @@ function calcDailyGiSummary(mealPlan) {
   };
 }
 
-async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredients, dayTracker, rng, userProfile, date) {
+async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredients, allIngredients, userPathologies, dayTracker, rng, userProfile, date) {
   const tmplResult = await pool.query(
     'SELECT slots FROM meal_templates WHERE meal_type = $1',
     [mealType]
@@ -436,6 +498,14 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
     let candidates = filterBySlotAndTiming(eligibleIngredients, slot, mealType);
     if (candidates.length === 0) {
       candidates = eligibleIngredients.filter((ingredient) => normalizeDbArray(ingredient.template_slots).includes(slot));
+    }
+
+    if (normalizeUserPathologies(userPathologies).length > 0 && candidates.length < 3) {
+      let fallbackCandidates = filterBySlotAndTiming(allIngredients, slot, mealType);
+      if (fallbackCandidates.length === 0) {
+        fallbackCandidates = allIngredients.filter((ingredient) => normalizeDbArray(ingredient.template_slots).includes(slot));
+      }
+      candidates = applyPathologyFilter(fallbackCandidates, userPathologies);
     }
 
     if (candidates.length === 0) {
@@ -535,12 +605,15 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   const dailyCal = Number(userProfile.dailyCalorieTarget || 2000);
   const dailyProtein = Number(userProfile.dailyProteinTarget || Math.round((dailyCal * 0.25) / 4));
   const rng = createRng(`${userProfile.userId || 'anonymous'}:${date}:${userProfile.trainingTime || 'rest'}`);
+  const userPathologies = normalizeUserPathologies(userProfile.pathologies || []);
   const engineProfile = {
     ...userProfile,
-    hasDiabeticNeed: pathologyCols.includes('ok_diabetic'),
+    hasDiabeticNeed: pathologyCols.includes('ok_diabetic') || userPathologies.includes('diabetic'),
   };
 
   const eligibleIngredients = await loadEligibleIngredients(pool, dietCol, allergenCols, pathologyCols);
+  const safeIngredients = applyPathologyFilter(eligibleIngredients, userPathologies);
+  const pathologyFilter = calcPathologyExclusions(eligibleIngredients, userPathologies);
   const trainingToday = isTrainingDay(userProfile, date);
   const mealTypes = trainingToday ? buildDayStructure(userProfile.trainingTime) : buildDayStructure(null);
   const totalFraction = mealTypes.reduce((sum, mealType) => sum + (CALORIE_FRACTIONS[mealType] || 0.1), 0);
@@ -550,7 +623,18 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   for (const mealType of mealTypes) {
     const fraction = (CALORIE_FRACTIONS[mealType] || 0.1) / totalFraction;
     const mealCalories = Math.round(dailyCal * fraction);
-    const meal = await composeMeal(pool, mealType, mealCalories, eligibleIngredients, dayTracker, rng, engineProfile, date);
+    const meal = await composeMeal(
+      pool,
+      mealType,
+      mealCalories,
+      safeIngredients,
+      eligibleIngredients,
+      userPathologies,
+      dayTracker,
+      rng,
+      engineProfile,
+      date
+    );
     meals.push(meal);
   }
 
@@ -565,6 +649,7 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     meals: adjustedMeals,
     daySummary: buildDaySummary(adjustedMeals),
     gi_summary: calcDailyGiSummary(adjustedMeals),
+    pathology_filter: pathologyFilter,
     eligibleIngredientsCount: eligibleIngredients.length,
     restrictionsApplied: {
       allergenCols,
@@ -574,4 +659,4 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   };
 }
 
-module.exports = { generateDayPlan, giScore, calcDailyGiSummary };
+module.exports = { generateDayPlan, giScore, calcDailyGiSummary, applyPathologyFilter, calcPathologyExclusions };
