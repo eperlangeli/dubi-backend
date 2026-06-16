@@ -6,6 +6,10 @@ const { createScopedPool, withAuthenticatedDbContext } = require('./services/db-
 
 dotenv.config();
 
+if (!process.env.RESEND_API_KEY) {
+  console.warn('RESEND_API_KEY is not set. Parental consent emails will be logged instead of sent.');
+}
+
 const app = express();
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -72,8 +76,11 @@ app.get('/health', async (req, res) => {
 });
 
 // ROUTES
-app.use('/auth', require('./routes/auth')(scopedPool));
+const authRoutes = require('./routes/auth');
+app.use('/auth', authRoutes(scopedPool));
+app.use('/api/auth', authRoutes(scopedPool));
 app.use('/api/onboarding', require('./routes/onboarding')(scopedPool));
+app.use('/api/parental-consent', require('./routes/parental-consent')(scopedPool));
 app.use('/api/plans', require('./routes/plans')(scopedPool));
 app.use('/api/progress', require('./routes/progress')(scopedPool));
 app.use('/api/ai', require('./routes/ai-engine')(scopedPool));

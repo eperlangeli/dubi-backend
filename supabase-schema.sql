@@ -12,8 +12,25 @@ CREATE TABLE IF NOT EXISTS users (
   weight DOUBLE PRECISION,
   height INT,
   goal VARCHAR(50),
+  is_minor BOOLEAN NOT NULL DEFAULT false,
+  guardian_name TEXT,
+  guardian_email TEXT,
+  parental_consent_status TEXT NOT NULL DEFAULT 'not_required'
+    CHECK (parental_consent_status IN ('not_required', 'pending', 'approved', 'expired')),
+  parental_consent_token TEXT,
+  parental_consent_token_expires_at TIMESTAMPTZ,
+  parental_consent_verified_at TIMESTAMPTZ,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_minor BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_email TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_status TEXT NOT NULL DEFAULT 'not_required'
+  CHECK (parental_consent_status IN ('not_required', 'pending', 'approved', 'expired'));
+ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_token TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_token_expires_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_verified_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS user_onboarding (
   id SERIAL PRIMARY KEY,
@@ -347,9 +364,29 @@ AS $$
   SELECT current_setting('app.allow_shared_write', true) = 'true';
 $$;
 
+CREATE OR REPLACE FUNCTION app_registration_enabled()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT current_setting('app.allow_registration', true) = 'true';
+$$;
+
+CREATE OR REPLACE FUNCTION app_parental_consent_verify_enabled()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT current_setting('app.allow_parental_consent_verify', true) = 'true';
+$$;
+
 DROP POLICY IF EXISTS users_isolation ON users;
 CREATE POLICY users_isolation ON users
   FOR SELECT USING (id = current_setting('app.current_user_id', true)::integer);
+
+DROP POLICY IF EXISTS users_register_insert ON users;
+CREATE POLICY users_register_insert ON users
+  FOR INSERT WITH CHECK (app_registration_enabled());
 
 DROP POLICY IF EXISTS users_update_self ON users;
 CREATE POLICY users_update_self ON users
@@ -359,6 +396,21 @@ CREATE POLICY users_update_self ON users
 DROP POLICY IF EXISTS users_delete_self ON users;
 CREATE POLICY users_delete_self ON users
   FOR DELETE USING (id = current_setting('app.current_user_id', true)::integer);
+
+DROP POLICY IF EXISTS users_parental_consent_verify_select ON users;
+CREATE POLICY users_parental_consent_verify_select ON users
+  FOR SELECT USING (
+    app_parental_consent_verify_enabled()
+    AND parental_consent_token IS NOT NULL
+  );
+
+DROP POLICY IF EXISTS users_parental_consent_verify_update ON users;
+CREATE POLICY users_parental_consent_verify_update ON users
+  FOR UPDATE USING (
+    app_parental_consent_verify_enabled()
+    AND parental_consent_token IS NOT NULL
+  )
+  WITH CHECK (app_parental_consent_verify_enabled());
 
 DROP POLICY IF EXISTS user_onboarding_isolation ON user_onboarding;
 CREATE POLICY user_onboarding_isolation ON user_onboarding
@@ -451,6 +503,7 @@ CREATE TABLE IF NOT EXISTS ingredients (
   fat_g                   NUMERIC(5,1),
   fiber_g                 NUMERIC(5,1),
   glycemic_index          TEXT DEFAULT 'medium' CHECK (glycemic_index IN ('low','medium','high')),
+  gi_numeric              INTEGER CHECK (gi_numeric IS NULL OR gi_numeric BETWEEN 0 AND 100),
   typical_portion_g       INTEGER DEFAULT 100,
   meal_timing             TEXT[] DEFAULT ARRAY['breakfast','lunch','dinner','snack'],
   template_slots          TEXT[] NOT NULL DEFAULT '{}',
@@ -464,6 +517,7 @@ CREATE TABLE IF NOT EXISTS ingredients (
   allergen_eggs           BOOLEAN DEFAULT false,
   allergen_fish           BOOLEAN DEFAULT false,
   allergen_shellfish      BOOLEAN DEFAULT false,
+  allergen_mollusks       BOOLEAN DEFAULT false,
   allergen_nuts           BOOLEAN DEFAULT false,
   allergen_peanuts        BOOLEAN DEFAULT false,
   allergen_soy            BOOLEAN DEFAULT false,
@@ -484,6 +538,12 @@ CREATE TABLE IF NOT EXISTS ingredients (
   source_food_name        TEXT,
   source_confidence       NUMERIC(3,2),
   last_verified_at        TIMESTAMPTZ,
+  health_tags             TEXT[] DEFAULT ARRAY[]::TEXT[],
+  primary_benefit         TEXT,
+  science_note            TEXT,
+  micronutrients          JSONB DEFAULT '{}'::JSONB,
+  polyphenols_mg          NUMERIC(8,2),
+  bioavailability_pairs   JSONB DEFAULT '[]'::JSONB,
   notes                   TEXT,
   created_at              TIMESTAMPTZ DEFAULT NOW(),
   updated_at              TIMESTAMPTZ DEFAULT NOW()
@@ -542,3 +602,11 @@ ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS source_food_id TEXT;
 ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS source_food_name TEXT;
 ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS source_confidence NUMERIC(3,2);
 ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS last_verified_at TIMESTAMPTZ;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS allergen_mollusks BOOLEAN DEFAULT false;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS gi_numeric INTEGER CHECK (gi_numeric IS NULL OR gi_numeric BETWEEN 0 AND 100);
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS health_tags TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS primary_benefit TEXT;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS science_note TEXT;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS micronutrients JSONB DEFAULT '{}'::JSONB;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS polyphenols_mg NUMERIC(8,2);
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS bioavailability_pairs JSONB DEFAULT '[]'::JSONB;

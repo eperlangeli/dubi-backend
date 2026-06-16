@@ -234,8 +234,21 @@ module.exports = (pool) => {
         health_data_consent_at
       } = req.body;
 
-      if (!Number.isFinite(Number(age)) || Number(age) < 18) {
-        return res.status(403).json({ error: 'DUBI beta is currently available only to users aged 18 or older' });
+      const consentResult = await pool.query(
+        'SELECT is_minor, parental_consent_status FROM users WHERE id = $1',
+        [req.userId]
+      );
+
+      if (consentResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const consentStatus = consentResult.rows[0].parental_consent_status || 'not_required';
+      if (consentStatus === 'pending' || consentStatus === 'expired') {
+        return res.status(403).json({
+          error: 'parental_consent_required',
+          parental_consent_status: consentStatus
+        });
       }
 
       const cleanWearableProvider = wearableMap[wearable_provider] || 'none';

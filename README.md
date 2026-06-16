@@ -42,7 +42,9 @@ Authenticated endpoints require:
 Authorization: Bearer <dubi_token>
 ```
 
-The initial DUBI beta accepts onboarding profiles for users aged 18 or older. Minor access stays disabled until a real parental-consent flow is implemented.
+DUBI blocks account creation for users under 13. Users aged 13-17 can register only with parent or guardian email authorisation through `/api/parental-consent`; onboarding remains blocked until consent is approved.
+
+Production parental-consent email requires `RESEND_API_KEY` and `RESEND_FROM_EMAIL` on Render. If `RESEND_API_KEY` is missing in local development, the backend logs the verification link instead of crashing.
 
 ## OpenWearables
 

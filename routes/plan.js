@@ -1,5 +1,5 @@
 const express = require('express');
-const { generateDayPlan } = require('../services/mealEngine');
+const { generateDayPlan, calcDailyGiSummary } = require('../services/mealEngine');
 
 // Formule scientifiche DUBI
 const calculateBMR = (weight, height, age, sex = 'male') => {
@@ -154,6 +154,7 @@ module.exports = (pool) => {
 
       const userProfile = {
         userId: req.userId,
+        goal: row.goal || 'maintenance',
         dietaryStyle: row.diet || 'omnivore',
         allergiesText: row.allergies || '',
         workoutDays: Number(row.workout_days) || 0,
@@ -192,7 +193,12 @@ module.exports = (pool) => {
         return res.status(404).json({ error: 'No plan found for this date. Call POST /plan/ingredient-plan/generate first.' });
       }
 
-      res.json(result.rows[0].plan_data);
+      const plan = result.rows[0].plan_data || {};
+      if (!plan.gi_summary && Array.isArray(plan.meals)) {
+        plan.gi_summary = calcDailyGiSummary(plan.meals);
+      }
+
+      res.json(plan);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

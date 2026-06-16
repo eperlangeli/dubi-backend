@@ -13,6 +13,10 @@
     "import-nutrition-csv": "node scripts/import-official-nutrition-csv.js",
     "audit-recipes": "node scripts/audit-recipes-with-sources.js",
     "audit-dubi-recipes": "node scripts/audit-dubi-recipes.js",
+    "import:ingredients": "node scripts/import-ingredients.js",
+    "import:ingredients:dry": "node scripts/import-ingredients.js --dry-run",
+    "enrich:ingredients": "node scripts/enrich-ingredients.js",
+    "enrich:ingredients:dry": "node scripts/enrich-ingredients.js --dry-run",
     "verify-dubi-engine-cases": "node scripts/verify-dubi-engine-cases.js",
     "export-recipes-pdf-data": "node scripts/export-recipes-pdf-data.js",
     "migrate-canonical-onboarding": "node scripts/migrate-onboarding-canonical-values.js",
@@ -24,7 +28,10 @@
     "dotenv": "^16.0.3",
     "jsonwebtoken": "^9.0.0",
     "bcryptjs": "^2.4.3",
-    "pg": "^8.10.0"
+    "pg": "^8.10.0",
+    "resend": "^6.12.4",
+    "xlsx": "^0.18.5",
+    "@supabase/supabase-js": "^2.45.4"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

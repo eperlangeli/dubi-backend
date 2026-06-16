@@ -189,6 +189,34 @@ function createRng(seedText) {
   };
 }
 
+function giScore(giNumeric, userProfile = {}) {
+  const gi = Number(giNumeric);
+  if (!Number.isFinite(gi)) return 1.0;
+
+  const goal = normalizeToken(userProfile.goal);
+  const currentMealType = normalizeToken(userProfile.currentMealType || userProfile.mealType || userProfile.mealTiming);
+  const needsLowGi = ['weight loss', 'weight_loss', 'fat loss', 'fat_loss', 'cut'].includes(goal) || Boolean(userProfile.hasDiabeticNeed);
+
+  if (needsLowGi) {
+    if (gi < 35) return 1.4;
+    if (gi <= 55) return 1.1;
+    if (gi <= 70) return 0.8;
+    return 0.5;
+  }
+
+  if (['muscle gain', 'muscle_gain'].includes(goal) && currentMealType === 'post workout') {
+    if (gi > 70) return 1.3;
+    if (gi >= 55) return 1.1;
+    return 1.0;
+  }
+
+  return 1.0;
+}
+
+function deterministicSelectionScore(seedText) {
+  return createRng(seedText)();
+}
+
 function getPortionBounds(category) {
   return PORTION_BOUNDS[category] || { min: 50, max: 200, typical: 100 };
 }
@@ -282,13 +310,22 @@ function filterBySlotAndTiming(ingredients, slot, mealType) {
   });
 }
 
-function pickIngredient(candidates, dayTracker, mealTracker, rng) {
+function pickIngredient(candidates, dayTracker, mealTracker, rng, userProfile, selectionSeed) {
   const eligible = candidates.filter((candidate) => checkVariety(candidate, dayTracker, mealTracker));
   if (eligible.length === 0) return null;
 
   const validated = eligible.filter((item) => item.nutritionist_validated);
   const pool = validated.length > 0 && rng() < 0.65 ? validated : eligible;
-  return pool[Math.floor(rng() * pool.length)];
+  const rankingProfile = { ...userProfile };
+
+  return pool
+    .map((candidate) => ({
+      candidate,
+      score: deterministicSelectionScore(`${selectionSeed}:${candidate.id}:${candidate.name}`) *
+        giScore(candidate.gi_numeric, rankingProfile),
+    }))
+    .sort((a, b) => b.score - a.score || String(a.candidate.name).localeCompare(String(b.candidate.name)))
+    .map((entry) => entry.candidate)[0] || null;
 }
 
 function buildPlanItem(ingredient, slot, portionG) {
@@ -303,6 +340,8 @@ function buildPlanItem(ingredient, slot, portionG) {
     source_confidence: ingredient.source_confidence === null || ingredient.source_confidence === undefined
       ? null
       : Number(ingredient.source_confidence),
+    glycemic_index: ingredient.glycemic_index || null,
+    gi_numeric: Number.isFinite(Number(ingredient.gi_numeric)) ? Number(ingredient.gi_numeric) : null,
     slot,
     portionG,
     calories_per_100g: Number(ingredient.calories_per_100g || 0),
@@ -324,7 +363,48 @@ function recomputeMealTotals(meal) {
   };
 }
 
-async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredients, dayTracker, rng) {
+function calcDailyGiSummary(mealPlan) {
+  const meals = Array.isArray(mealPlan) ? mealPlan : [];
+  const allIngredients = meals.flatMap((meal) => Array.isArray(meal.ingredients) ? meal.ingredients : []);
+  const totalIngredients = allIngredients.length;
+  const ingredientsWithGi = allIngredients.filter((item) => Number.isFinite(Number(item.gi_numeric))).length;
+
+  if (ingredientsWithGi === 0) {
+    return {
+      avgGi: null,
+      giCategory: 'unknown',
+      ingredientsWithGi,
+      totalIngredients,
+    };
+  }
+
+  const coverage = totalIngredients > 0 ? ingredientsWithGi / totalIngredients : 0;
+  const weighted = allIngredients.reduce((acc, item) => {
+    const gi = Number(item.gi_numeric);
+    if (!Number.isFinite(gi)) return acc;
+    const weight = Number(item.portionG) > 0 ? Number(item.portionG) : 1;
+    acc.totalWeight += weight;
+    acc.totalGi += gi * weight;
+    return acc;
+  }, { totalGi: 0, totalWeight: 0 });
+
+  const avgGi = weighted.totalWeight > 0 ? Math.round(weighted.totalGi / weighted.totalWeight) : null;
+  let giCategory = 'unknown';
+
+  if (coverage < 0.5) giCategory = 'mixed';
+  else if (avgGi !== null && avgGi < 45) giCategory = 'low';
+  else if (avgGi !== null && avgGi <= 65) giCategory = 'medium';
+  else if (avgGi !== null) giCategory = 'high';
+
+  return {
+    avgGi,
+    giCategory,
+    ingredientsWithGi,
+    totalIngredients,
+  };
+}
+
+async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredients, dayTracker, rng, userProfile, date) {
   const tmplResult = await pool.query(
     'SELECT slots FROM meal_templates WHERE meal_type = $1',
     [mealType]
@@ -367,7 +447,14 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
 
     const count = Number(config && config.count) || 1;
     for (let index = 0; index < count; index++) {
-      const chosen = pickIngredient(candidates, dayTracker, mealTracker, rng);
+      const chosen = pickIngredient(
+        candidates,
+        dayTracker,
+        mealTracker,
+        rng,
+        { ...userProfile, currentMealType: mealType },
+        `${userProfile.userId || 'anonymous'}:${date}:${mealType}:${slot}:${index}`
+      );
       if (!chosen) break;
 
       recordVariety(chosen, dayTracker, mealTracker);
@@ -448,6 +535,10 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   const dailyCal = Number(userProfile.dailyCalorieTarget || 2000);
   const dailyProtein = Number(userProfile.dailyProteinTarget || Math.round((dailyCal * 0.25) / 4));
   const rng = createRng(`${userProfile.userId || 'anonymous'}:${date}:${userProfile.trainingTime || 'rest'}`);
+  const engineProfile = {
+    ...userProfile,
+    hasDiabeticNeed: pathologyCols.includes('ok_diabetic'),
+  };
 
   const eligibleIngredients = await loadEligibleIngredients(pool, dietCol, allergenCols, pathologyCols);
   const trainingToday = isTrainingDay(userProfile, date);
@@ -459,7 +550,7 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   for (const mealType of mealTypes) {
     const fraction = (CALORIE_FRACTIONS[mealType] || 0.1) / totalFraction;
     const mealCalories = Math.round(dailyCal * fraction);
-    const meal = await composeMeal(pool, mealType, mealCalories, eligibleIngredients, dayTracker, rng);
+    const meal = await composeMeal(pool, mealType, mealCalories, eligibleIngredients, dayTracker, rng, engineProfile, date);
     meals.push(meal);
   }
 
@@ -473,6 +564,7 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     targetProtein: dailyProtein,
     meals: adjustedMeals,
     daySummary: buildDaySummary(adjustedMeals),
+    gi_summary: calcDailyGiSummary(adjustedMeals),
     eligibleIngredientsCount: eligibleIngredients.length,
     restrictionsApplied: {
       allergenCols,
@@ -482,4 +574,4 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   };
 }
 
-module.exports = { generateDayPlan };
+module.exports = { generateDayPlan, giScore, calcDailyGiSummary };
