@@ -66,20 +66,28 @@ const normalizePathologyToken = (value = '') =>
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
 
-const extractUserPathologies = (healthProfile) => {
-  if (!healthProfile) return [];
+const parsePathologiesFromAllergies = (text) => {
+  if (!text) return [];
+  const t = String(text)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const result = [];
+  const add = (pathology) => {
+    const normalized = normalizePathologyToken(pathology);
+    if (normalized && !result.includes(normalized)) result.push(normalized);
+  };
 
-  const list = Array.isArray(healthProfile)
-    ? healthProfile
-    : Array.isArray(healthProfile.pathologies)
-      ? healthProfile.pathologies
-      : typeof healthProfile === 'object'
-        ? Object.entries(healthProfile)
-          .filter(([, enabled]) => enabled === true)
-          .map(([key]) => key)
-        : [];
-
-  return [...new Set(list.map(normalizePathologyToken).filter(Boolean))];
+  if (/gerd|reflusso|reflux|acido|acidita/.test(t)) add('gerd');
+  if (/ibs|fodmap|colon irritabile/.test(t)) add('ibs_fodmap');
+  if (/celiac|celiachia|celiaco|glutine|gluten/.test(t)) add('celiac');
+  if (/diabet/.test(t)) add('diabetic');
+  if (/lattosio|lactose/.test(t)) add('lactose_intolerant');
+  if (/nichel|nickel/.test(t)) add('nickel');
+  if (/istamina|histamine/.test(t)) add('histamine');
+  if (/gotta|gout|iperuricemia|uric/.test(t)) add('gout');
+  if (/renale|renal|kidney/.test(t)) add('renal');
+  return result;
 };
 
 module.exports = (pool) => {
@@ -151,7 +159,7 @@ module.exports = (pool) => {
       const targetDate = date || new Date().toISOString().split('T')[0];
 
       const profileResult = await pool.query(
-        `SELECT uo.*, u.age, u.weight, u.height, u.goal, u.health_profile
+        `SELECT uo.*, u.age, u.weight, u.height, u.goal
          FROM user_onboarding uo
          JOIN users u ON u.id = uo.user_id
          WHERE uo.user_id = $1
@@ -182,7 +190,7 @@ module.exports = (pool) => {
         goal: row.goal || 'maintenance',
         dietaryStyle: row.diet || 'omnivore',
         allergiesText: row.allergies || '',
-        pathologies: extractUserPathologies(row.health_profile),
+        pathologies: parsePathologiesFromAllergies(row.allergies),
         workoutDays: Number(row.workout_days) || 0,
         trainingTime: row.training_time || null,
         dailyCalorieTarget,

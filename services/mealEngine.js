@@ -57,10 +57,12 @@ const PATHOLOGY_MAP = {
   lactose: 'ok_lactose_intolerant',
   lattosio: 'ok_lactose_intolerant',
   diabetic: 'ok_diabetic',
+  diabetes: 'ok_diabetic',
   diabete: 'ok_diabetic',
   diabetico: 'ok_diabetic',
   gerd: 'ok_gerd',
   reflusso: 'ok_gerd',
+  acidita: 'ok_gerd',
   'reflusso gastrico': 'ok_gerd',
   ibs: 'ok_ibs_fodmap',
   fodmap: 'ok_ibs_fodmap',
@@ -199,8 +201,15 @@ function createRng(seedText) {
   };
 }
 
-function giScore(giNumeric, userProfile = {}) {
-  const gi = Number(giNumeric);
+function giScore(input, userProfile = {}) {
+  const ingredient = input && typeof input === 'object' ? input : null;
+  const giLabel = ingredient ? normalizeToken(ingredient.glycemic_index).replace(/\s+/g, '_') : null;
+
+  if (giLabel === 'low') return 1.2;
+  if (giLabel === 'medium') return 1.0;
+  if (giLabel === 'high') return 0.7;
+
+  const gi = Number(ingredient ? ingredient.gi_numeric : input);
   if (!Number.isFinite(gi)) return 1.0;
 
   const goal = normalizeToken(userProfile.goal);
@@ -384,7 +393,7 @@ function pickIngredient(candidates, dayTracker, mealTracker, rng, userProfile, s
     .map((candidate) => ({
       candidate,
       score: deterministicSelectionScore(`${selectionSeed}:${candidate.id}:${candidate.name}`) *
-        giScore(candidate.gi_numeric, rankingProfile),
+        giScore(candidate, rankingProfile),
     }))
     .sort((a, b) => b.score - a.score || String(a.candidate.name).localeCompare(String(b.candidate.name)))
     .map((entry) => entry.candidate)[0] || null;
@@ -429,7 +438,15 @@ function calcDailyGiSummary(mealPlan) {
   const meals = Array.isArray(mealPlan) ? mealPlan : [];
   const allIngredients = meals.flatMap((meal) => Array.isArray(meal.ingredients) ? meal.ingredients : []);
   const totalIngredients = allIngredients.length;
-  const ingredientsWithGi = allIngredients.filter((item) => Number.isFinite(Number(item.gi_numeric))).length;
+  const counts = allIngredients.reduce((acc, item) => {
+    const label = normalizeToken(item.glycemic_index);
+    if (['low', 'basso'].includes(label)) acc.low++;
+    else if (['medium', 'medio'].includes(label)) acc.medium++;
+    else if (['high', 'alto'].includes(label)) acc.high++;
+    else acc.unknown++;
+    return acc;
+  }, { low: 0, medium: 0, high: 0, unknown: 0 });
+  const ingredientsWithGi = totalIngredients - counts.unknown;
 
   if (ingredientsWithGi === 0) {
     return {
@@ -437,12 +454,13 @@ function calcDailyGiSummary(mealPlan) {
       giCategory: 'unknown',
       ingredientsWithGi,
       totalIngredients,
+      ...counts,
     };
   }
 
   const coverage = totalIngredients > 0 ? ingredientsWithGi / totalIngredients : 0;
   const weighted = allIngredients.reduce((acc, item) => {
-    const gi = Number(item.gi_numeric);
+    const gi = item.gi_numeric === null || item.gi_numeric === undefined ? NaN : Number(item.gi_numeric);
     if (!Number.isFinite(gi)) return acc;
     const weight = Number(item.portionG) > 0 ? Number(item.portionG) : 1;
     acc.totalWeight += weight;
@@ -457,12 +475,17 @@ function calcDailyGiSummary(mealPlan) {
   else if (avgGi !== null && avgGi < 45) giCategory = 'low';
   else if (avgGi !== null && avgGi <= 65) giCategory = 'medium';
   else if (avgGi !== null) giCategory = 'high';
+  else if (counts.high > 0 && counts.low === 0 && counts.medium === 0) giCategory = 'high';
+  else if (counts.medium > 0 && counts.low === 0 && counts.high === 0) giCategory = 'medium';
+  else if (counts.low > 0 && counts.medium === 0 && counts.high === 0) giCategory = 'low';
+  else giCategory = 'mixed';
 
   return {
     avgGi,
     giCategory,
     ingredientsWithGi,
     totalIngredients,
+    ...counts,
   };
 }
 

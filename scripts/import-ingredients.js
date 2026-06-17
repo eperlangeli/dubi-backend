@@ -41,8 +41,12 @@ const toInteger = (value) => {
 const toBoolean = (value) => {
   if (value === true) return true;
   if (value === 1) return true;
-  const text = String(value ?? '').trim().toLowerCase();
-  return ['si', 'sì', '1', 'true', 'yes', 'y'].includes(text);
+  const text = String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+  return ['si', '1', 'true', 'yes', 'y'].includes(text);
 };
 
 const toTextArray = (value) => {
@@ -55,11 +59,16 @@ const toTextArray = (value) => {
 };
 
 const normalizeGlycemicIndex = (value) => {
-  const text = String(value ?? '').trim().toLowerCase();
+  const text = String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
   if (!text || text === '-') return null;
-  if (['basso', 'low'].includes(text)) return 'low';
-  if (['medio', 'medium', 'med'].includes(text)) return 'medium';
-  if (['alto', 'high'].includes(text)) return 'high';
+  const compact = text.replace(/[^a-z0-9]+/g, '');
+  if (['basso', 'low'].includes(compact)) return 'low';
+  if (['medio', 'medium', 'med', 'bassomedio', 'mediobasso', 'lowmedium', 'mediumlow'].includes(compact)) return 'medium';
+  if (['alto', 'high', 'medioalto', 'altomedio', 'mediumhigh', 'highmedium'].includes(compact)) return 'high';
 
   const numeric = toInteger(value);
   if (numeric === null) return text;
@@ -159,6 +168,7 @@ const alias = {
   primaryBenefit: ['primary_benefit', 'beneficio principale', 'beneficioprincipale'],
   scienceNote: ['science_note', 'nota scientifica', 'notascientifica'],
   validato: ['validato', 'validated'],
+  macroOk: ['macro ok', 'macro ok?', 'macrook', 'macro'],
   notes: ['nota', 'notes', 'note nutrizionista', 'notenutrizionista'],
   correction: ['correzione applicata'],
 };
@@ -302,6 +312,7 @@ const locateWorkbook = () => {
   const inlineFileArg = args.find((arg) => arg.startsWith('--file='));
   const positional = args.find((arg) => !arg.startsWith('--'));
   const explicitPath = process.env.INGREDIENTS_XLSX_PATH ||
+    process.env.EXCEL_PATH ||
     (inlineFileArg ? inlineFileArg.slice('--file='.length) : null) ||
     (fileArgIndex >= 0 ? args[fileArgIndex + 1] : null) ||
     positional;
@@ -330,6 +341,7 @@ const readSheetPayloads = (sheet, sheetKind) => {
     rowsPrepared: 0,
     rowsSkipped: 0,
     skippedNotValidated: 0,
+    skippedMacroNotOk: 0,
     errors: [],
   };
   const payloads = [];
@@ -347,6 +359,14 @@ const readSheetPayloads = (sheet, sheetKind) => {
       summary.rowsSkipped += 1;
       summary.skippedNotValidated += 1;
       return;
+    }
+    if (sheetKind === 'new_validated') {
+      const macroIndex = getIndex(headerMap, alias.macroOk);
+      if (macroIndex >= 0 && !toBoolean(row[macroIndex])) {
+        summary.rowsSkipped += 1;
+        summary.skippedMacroNotOk += 1;
+        return;
+      }
     }
 
     try {
@@ -437,7 +457,7 @@ const run = async () => {
   const errors = [...corrected.summary.errors, ...newValidated.summary.errors];
   console.log(`\nWorkbook: ${workbookPath}`);
   console.log(`[OK] Sheet 1 (${sheet1Name}): ${corrected.summary.rowsRead} rows read, ${corrected.payloads.length} ${DRY_RUN ? 'prepared' : 'upserted'}`);
-  console.log(`[OK] Sheet 2 (${sheet2Name}): ${newValidated.payloads.length} validated rows, ${newValidated.payloads.length} ${DRY_RUN ? 'prepared' : 'upserted'} (${newValidated.summary.skippedNotValidated} skipped - VALIDATO != SI)`);
+  console.log(`[OK] Sheet 2 (${sheet2Name}): ${newValidated.payloads.length} validated macro-ok rows, ${newValidated.payloads.length} ${DRY_RUN ? 'prepared' : 'upserted'} (${newValidated.summary.skippedNotValidated} skipped - VALIDATO != SI, ${newValidated.summary.skippedMacroNotOk} skipped - MACRO OK != SI)`);
   console.log(`[ERR] Errors: ${errors.length}`);
 
   if (errors.length) {
