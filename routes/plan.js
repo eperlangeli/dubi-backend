@@ -82,7 +82,7 @@ const parsePathologiesFromAllergies = (text) => {
   if (/ibs|fodmap|colon irritabile/.test(t)) add('ibs_fodmap');
   if (/celiac|celiachia|celiaco|glutine|gluten/.test(t)) add('celiac');
   if (/diabet/.test(t)) add('diabetic');
-  if (/lattosio|lactose/.test(t)) add('lactose_intolerant');
+  if (/lattosio|lactose|\bdairy\b|\blatte\b|\bmilk\b/.test(t)) add('lactose_intolerant');
   if (/nichel|nickel/.test(t)) add('nickel');
   if (/istamina|histamine/.test(t)) add('histamine');
   if (/gotta|gout|iperuricemia|uric/.test(t)) add('gout');
