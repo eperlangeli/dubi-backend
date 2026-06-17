@@ -358,11 +358,10 @@ function recordVariety(ingredient, dayTracker, mealTracker) {
   if (mealTracker.mainMeal && ingredient.category === 'grain') mealTracker.grainCount++;
 }
 
-async function loadEligibleIngredients(pool, dietCol, allergenCols, pathologyCols) {
+async function loadEligibleIngredients(pool, dietCol, allergenCols) {
   const conditions = ['i.is_active = true', `i.${dietCol} = true`];
 
   for (const col of allergenCols) conditions.push(`i.${col} = false`);
-  for (const col of pathologyCols) conditions.push(`i.${col} = true`);
 
   const { rows } = await pool.query(`
     SELECT i.*
@@ -412,7 +411,11 @@ function buildPlanItem(ingredient, slot, portionG) {
       ? null
       : Number(ingredient.source_confidence),
     glycemic_index: ingredient.glycemic_index || null,
-    gi_numeric: Number.isFinite(Number(ingredient.gi_numeric)) ? Number(ingredient.gi_numeric) : null,
+    gi_numeric: ingredient.gi_numeric !== null &&
+      ingredient.gi_numeric !== undefined &&
+      Number.isFinite(Number(ingredient.gi_numeric))
+      ? Number(ingredient.gi_numeric)
+      : null,
     slot,
     portionG,
     calories_per_100g: Number(ingredient.calories_per_100g || 0),
@@ -634,7 +637,7 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     hasDiabeticNeed: pathologyCols.includes('ok_diabetic') || userPathologies.includes('diabetic'),
   };
 
-  const eligibleIngredients = await loadEligibleIngredients(pool, dietCol, allergenCols, pathologyCols);
+  const eligibleIngredients = await loadEligibleIngredients(pool, dietCol, allergenCols);
   const safeIngredients = applyPathologyFilter(eligibleIngredients, userPathologies);
   const pathologyFilter = calcPathologyExclusions(eligibleIngredients, userPathologies);
   const trainingToday = isTrainingDay(userProfile, date);
