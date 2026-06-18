@@ -1,6 +1,45 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcryptjs = require('bcryptjs');
+const crypto = require('crypto');
+
+let Resend = null;
+try {
+  ({ Resend } = require('resend'));
+} catch (error) {
+  // Optional in local development. Render installs it from package.json.
+}
+
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+const PASSWORD_RESET_COOLDOWN_MS = 60 * 1000;
+const PASSWORD_RESET_MESSAGE = 'If this email is registered, you will receive a reset link.';
+
+const hashResetToken = (token) => (
+  crypto.createHash('sha256').update(token).digest('hex')
+);
+
+const getFrontendBaseUrl = () => (
+  process.env.FRONTEND_BASE_URL ||
+  process.env.PASSWORD_RESET_BASE_URL ||
+  'https://dubi-frontend.onrender.com'
+).replace(/\/+$/, '');
+
+const buildResetEmail = (resetUrl) => ({
+  subject: 'Reset your DUBI password',
+  html: `
+    <div style="font-family:Arial,sans-serif;line-height:1.55;color:#232323">
+      <h2>Reset your DUBI password</h2>
+      <p>We received a request to create a new password for your DUBI account.</p>
+      <p>
+        <a href="${resetUrl}" style="display:inline-block;background:#6B8A64;color:#fff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:700">
+          Create a new password
+        </a>
+      </p>
+      <p>This link expires in 1 hour and can only be used once.</p>
+      <p>If you did not request this change, you can safely ignore this email.</p>
+    </div>
+  `
+});
 
 module.exports = (pool) => {
   const router = express.Router();
@@ -170,6 +209,204 @@ module.exports = (pool) => {
       res.json({ token, user: toPublicUser(user) });
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post('/forgot-password', async (req, res) => {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    let client;
+    let resetToken = null;
+    let resetTokenHash = null;
+    let recipient = null;
+
+    try {
+      client = await pool.connect();
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.allow_password_reset', 'true', true)");
+
+      const userResult = await client.query(
+        'SELECT id, email FROM users WHERE LOWER(email) = $1 LIMIT 1',
+        [email]
+      );
+
+      if (userResult.rows.length === 0) {
+        await client.query('COMMIT');
+        return res.status(200).json({ message: PASSWORD_RESET_MESSAGE });
+      }
+
+      const user = userResult.rows[0];
+      const recentResult = await client.query(
+        `
+        SELECT created_at
+        FROM password_reset_tokens
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+        `,
+        [user.id]
+      );
+
+      const lastCreatedAt = recentResult.rows[0]?.created_at
+        ? new Date(recentResult.rows[0].created_at).getTime()
+        : 0;
+
+      if (lastCreatedAt && Date.now() - lastCreatedAt < PASSWORD_RESET_COOLDOWN_MS) {
+        await client.query('COMMIT');
+        return res.status(200).json({ message: PASSWORD_RESET_MESSAGE });
+      }
+
+      resetToken = crypto.randomBytes(32).toString('hex');
+      resetTokenHash = hashResetToken(resetToken);
+      recipient = user.email;
+      const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+
+      await client.query(
+        'UPDATE password_reset_tokens SET used = true WHERE user_id = $1 AND used = false',
+        [user.id]
+      );
+      await client.query(
+        `
+        INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+        VALUES ($1, $2, $3)
+        `,
+        [user.id, resetTokenHash, expiresAt]
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      if (client) {
+        try { await client.query('ROLLBACK'); } catch (rollbackError) {
+          console.error('Password reset request rollback failed.');
+        }
+      }
+      console.error('Password reset request failed.');
+      return res.status(200).json({ message: PASSWORD_RESET_MESSAGE });
+    } finally {
+      if (client) client.release();
+    }
+
+    setImmediate(async () => {
+      try {
+        if (!process.env.RESEND_API_KEY || !Resend) {
+          throw new Error('Password reset email is not configured.');
+        }
+
+        const resetUrl = `${getFrontendBaseUrl()}/?reset_token=${encodeURIComponent(resetToken)}`;
+        const copy = buildResetEmail(resetUrl);
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        const result = await resend.emails.send({
+          from: process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || 'DUBI <support@dubi.health>',
+          to: recipient,
+          subject: copy.subject,
+          html: copy.html
+        });
+
+        if (result?.error) {
+          throw new Error('Password reset email delivery failed.');
+        }
+      } catch (error) {
+        console.error('Password reset email delivery failed.');
+
+        let cleanupClient;
+        try {
+          cleanupClient = await pool.connect();
+          await cleanupClient.query('BEGIN');
+          await cleanupClient.query("SELECT set_config('app.allow_password_reset', 'true', true)");
+          await cleanupClient.query(
+            'UPDATE password_reset_tokens SET used = true WHERE token_hash = $1',
+            [resetTokenHash]
+          );
+          await cleanupClient.query('COMMIT');
+        } catch (cleanupError) {
+          if (cleanupClient) {
+            try { await cleanupClient.query('ROLLBACK'); } catch (rollbackError) {
+              console.error('Password reset token cleanup rollback failed.');
+            }
+          }
+          console.error('Password reset token cleanup failed.');
+        } finally {
+          if (cleanupClient) cleanupClient.release();
+        }
+      }
+    });
+
+    return res.status(200).json({ message: PASSWORD_RESET_MESSAGE });
+  });
+
+  router.post('/reset-password', async (req, res) => {
+    const token = String(req.body?.token || '').trim();
+    const newPassword = String(req.body?.newPassword || '');
+
+    if (!token) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    if (Buffer.byteLength(newPassword, 'utf8') > 72) {
+      return res.status(400).json({ error: 'Password must be at most 72 UTF-8 bytes' });
+    }
+
+    const tokenHash = hashResetToken(token);
+    let client;
+
+    try {
+      client = await pool.connect();
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.allow_password_reset', 'true', true)");
+
+      const tokenResult = await client.query(
+        `
+        SELECT id, user_id
+        FROM password_reset_tokens
+        WHERE token_hash = $1
+          AND used = false
+          AND expires_at > NOW()
+        FOR UPDATE
+        `,
+        [tokenHash]
+      );
+
+      if (tokenResult.rows.length === 0) {
+        await client.query('COMMIT');
+        return res.status(400).json({ error: 'Invalid or expired reset token' });
+      }
+
+      const resetRecord = tokenResult.rows[0];
+      const passwordHash = await bcryptjs.hash(newPassword, 10);
+
+      const userResult = await client.query(
+        'UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING id',
+        [passwordHash, resetRecord.user_id]
+      );
+
+      if (userResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Invalid or expired reset token' });
+      }
+
+      await client.query(
+        `
+        UPDATE password_reset_tokens
+        SET used = true, used_at = NOW()
+        WHERE user_id = $1 AND used = false
+        `,
+        [resetRecord.user_id]
+      );
+      await client.query('COMMIT');
+
+      return res.status(200).json({ message: 'Password updated successfully' });
+    } catch (error) {
+      if (client) {
+        try { await client.query('ROLLBACK'); } catch (rollbackError) {
+          console.error('Password update rollback failed.');
+        }
+      }
+      console.error('Password update failed.');
+      return res.status(500).json({ error: 'Unable to update password' });
+    } finally {
+      if (client) client.release();
     }
   });
 
