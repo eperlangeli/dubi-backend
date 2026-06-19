@@ -91,7 +91,7 @@ module.exports = (pool) => {
       if (isNew && resend) {
         const copy = COPY[lang] || COPY.en;
         resend.emails.send({
-          from: 'DUBI <hello@dubi.health>',
+          from: 'DUBI <support@dubi.health>',
           to: email,
           subject: copy.subject,
           html: copy.html
