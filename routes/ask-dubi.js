@@ -29,10 +29,78 @@ const mealLabels = {
     snack: 'afternoon snack',
     cena: 'dinner',
     snack_n: 'evening snack'
+  },
+  fr: {
+    colazione: 'petit-déjeuner',
+    snack_m: 'collation matinale',
+    pranzo: 'déjeuner',
+    snack: 'collation après-midi',
+    cena: 'dîner',
+    snack_n: 'collation du soir'
+  },
+  es: {
+    colazione: 'desayuno',
+    snack_m: 'snack matutino',
+    pranzo: 'almuerzo',
+    snack: 'merienda',
+    cena: 'cena',
+    snack_n: 'snack nocturno'
+  },
+  de: {
+    colazione: 'Frühstück',
+    snack_m: 'Morgensnack',
+    pranzo: 'Mittagessen',
+    snack: 'Nachmittagssnack',
+    cena: 'Abendessen',
+    snack_n: 'Abendsnack'
+  },
+  ar: {
+    colazione: 'إفطار',
+    snack_m: 'وجبة خفيفة صباحية',
+    pranzo: 'غداء',
+    snack: 'وجبة خفيفة مسائية',
+    cena: 'عشاء',
+    snack_n: 'وجبة خفيفة ليلية'
+  },
+  pt: {
+    colazione: 'café da manhã',
+    snack_m: 'lanche matinal',
+    pranzo: 'almoço',
+    snack: 'lanche da tarde',
+    cena: 'jantar',
+    snack_n: 'lanche noturno'
+  },
+  zh: {
+    colazione: '早餐',
+    snack_m: '上午点心',
+    pranzo: '午餐',
+    snack: '下午点心',
+    cena: '晚餐',
+    snack_n: '夜宵'
+  },
+  ja: {
+    colazione: '朝食',
+    snack_m: '午前のスナック',
+    pranzo: '昼食',
+    snack: '午後のスナック',
+    cena: '夕食',
+    snack_n: '夜食'
+  },
+  ru: {
+    colazione: 'завтрак',
+    snack_m: 'утренний перекус',
+    pranzo: 'обед',
+    snack: 'полдник',
+    cena: 'ужин',
+    snack_n: 'вечерний перекус'
   }
 };
 
-const getLang = (lang = 'it') => String(lang).startsWith('en') ? 'en' : 'it';
+const SUPPORTED_LANGS = new Set(['it', 'en', 'fr', 'es', 'de', 'ar', 'pt', 'zh', 'ja', 'ru']);
+const getLang = (lang = 'it') => {
+  const l = String(lang).toLowerCase().slice(0, 2);
+  return SUPPORTED_LANGS.has(l) ? l : 'it';
+};
 
 const detectMealId = (message = '') => {
   const text = normalize(message);
@@ -295,6 +363,7 @@ const buildOpenAiMessages = ({ message, userData = {}, plan = {}, todayMeals = [
       role: 'system',
       content: [
         'You are Ask DUBI, the controlled nutrition and product assistant inside the DUBI app.',
+        `Always respond in this language: ${l}. Never switch language regardless of the language of the context data.`,
         'Answer only about DUBI, the user plan, meals, ingredients, macros, training timing, wearable data usage, settings and app support.',
         'Use only the supplied context. If data is missing, say it is missing. Never invent biometric data, diagnoses, clinical prescriptions or exact provider data.',
         'Be practical, direct and agent-like. If the user clearly asks to change a meal, return a replace_meal planChange with the correct mealId.',
