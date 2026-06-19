@@ -20,8 +20,7 @@ const scopedPool = createScopedPool(pool);
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
-const waitlistRouter = require('./routes/waitlist');
-app.use('/waitlist', waitlistRouter);
+app.use('/waitlist', require('./routes/waitlist')(pool));
 app.use(withAuthenticatedDbContext(pool));
 app.get('/', (req, res) => {
   res.json({
