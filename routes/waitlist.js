@@ -1,11 +1,37 @@
 'use strict';
 
 const express = require('express');
+const { Resend } = require('resend');
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 3;
 const rateLimits = new Map();
+
+const COPY = {
+  it: {
+    subject: 'Sei nella lista DUBI 🎉',
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
+        <h2 style="color:#2D6A4F">Grazie per esserti iscritto!</h2>
+        <p>Sei ufficialmente nella lista d'attesa di <strong>DUBI</strong> — il tuo assistente nutrizionale personale basato sulla scienza.</p>
+        <p>Ti scriveremo non appena DUBI sarà disponibile. Nel frattempo, puoi scoprire di più su <a href="https://dubi.health" style="color:#2D6A4F">dubi.health</a>.</p>
+        <p style="margin-top:32px;color:#888;font-size:13px">— Il team DUBI</p>
+      </div>
+    `
+  },
+  en: {
+    subject: 'You\'re on the DUBI waitlist 🎉',
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
+        <h2 style="color:#2D6A4F">Thanks for signing up!</h2>
+        <p>You're officially on the <strong>DUBI</strong> waitlist — your science-based personal nutrition assistant.</p>
+        <p>We'll reach out as soon as DUBI is ready. In the meantime, learn more at <a href="https://dubi.health" style="color:#2D6A4F">dubi.health</a>.</p>
+        <p style="margin-top:32px;color:#888;font-size:13px">— The DUBI team</p>
+      </div>
+    `
+  }
+};
 
 const getClientIp = (req) => {
   const forwardedFor = req.headers['x-forwarded-for'];
@@ -27,6 +53,7 @@ const isRateLimited = (ip) => {
 
 module.exports = (pool) => {
   const router = express.Router();
+  const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
   router.post('/', async (req, res) => {
     const ip = getClientIp(req);
@@ -50,13 +77,28 @@ module.exports = (pool) => {
       : 'landing_page';
 
     try {
-      await pool.query(
+      const result = await pool.query(
         `INSERT INTO waitlist (email, lang, source, ip)
          VALUES ($1, $2, $3, $4)
-         ON CONFLICT (LOWER(email)) DO NOTHING`,
+         ON CONFLICT (LOWER(email)) DO NOTHING
+         RETURNING id`,
         [email, lang, source, ip]
       );
-      return res.status(200).json({ success: true });
+
+      const isNew = result.rowCount > 0;
+
+      // Send thank-you email only for new signups
+      if (isNew && resend) {
+        const copy = COPY[lang] || COPY.en;
+        resend.emails.send({
+          from: 'DUBI <onboarding@resend.dev>',
+          to: email,
+          subject: copy.subject,
+          html: copy.html
+        }).catch(() => {}); // fire-and-forget, don't block the response
+      }
+
+      return res.status(200).json({ success: true, duplicate: !isNew });
     } catch (err) {
       const duplicate = err.code === '23505' || /duplicate/i.test(err.message || '');
       if (duplicate) {
