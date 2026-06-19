@@ -99,7 +99,7 @@ module.exports = (pool) => {
   router.post('/generate', verifyToken, async (req, res) => {
     try {
       const result = await pool.query(
-        'SELECT weight, height, age, goal FROM users WHERE id = $1',
+        'SELECT weight, height, age, goal, is_minor, parental_consent_status FROM users WHERE id = $1',
         [req.userId]
       );
 
@@ -108,6 +108,14 @@ module.exports = (pool) => {
       }
 
       const user = result.rows[0];
+
+      // Parental consent gate
+      if (user.is_minor && user.parental_consent_status !== 'approved') {
+        return res.status(403).json({
+          error: 'parental_consent_required',
+          parental_consent_status: user.parental_consent_status || 'pending'
+        });
+      }
       
       // Calculate
       const bmr = calculateBMR(user.weight, user.height, user.age, 'male');
@@ -159,7 +167,7 @@ module.exports = (pool) => {
       const targetDate = date || new Date().toISOString().split('T')[0];
 
       const profileResult = await pool.query(
-        `SELECT uo.*, u.age, u.weight, u.height, u.goal
+        `SELECT uo.*, u.age, u.weight, u.height, u.goal, u.is_minor, u.parental_consent_status
          FROM user_onboarding uo
          JOIN users u ON u.id = uo.user_id
          WHERE uo.user_id = $1
@@ -172,6 +180,15 @@ module.exports = (pool) => {
       }
 
       const row = profileResult.rows[0];
+
+      // Parental consent gate
+      if (row.is_minor && row.parental_consent_status !== 'approved') {
+        return res.status(403).json({
+          error: 'parental_consent_required',
+          parental_consent_status: row.parental_consent_status || 'pending'
+        });
+      }
+
       const macroResult = await pool.query(
         `SELECT calories, protein
          FROM meal_plans
