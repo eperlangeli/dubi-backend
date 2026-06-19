@@ -11,6 +11,7 @@ if (!process.env.RESEND_API_KEY) {
 }
 
 const app = express();
+app.set('trust proxy', 1);
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
@@ -19,6 +20,8 @@ const scopedPool = createScopedPool(pool);
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+const waitlistRouter = require('./routes/waitlist');
+app.use('/waitlist', waitlistRouter);
 app.use(withAuthenticatedDbContext(pool));
 app.get('/', (req, res) => {
   res.json({
