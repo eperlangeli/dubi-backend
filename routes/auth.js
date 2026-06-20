@@ -3,6 +3,13 @@ const jwt = require('jsonwebtoken');
 const bcryptjs = require('bcryptjs');
 const crypto = require('crypto');
 
+let createClient = null;
+try {
+  ({ createClient } = require('@supabase/supabase-js'));
+} catch (error) {
+  // Render installs it from package.json. Keep local syntax checks usable.
+}
+
 let Resend = null;
 try {
   ({ Resend } = require('resend'));
@@ -40,6 +47,19 @@ const buildResetEmail = (resetUrl) => ({
     </div>
   `
 });
+
+let supabaseAdmin = null;
+const getSupabaseAdmin = () => {
+  if (supabaseAdmin) return supabaseAdmin;
+  const url = String(process.env.SUPABASE_URL || '').trim();
+  const serviceKey = String(process.env.SUPABASE_SERVICE_KEY || '').trim();
+  if (!createClient || !url || !serviceKey) return null;
+
+  supabaseAdmin = createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+  return supabaseAdmin;
+};
 
 module.exports = (pool) => {
   const router = express.Router();
@@ -424,6 +444,110 @@ module.exports = (pool) => {
       res.json(toPublicUser(result.rows[0]));
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.patch('/profile', verifyToken, async (req, res) => {
+    const updates = {};
+    const consentFields = ['health_data_consent', 'wearable_consent'];
+
+    for (const field of consentFields) {
+      if (!Object.prototype.hasOwnProperty.call(req.body || {}, field)) continue;
+      if (typeof req.body[field] !== 'boolean') {
+        return res.status(400).json({ error: 'invalid_consent_value' });
+      }
+      updates[field] = req.body[field];
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'no_profile_fields' });
+    }
+
+    const admin = getSupabaseAdmin();
+    if (!admin) {
+      return res.status(503).json({ error: 'supabase_admin_unavailable' });
+    }
+
+    try {
+      const { error } = await admin
+        .from('user_onboarding')
+        .update(updates)
+        .eq('user_id', req.userId);
+
+      if (error) {
+        console.error('Profile consent update failed:', error.message);
+        return res.status(500).json({ error: 'profile_update_failed' });
+      }
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('Profile consent update failed:', error.message);
+      return res.status(500).json({ error: 'server_error' });
+    }
+  });
+
+  router.post('/anonymise-health-data', verifyToken, async (req, res) => {
+    const admin = getSupabaseAdmin();
+    if (!admin) {
+      return res.status(503).json({ error: 'supabase_admin_unavailable' });
+    }
+
+    const onboardingHealthData = {
+      health_data_consent: false,
+      age: null,
+      height: null,
+      weight: null,
+      goal: null,
+      target_weight: null,
+      target_body_fat: null,
+      competition_sport: null,
+      competition_date: null,
+      occupation: null,
+      workout_days: null,
+      workout_duration: null,
+      workout_intensity: null,
+      daily_steps: null,
+      sedentary_days: null,
+      diet: null,
+      diet_intensity: null,
+      allergies: null,
+      sport: null,
+      training_time: null,
+      breakfast_pref: null,
+      day_start: null,
+      day_end: null
+    };
+
+    try {
+      const { error: onboardingError } = await admin
+        .from('user_onboarding')
+        .update(onboardingHealthData)
+        .eq('user_id', req.userId);
+
+      if (onboardingError) {
+        console.error('Health data anonymisation failed:', onboardingError.message);
+        return res.status(500).json({ error: 'anonymisation_failed' });
+      }
+
+      const { error: userError } = await admin
+        .from('users')
+        .update({
+          age: null,
+          height: null,
+          weight: null,
+          goal: null
+        })
+        .eq('id', req.userId);
+
+      if (userError) {
+        console.error('Health data anonymisation failed:', userError.message);
+        return res.status(500).json({ error: 'anonymisation_failed' });
+      }
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('Health data anonymisation failed:', error.message);
+      return res.status(500).json({ error: 'server_error' });
     }
   });
 
