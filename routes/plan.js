@@ -95,6 +95,20 @@ module.exports = (pool) => {
   const authModule = require('./auth')(pool);
   const { verifyToken } = authModule;
 
+  const requireHealthDataConsent = async (userId, res) => {
+    const { rows } = await pool.query(
+      'SELECT health_data_consent FROM user_onboarding WHERE user_id = $1',
+      [userId]
+    );
+
+    if (!rows[0]?.health_data_consent) {
+      res.status(403).json({ error: 'health_data_consent_required' });
+      return false;
+    }
+
+    return true;
+  };
+
   // Generate plan
   router.post('/generate', verifyToken, async (req, res) => {
     try {
@@ -116,6 +130,8 @@ module.exports = (pool) => {
           parental_consent_status: user.parental_consent_status || 'pending'
         });
       }
+
+      if (!(await requireHealthDataConsent(req.userId, res))) return;
       
       // Calculate
       const bmr = calculateBMR(user.weight, user.height, user.age, 'male');
@@ -145,6 +161,8 @@ module.exports = (pool) => {
   // Get current plan
   router.get('/current', verifyToken, async (req, res) => {
     try {
+      if (!(await requireHealthDataConsent(req.userId, res))) return;
+
       const result = await pool.query(
         'SELECT * FROM meal_plans WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
         [req.userId]
@@ -187,6 +205,10 @@ module.exports = (pool) => {
           error: 'parental_consent_required',
           parental_consent_status: row.parental_consent_status || 'pending'
         });
+      }
+
+      if (!row.health_data_consent) {
+        return res.status(403).json({ error: 'health_data_consent_required' });
       }
 
       const macroResult = await pool.query(
@@ -234,6 +256,8 @@ module.exports = (pool) => {
   // Get saved ingredient-based day plan
   router.get('/ingredient-plan/:date?', verifyToken, async (req, res) => {
     try {
+      if (!(await requireHealthDataConsent(req.userId, res))) return;
+
       const targetDate = req.params.date || new Date().toISOString().split('T')[0];
       const result = await pool.query(
         'SELECT plan_data FROM daily_plans WHERE user_id = $1 AND plan_date = $2',
