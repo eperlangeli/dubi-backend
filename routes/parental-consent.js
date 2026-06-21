@@ -58,7 +58,7 @@ module.exports = (pool) => {
     </html>
   `;
 
-  const emailCopy = (lang, verifyUrl) => {
+  const emailCopy = (lang, verifyUrl, minorIdentifier) => {
     const denyUrl = verifyUrl.replace('/verify/', '/deny/');
 
     const baseHtml = (title, intro, body, authorizeLabel, declineLabel, footer) => `
@@ -126,10 +126,10 @@ module.exports = (pool) => {
 
     if (lang === 'it') {
       return {
-        subject: 'Autorizzazione richiesta per tuo figlio/a su DUBI',
+        subject: `Autorizzazione richiesta per ${minorIdentifier} su DUBI`,
         html: baseHtml(
           'Autorizzazione parentale',
-          'Un minore ha creato un account su <strong>DUBI</strong> e ha indicato questo indirizzo email per richiedere la tua autorizzazione.',
+          `<strong>${minorIdentifier}</strong> ha creato un account su <strong>DUBI</strong> e ha indicato questo indirizzo email per richiedere la tua autorizzazione.`,
           'DUBI è un\'app di nutrizione personalizzata che tratta dati legati alla salute e allo stile di vita. Prima che il minore possa continuare, è richiesto il consenso di un genitore o tutore legale.<br/><br/>Se sei il genitore o tutore, clicca <strong>Autorizza</strong> per confermare. Se non riconosci questa richiesta, clicca <strong>Non autorizzare</strong>. Il link scade tra 7 giorni.',
           '✓ Autorizza accesso',
           'Non autorizzare',
@@ -139,10 +139,10 @@ module.exports = (pool) => {
     }
 
     return {
-      subject: 'Parental authorisation request for DUBI',
+      subject: `Parental authorisation request for ${minorIdentifier} on DUBI`,
       html: baseHtml(
         'Parental authorisation',
-        'A minor has created an account on <strong>DUBI</strong> and entered this email address to request your authorisation.',
+        `<strong>${minorIdentifier}</strong> has created an account on <strong>DUBI</strong> and entered this email address to request your authorisation.`,
         'DUBI is a personalised nutrition app that processes health and lifestyle data. Before the minor can continue, a parent or legal guardian must authorise the account.<br/><br/>If you are the parent or guardian, click <strong>Authorise</strong> to confirm. If you do not recognise this request, click <strong>Decline</strong> to block the account. The link expires in 7 days.',
         '✓ Authorise access',
         'Decline',
@@ -155,6 +155,7 @@ module.exports = (pool) => {
     try {
       const guardianName = String(req.body?.guardianName || '').trim();
       const guardianEmail = String(req.body?.guardianEmail || '').trim().toLowerCase();
+      const minorName = String(req.body?.minorName || '').trim();
 
       if (!guardianName) {
         return res.status(400).json({ error: 'guardian_name_required' });
@@ -200,7 +201,8 @@ module.exports = (pool) => {
 
       const verifyUrl = `${getBackendBaseUrl()}/api/parental-consent/verify/${token}`;
       const lang = preferredLanguage(req);
-      const copy = emailCopy(lang, verifyUrl);
+      const minorIdentifier = minorName || user.email;
+      const copy = emailCopy(lang, verifyUrl, minorIdentifier);
       const from = process.env.RESEND_FROM_EMAIL || 'DUBI <support@dubi.health>';
       const canSend = Boolean(process.env.RESEND_API_KEY && Resend);
 

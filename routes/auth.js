@@ -448,10 +448,10 @@ module.exports = (pool) => {
   });
 
   router.patch('/profile', verifyToken, async (req, res) => {
+    const allowed = ['health_data_consent', 'wearable_consent'];
     const updates = {};
-    const consentFields = ['health_data_consent', 'wearable_consent'];
 
-    for (const field of consentFields) {
+    for (const field of allowed) {
       if (!Object.prototype.hasOwnProperty.call(req.body || {}, field)) continue;
       if (typeof req.body[field] !== 'boolean') {
         return res.status(400).json({ error: 'invalid_consent_value' });
@@ -463,91 +463,65 @@ module.exports = (pool) => {
       return res.status(400).json({ error: 'no_profile_fields' });
     }
 
-    const admin = getSupabaseAdmin();
-    if (!admin) {
-      return res.status(503).json({ error: 'supabase_admin_unavailable' });
-    }
+    const setClauses = Object.keys(updates)
+      .map((field, index) => `${field} = $${index + 1}`)
+      .join(', ');
+    const values = [...Object.values(updates), req.userId];
 
     try {
-      const { error } = await admin
-        .from('user_onboarding')
-        .update(updates)
-        .eq('user_id', req.userId);
-
-      if (error) {
-        console.error('Profile consent update failed:', error.message);
-        return res.status(500).json({ error: 'profile_update_failed' });
-      }
-
+      await pool.query(
+        `UPDATE user_onboarding SET ${setClauses} WHERE user_id = $${values.length}`,
+        values
+      );
       return res.json({ success: true });
-    } catch (error) {
-      console.error('Profile consent update failed:', error.message);
-      return res.status(500).json({ error: 'server_error' });
+    } catch (err) {
+      console.error('Profile consent update failed:', err.message);
+      return res.status(500).json({ error: 'profile_update_failed' });
     }
   });
 
   router.post('/anonymise-health-data', verifyToken, async (req, res) => {
-    const admin = getSupabaseAdmin();
-    if (!admin) {
-      return res.status(503).json({ error: 'supabase_admin_unavailable' });
-    }
-
-    const onboardingHealthData = {
-      health_data_consent: false,
-      age: null,
-      height: null,
-      weight: null,
-      goal: null,
-      target_weight: null,
-      target_body_fat: null,
-      competition_sport: null,
-      competition_date: null,
-      occupation: null,
-      workout_days: null,
-      workout_duration: null,
-      workout_intensity: null,
-      daily_steps: null,
-      sedentary_days: null,
-      diet: null,
-      diet_intensity: null,
-      allergies: null,
-      sport: null,
-      training_time: null,
-      breakfast_pref: null,
-      day_start: null,
-      day_end: null
-    };
-
     try {
-      const { error: onboardingError } = await admin
-        .from('user_onboarding')
-        .update(onboardingHealthData)
-        .eq('user_id', req.userId);
+      // The request-scoped pool runs both statements in the transaction opened
+      // by withAuthenticatedDbContext, preserving the RLS user context.
+      await pool.query(
+        `UPDATE user_onboarding SET
+          health_data_consent = false,
+          age = NULL,
+          height = NULL,
+          weight = NULL,
+          goal = NULL,
+          target_weight = NULL,
+          target_body_fat = NULL,
+          competition_sport = NULL,
+          competition_date = NULL,
+          occupation = NULL,
+          workout_days = NULL,
+          workout_duration = NULL,
+          workout_intensity = NULL,
+          daily_steps = NULL,
+          sedentary_days = NULL,
+          diet = NULL,
+          diet_intensity = NULL,
+          allergies = NULL,
+          sport = NULL,
+          training_time = NULL,
+          breakfast_pref = NULL,
+          day_start = NULL,
+          day_end = NULL
+        WHERE user_id = $1`,
+        [req.userId]
+      );
 
-      if (onboardingError) {
-        console.error('Health data anonymisation failed:', onboardingError.message);
-        return res.status(500).json({ error: 'anonymisation_failed' });
-      }
-
-      const { error: userError } = await admin
-        .from('users')
-        .update({
-          age: null,
-          height: null,
-          weight: null,
-          goal: null
-        })
-        .eq('id', req.userId);
-
-      if (userError) {
-        console.error('Health data anonymisation failed:', userError.message);
-        return res.status(500).json({ error: 'anonymisation_failed' });
-      }
+      await pool.query(
+        'UPDATE users SET age = NULL, height = NULL, weight = NULL, goal = NULL WHERE id = $1',
+        [req.userId]
+      );
 
       return res.json({ success: true });
-    } catch (error) {
-      console.error('Health data anonymisation failed:', error.message);
-      return res.status(500).json({ error: 'server_error' });
+    } catch (err) {
+      console.error('Health data anonymisation failed:', err.message);
+      return res.status(500).json({ error: 'anonymisation_failed' });
     }
   });
 
