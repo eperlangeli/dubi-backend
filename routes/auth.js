@@ -64,6 +64,218 @@ const getSupabaseAdmin = () => {
 module.exports = (pool) => {
   const router = express.Router();
 
+  async function saveResearchAggregate(userId, reason) {
+    const savepoint = 'research_aggregate_attempt';
+
+    try {
+      // A failed statement aborts a PostgreSQL transaction even when its error
+      // is caught in JavaScript. The savepoint keeps this helper non-blocking.
+      await pool.query(`SAVEPOINT ${savepoint}`);
+
+      const { rows } = await pool.query(
+        `SELECT
+          COALESCE(uo.age, u.age) AS age,
+          COALESCE(uo.height, u.height) AS height,
+          COALESCE(uo.weight, u.weight) AS weight,
+          COALESCE(uo.goal, u.goal) AS goal,
+          uo.diet,
+          uo.workout_days,
+          uo.workout_intensity,
+          uo.occupation,
+          uo.daily_steps,
+          to_jsonb(u)->>'lang' AS lang
+         FROM users u
+         LEFT JOIN user_onboarding uo ON uo.user_id = u.id
+         WHERE u.id = $1`,
+        [userId]
+      );
+
+      if (!rows.length) {
+        await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+        return;
+      }
+
+      const research = rows[0];
+      const age = Number(research.age);
+      const ageRange = !age || age < 18 ? null
+        : age < 25 ? '18-24'
+        : age < 35 ? '25-34'
+        : age < 45 ? '35-44'
+        : age < 55 ? '45-54'
+        : '55+';
+
+      const heightMetres = Number(research.height) / 100;
+      const weightKg = Number(research.weight);
+      let bmiRange = null;
+      if (heightMetres > 0 && weightKg > 0) {
+        const bmi = weightKg / (heightMetres * heightMetres);
+        bmiRange = bmi < 18.5 ? 'underweight'
+          : bmi < 25 ? 'normal'
+          : bmi < 30 ? 'overweight'
+          : 'obese';
+      }
+
+      const dailySteps = String(research.daily_steps || '').trim().toLowerCase();
+      const numericSteps = Number(dailySteps);
+      let stepsRange = 'unknown';
+      if (dailySteps === '<3000' || dailySteps === '3000-6000') {
+        stepsRange = 'low';
+      } else if (dailySteps === '6000-8000' || dailySteps === '8000-10000') {
+        stepsRange = 'moderate';
+      } else if (dailySteps === '10000+') {
+        stepsRange = 'high';
+      } else if (Number.isFinite(numericSteps) && numericSteps > 0) {
+        stepsRange = numericSteps < 5000 ? 'low'
+          : numericSteps < 10000 ? 'moderate'
+          : 'high';
+      }
+
+      await pool.query(
+        `INSERT INTO research_aggregates
+          (age_range, bmi_range, goal, diet_type, workout_days,
+           workout_intensity, occupation_type, steps_range, reason, lang)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [
+          ageRange,
+          bmiRange,
+          research.goal || null,
+          research.diet || null,
+          research.workout_days != null ? Number(research.workout_days) : null,
+          research.workout_intensity || null,
+          research.occupation || null,
+          stepsRange,
+          reason,
+          research.lang || null
+        ]
+      );
+
+      await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+    } catch (err) {
+      try {
+        await pool.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+      } catch (savepointError) {
+        console.error('saveResearchAggregate savepoint recovery failed:', savepointError.message);
+      }
+      console.error('saveResearchAggregate failed (non-blocking):', err.message);
+    }
+  }
+
+  async function saveResearchSnapshot(userId, reason) {
+    const savepoint = 'research_snapshot_attempt';
+
+    try {
+      const salt = String(process.env.RESEARCH_SALT || '').trim();
+      if (!salt) {
+        console.error('saveResearchSnapshot skipped: RESEARCH_SALT is not configured.');
+        return;
+      }
+
+      const pseudonym = crypto
+        .createHmac('sha256', salt)
+        .update(String(userId))
+        .digest('hex');
+
+      await pool.query(`SAVEPOINT ${savepoint}`);
+
+      const { rows } = await pool.query(
+        `SELECT
+          COALESCE(uo.age, u.age) AS age,
+          COALESCE(uo.height, u.height) AS height,
+          COALESCE(uo.weight, u.weight) AS weight,
+          COALESCE(uo.goal, u.goal) AS goal,
+          to_jsonb(u)->>'lang' AS lang,
+          uo.target_weight,
+          uo.target_body_fat,
+          uo.competition_sport,
+          uo.competition_date,
+          uo.occupation,
+          uo.workout_days,
+          uo.workout_duration,
+          uo.workout_intensity,
+          uo.daily_steps,
+          uo.sedentary_days,
+          uo.diet,
+          uo.diet_intensity,
+          uo.allergies,
+          uo.sport,
+          uo.training_time,
+          uo.breakfast_pref,
+          uo.day_start,
+          uo.day_end
+         FROM users u
+         LEFT JOIN user_onboarding uo ON uo.user_id = u.id
+         WHERE u.id = $1`,
+        [userId]
+      );
+
+      if (!rows.length) {
+        await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+        return;
+      }
+
+      const research = rows[0];
+      await pool.query(
+        `INSERT INTO research_data_snapshots (
+          pseudonym, reason, lang,
+          age, height, weight, goal,
+          target_weight, target_body_fat,
+          competition_sport, competition_date,
+          occupation, workout_days, workout_duration, workout_intensity,
+          daily_steps, sedentary_days,
+          diet, diet_intensity, allergies, sport,
+          training_time, breakfast_pref, day_start, day_end
+        ) VALUES (
+          $1,$2,$3,
+          $4,$5,$6,$7,
+          $8,$9,
+          $10,$11,
+          $12,$13,$14,$15,
+          $16,$17,
+          $18,$19,$20,$21,
+          $22,$23,$24,$25
+        )`,
+        [
+          pseudonym,
+          reason,
+          research.lang ?? null,
+          research.age ?? null,
+          research.height ?? null,
+          research.weight ?? null,
+          research.goal ?? null,
+          research.target_weight ?? null,
+          research.target_body_fat ?? null,
+          research.competition_sport ?? null,
+          research.competition_date ?? null,
+          research.occupation ?? null,
+          research.workout_days ?? null,
+          research.workout_duration ?? null,
+          research.workout_intensity ?? null,
+          research.daily_steps ?? null,
+          research.sedentary_days ?? null,
+          research.diet ?? null,
+          research.diet_intensity ?? null,
+          research.allergies ?? null,
+          research.sport ?? null,
+          research.training_time ?? null,
+          research.breakfast_pref ?? null,
+          research.day_start ?? null,
+          research.day_end ?? null
+        ]
+      );
+
+      await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+    } catch (err) {
+      try {
+        await pool.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+      } catch (savepointError) {
+        console.error('saveResearchSnapshot savepoint recovery failed:', savepointError.message);
+      }
+      console.error('saveResearchSnapshot failed (non-blocking):', err.message);
+    }
+  }
+
   const publicUserFields = `
     id,
     email,
@@ -481,6 +693,9 @@ module.exports = (pool) => {
   });
 
   router.post('/anonymise-health-data', verifyToken, async (req, res) => {
+    await saveResearchSnapshot(req.userId, 'consent_revoked');
+    await saveResearchAggregate(req.userId, 'consent_revoked');
+
     try {
       // The request-scoped pool runs both statements in the transaction opened
       // by withAuthenticatedDbContext, preserving the RLS user context.
@@ -527,6 +742,9 @@ module.exports = (pool) => {
 
   router.delete('/me', verifyToken, async (req, res) => {
     try {
+      await saveResearchSnapshot(req.userId, 'account_deleted');
+      await saveResearchAggregate(req.userId, 'account_deleted');
+
       const result = await pool.query(
         'DELETE FROM users WHERE id = $1 RETURNING id, email',
         [req.userId]
@@ -536,7 +754,7 @@ module.exports = (pool) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      res.json({ success: true });
+      return res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
