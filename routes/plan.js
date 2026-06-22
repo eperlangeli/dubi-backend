@@ -51,7 +51,7 @@ const SPORT_GROUP_MAP = {
   padel: 'team_sport',
   handball: 'team_sport',         pallamano: 'team_sport',
   baseball: 'team_sport',
-  'sci alpino': 'team_sport',     'alpine skiing': 'team_sport',  sci: 'team_sport',
+  'sci alpino': 'team_sport',     'alpine skiing': 'team_sport',  'alpine ski': 'team_sport',  sci: 'team_sport',
   surf: 'team_sport',             kitesurf: 'team_sport',         kiteboard: 'team_sport',
   scherma: 'team_sport',          fencing: 'team_sport',
 
@@ -73,7 +73,7 @@ const SPORT_GROUP_MAP = {
   yoga: 'low_intensity',
   pilates: 'low_intensity',
   golf: 'low_intensity',
-  'tiro con larco': 'low_intensity',  'tiro con l arco': 'low_intensity',  archery: 'low_intensity',
+  'tiro con larco': 'low_intensity',  'tiro con l arco': 'low_intensity',  archery: 'low_intensity',  equestrian: 'low_intensity',
   equitazione: 'low_intensity',       'horse riding': 'low_intensity',     cavallo: 'low_intensity',
   'danza sportiva': 'low_intensity',  'dance sport': 'low_intensity',
   'danza classica': 'low_intensity',  ballet: 'low_intensity',             balletto: 'low_intensity',
