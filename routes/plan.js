@@ -1,66 +1,180 @@
 const express = require('express');
 const { generateDayPlan, calcDailyGiSummary } = require('../services/mealEngine');
 
-// Formule scientifiche DUBI
+// ─── Formule scientifiche DUBI ────────────────────────────────────────────────
+
 const calculateBMR = (weight, height, age, sex = 'male') => {
-  // Mifflin-St Jeor formula (clinical standard)
-  if (sex === 'male') {
-    return 10 * weight + 6.25 * height - 5 * age + 5;
-  } else {
-    return 10 * weight + 6.25 * height - 5 * age - 161;
+  // Mifflin-St Jeor (standard clinico)
+  if (sex === 'male') return 10 * weight + 6.25 * height - 5 * age + 5;
+  return 10 * weight + 6.25 * height - 5 * age - 161;
+};
+
+const calculateActivityKcal = (workoutDays = 0, workoutIntensity = 'moderate', bmr = 0) => {
+  // Base sedentaria (~20% BMR)
+  const base = Math.round(bmr * 0.2);
+  if (!workoutDays || workoutDays <= 0) return base;
+
+  const sessionKcal = {
+    light: 250,     leggera: 250,    low: 250,
+    moderate: 450,  moderata: 450,
+    high: 650,      alta: 650,
+    very_high: 850, molto_alta: 850,
+  };
+  const perSession = sessionKcal[String(workoutIntensity).toLowerCase()] || 450;
+  return base + Math.round((perSession * Math.min(Number(workoutDays), 7)) / 7);
+};
+
+const calculateTDEE = (bmr, activityKcal = 500) => Math.round(bmr + activityKcal);
+
+// ─── Sport groups ─────────────────────────────────────────────────────────────
+
+const SPORT_GROUP_MAP = {
+  // ENDURANCE — alto fabbisogno calorico, carbo dominanti
+  nuoto: 'endurance',             swimming: 'endurance',          swim: 'endurance',
+  'nuoto sincronizzato': 'endurance', 'synchronized swimming': 'endurance',
+  corsa: 'endurance',             running: 'endurance',           run: 'endurance',
+  maratona: 'endurance',          marathon: 'endurance',
+  mezzofondo: 'endurance',        'middle distance': 'endurance',
+  ciclismo: 'endurance',          cycling: 'endurance',           bici: 'endurance',         bike: 'endurance',
+  triathlon: 'endurance',
+  canottaggio: 'endurance',       rowing: 'endurance',
+  canoa: 'endurance',             kayak: 'endurance',
+  'sci di fondo': 'endurance',    'nordic ski': 'endurance',      'cross country': 'endurance',
+
+  // TEAM SPORT — carboidrati alti, stop-and-go intermittente
+  calcio: 'team_sport',           soccer: 'team_sport',           football: 'team_sport',
+  basket: 'team_sport',           basketball: 'team_sport',
+  pallavolo: 'team_sport',        volleyball: 'team_sport',
+  rugby: 'team_sport',
+  hockey: 'team_sport',           'hockey su ghiaccio': 'team_sport',
+  tennis: 'team_sport',
+  padel: 'team_sport',
+  handball: 'team_sport',         pallamano: 'team_sport',
+  baseball: 'team_sport',
+  'sci alpino': 'team_sport',     'alpine skiing': 'team_sport',  sci: 'team_sport',
+  surf: 'team_sport',             kitesurf: 'team_sport',         kiteboard: 'team_sport',
+  scherma: 'team_sport',          fencing: 'team_sport',
+
+  // STRENGTH — proteine dominanti, forza e ipertrofia
+  palestra: 'strength',           gym: 'strength',                'weight training': 'strength',
+  powerlifting: 'strength',
+  crossfit: 'strength',
+  arrampicata: 'strength',        climbing: 'strength',           bouldering: 'strength',
+  lotta: 'strength',              wrestling: 'strength',
+  judo: 'strength',
+  mma: 'strength',                'mixed martial arts': 'strength',
+  ginnastica: 'strength',         gymnastics: 'strength',         'ginnastica artistica': 'strength',
+  boxe: 'strength',               boxing: 'strength',             pugilato: 'strength',
+  karate: 'strength',             taekwondo: 'strength',
+  'arti marziali': 'strength',    'martial arts': 'strength',
+  sprint: 'strength',             'atletica velocita': 'strength', velocita: 'strength',
+
+  // LOW INTENSITY — fabbisogno ridotto, macro bilanciati
+  yoga: 'low_intensity',
+  pilates: 'low_intensity',
+  golf: 'low_intensity',
+  'tiro con larco': 'low_intensity',  'tiro con l arco': 'low_intensity',  archery: 'low_intensity',
+  equitazione: 'low_intensity',       'horse riding': 'low_intensity',     cavallo: 'low_intensity',
+  'danza sportiva': 'low_intensity',  'dance sport': 'low_intensity',
+  'danza classica': 'low_intensity',  ballet: 'low_intensity',             balletto: 'low_intensity',
+  danza: 'low_intensity',             dance: 'low_intensity',
+};
+
+const SPORT_GROUP_PROFILES = {
+  endurance: {
+    tdeeBonus: 0.10,   // +10% TDEE — alto dispendio aerobico
+    protein: 0.18,     // 18% kcal → proteine
+    carbs:   0.57,     // 57% kcal → carboidrati
+    fat:     0.25,     // 25% kcal → grassi
+  },
+  team_sport: {
+    tdeeBonus: 0.05,   // +5% TDEE — intermittente intenso
+    protein: 0.22,     // 22%
+    carbs:   0.53,     // 53%
+    fat:     0.25,     // 25%
+  },
+  strength: {
+    tdeeBonus: 0.00,   // nessun bonus extra (già coperto da intensità)
+    protein: 0.32,     // 32% — proteine dominanti per ipertrofia
+    carbs:   0.43,     // 43%
+    fat:     0.25,     // 25%
+  },
+  low_intensity: {
+    tdeeBonus: -0.05,  // -5% TDEE — fabbisogno ridotto
+    protein: 0.23,     // 23%
+    carbs:   0.47,     // 47%
+    fat:     0.30,     // 30% — grassi leggermente più alti
+  },
+};
+
+const getSportGroup = (sport) => {
+  if (!sport) return null;
+  const normalized = String(sport)
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .trim();
+  return SPORT_GROUP_MAP[normalized] || null;
+};
+
+// ─── Calcolo macro ────────────────────────────────────────────────────────────
+
+const calculateMacros = (tdee, goal, sportGroup = null) => {
+  const sportProfile = SPORT_GROUP_PROFILES[sportGroup] || null;
+
+  // Applica bonus TDEE da sport
+  const adjustedTdee = sportProfile
+    ? Math.round(tdee * (1 + sportProfile.tdeeBonus))
+    : tdee;
+
+  // Aggiustamento calorico da obiettivo
+  let calories;
+  switch (goal) {
+    case 'fat_loss':    calories = Math.round(adjustedTdee * 0.80); break;
+    case 'muscle_gain': calories = Math.round(adjustedTdee * 1.15); break;
+    case 'cut':         calories = Math.round(adjustedTdee * 0.85); break;
+    default:            calories = adjustedTdee;
   }
-};
 
-const calculateTDEE = (bmr, activityKcal = 500) => {
-  // Total Daily Energy Expenditure
-  return Math.round(bmr + activityKcal);
-};
-
-const calculateMacros = (tdee, goal) => {
-  let calories = tdee;
   let protein, carbs, fat;
 
-  switch (goal) {
-    case 'fat_loss':
-      // 20% deficit, high protein (35% calories)
-      calories = Math.round(tdee * 0.8);
-      protein = Math.round((calories * 0.35) / 4);
-      fat = Math.round((calories * 0.25) / 9);
-      carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
-      break;
-
-    case 'muscle_gain':
-      // 15% surplus, high protein (30% calories)
-      calories = Math.round(tdee * 1.15);
-      protein = Math.round((calories * 0.30) / 4);
-      fat = Math.round((calories * 0.30) / 9);
-      carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
-      break;
-
-    case 'cut':
-      // 15% deficit, very high protein (40% calories)
-      calories = Math.round(tdee * 0.85);
-      protein = Math.round((calories * 0.40) / 4);
-      fat = Math.round((calories * 0.25) / 9);
-      carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
-      break;
-
-    case 'maintain':
-    default:
-      // Maintenance, balanced (25% protein, 30% fat, rest carbs)
-      protein = Math.round((calories * 0.25) / 4);
-      fat = Math.round((calories * 0.30) / 9);
-      carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
-      break;
+  if (sportProfile) {
+    // Split macro definito dallo sport
+    protein = Math.round((calories * sportProfile.protein) / 4);
+    fat     = Math.round((calories * sportProfile.fat)     / 9);
+    carbs   = Math.round((calories - protein * 4 - fat * 9) / 4);
+  } else {
+    // Split macro di default basato sull'obiettivo
+    switch (goal) {
+      case 'fat_loss':
+        protein = Math.round((calories * 0.35) / 4);
+        fat     = Math.round((calories * 0.25) / 9);
+        break;
+      case 'muscle_gain':
+        protein = Math.round((calories * 0.30) / 4);
+        fat     = Math.round((calories * 0.30) / 9);
+        break;
+      case 'cut':
+        protein = Math.round((calories * 0.40) / 4);
+        fat     = Math.round((calories * 0.25) / 9);
+        break;
+      default:
+        protein = Math.round((calories * 0.25) / 4);
+        fat     = Math.round((calories * 0.30) / 9);
+    }
+    carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
   }
 
-  return { calories, protein, carbs, fat };
+  return { calories, protein, carbs, fat, sportGroup: sportGroup || 'none' };
 };
+
+// ─── Pathology helpers ────────────────────────────────────────────────────────
 
 const normalizePathologyToken = (value = '') =>
   String(value)
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/^ok_/, '')
     .replace(/[^a-z0-9]+/g, '_')
@@ -68,27 +182,25 @@ const normalizePathologyToken = (value = '') =>
 
 const parsePathologiesFromAllergies = (text) => {
   if (!text) return [];
-  const t = String(text)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+  const t = String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const result = [];
-  const add = (pathology) => {
-    const normalized = normalizePathologyToken(pathology);
-    if (normalized && !result.includes(normalized)) result.push(normalized);
+  const add = (p) => {
+    const n = normalizePathologyToken(p);
+    if (n && !result.includes(n)) result.push(n);
   };
-
-  if (/gerd|reflusso|reflux|acido|acidita/.test(t)) add('gerd');
-  if (/ibs|fodmap|colon irritabile/.test(t)) add('ibs_fodmap');
-  if (/celiac|celiachia|celiaco|glutine|gluten/.test(t)) add('celiac');
-  if (/diabet/.test(t)) add('diabetic');
+  if (/gerd|reflusso|reflux|acido|acidita/.test(t))             add('gerd');
+  if (/ibs|fodmap|colon irritabile/.test(t))                    add('ibs_fodmap');
+  if (/celiac|celiachia|celiaco|glutine|gluten/.test(t))        add('celiac');
+  if (/diabet/.test(t))                                         add('diabetic');
   if (/lattosio|lactose|\bdairy\b|\blatte\b|\bmilk\b/.test(t)) add('lactose_intolerant');
-  if (/nichel|nickel/.test(t)) add('nickel');
-  if (/istamina|histamine/.test(t)) add('histamine');
-  if (/gotta|gout|iperuricemia|uric/.test(t)) add('gout');
-  if (/renale|renal|kidney/.test(t)) add('renal');
+  if (/nichel|nickel/.test(t))                                  add('nickel');
+  if (/istamina|histamine/.test(t))                             add('histamine');
+  if (/gotta|gout|iperuricemia|uric/.test(t))                   add('gout');
+  if (/renale|renal|kidney/.test(t))                            add('renal');
   return result;
 };
+
+// ─── Router ───────────────────────────────────────────────────────────────────
 
 module.exports = (pool) => {
   const router = express.Router();
@@ -100,45 +212,46 @@ module.exports = (pool) => {
       'SELECT health_data_consent FROM user_onboarding WHERE user_id = $1',
       [userId]
     );
-
     if (!rows[0]?.health_data_consent) {
       res.status(403).json({ error: 'health_data_consent_required' });
       return false;
     }
-
     return true;
   };
 
-  // Generate plan
+  // ── POST /plan/generate ───────────────────────────────────────────────────
   router.post('/generate', verifyToken, async (req, res) => {
     try {
       const result = await pool.query(
-        'SELECT weight, height, age, goal, is_minor, parental_consent_status FROM users WHERE id = $1',
+        `SELECT u.weight, u.height, u.age, u.goal, u.is_minor, u.parental_consent_status,
+                uo.gender, uo.workout_days, uo.workout_intensity, uo.sport
+         FROM users u
+         LEFT JOIN user_onboarding uo ON uo.user_id = u.id
+         WHERE u.id = $1
+         ORDER BY uo.created_at DESC LIMIT 1`,
         [req.userId]
       );
 
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
+      if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
 
       const user = result.rows[0];
 
-      // Parental consent gate
       if (user.is_minor && user.parental_consent_status !== 'approved') {
         return res.status(403).json({
           error: 'parental_consent_required',
-          parental_consent_status: user.parental_consent_status || 'pending'
+          parental_consent_status: user.parental_consent_status || 'pending',
         });
       }
 
       if (!(await requireHealthDataConsent(req.userId, res))) return;
-      
-      // Calculate
-      const bmr = calculateBMR(user.weight, user.height, user.age, 'male');
-      const tdee = calculateTDEE(bmr, 500);
-      const macros = calculateMacros(tdee, user.goal);
 
-      // Save to DB
+      const sex        = String(user.gender || 'M').toUpperCase().startsWith('F') ? 'female' : 'male';
+      const bmr        = calculateBMR(user.weight, user.height, user.age, sex);
+      const actKcal    = calculateActivityKcal(user.workout_days, user.workout_intensity, bmr);
+      const tdee       = calculateTDEE(bmr, actKcal);
+      const sportGroup = getSportGroup(user.sport);
+      const macros     = calculateMacros(tdee, user.goal, sportGroup);
+
       const planResult = await pool.query(
         'INSERT INTO meal_plans (user_id, calories, protein, carbs, fat) VALUES ($1, $2, $3, $4, $5) RETURNING *',
         [req.userId, macros.calories, macros.protein, macros.carbs, macros.fat]
@@ -146,39 +259,30 @@ module.exports = (pool) => {
 
       res.json({
         plan: planResult.rows[0],
-        macros: macros,
-        calculations: {
-          bmr: Math.round(bmr),
-          tdee: tdee,
-          goal: user.goal
-        }
+        macros,
+        calculations: { bmr: Math.round(bmr), activityKcal: actKcal, tdee, sex, sportGroup, goal: user.goal },
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Get current plan
+  // ── GET /plan/current ─────────────────────────────────────────────────────
   router.get('/current', verifyToken, async (req, res) => {
     try {
       if (!(await requireHealthDataConsent(req.userId, res))) return;
-
       const result = await pool.query(
         'SELECT * FROM meal_plans WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
         [req.userId]
       );
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'No plan found' });
-      }
-
+      if (result.rows.length === 0) return res.status(404).json({ error: 'No plan found' });
       res.json(result.rows[0]);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Generate ingredient-based day plan
+  // ── POST /plan/ingredient-plan/generate ───────────────────────────────────
   router.post('/ingredient-plan/generate', verifyToken, async (req, res) => {
     try {
       const { date } = req.body || {};
@@ -199,11 +303,10 @@ module.exports = (pool) => {
 
       const row = profileResult.rows[0];
 
-      // Parental consent gate
       if (row.is_minor && row.parental_consent_status !== 'approved') {
         return res.status(403).json({
           error: 'parental_consent_required',
-          parental_consent_status: row.parental_consent_status || 'pending'
+          parental_consent_status: row.parental_consent_status || 'pending',
         });
       }
 
@@ -211,29 +314,31 @@ module.exports = (pool) => {
         return res.status(403).json({ error: 'health_data_consent_required' });
       }
 
-      const macroResult = await pool.query(
-        `SELECT calories, protein
-         FROM meal_plans
-         WHERE user_id = $1
-         ORDER BY created_at DESC LIMIT 1`,
-        [req.userId]
-      );
+      // Ricalcola macro sempre dal profilo corrente (mai da meal_plans cache)
+      const sex        = String(row.gender || 'M').toUpperCase().startsWith('F') ? 'female' : 'male';
+      const bmr        = calculateBMR(Number(row.weight) || 70, Number(row.height) || 170, Number(row.age) || 25, sex);
+      const actKcal    = calculateActivityKcal(row.workout_days, row.workout_intensity, bmr);
+      const tdee       = calculateTDEE(bmr, actKcal);
+      const sportGroup = getSportGroup(row.sport);
+      const freshMacros = calculateMacros(tdee, row.goal || 'maintain', sportGroup);
 
-      const dailyCalorieTarget = Number(macroResult.rows[0]?.calories)
-        || (row.weight ? Math.round(Number(row.weight) * 30) : 2000);
-      const dailyProteinTarget = Number(macroResult.rows[0]?.protein)
-        || Math.round((dailyCalorieTarget * 0.25) / 4);
+      // Sincronizza meal_plans in background (non bloccante)
+      pool.query(
+        'INSERT INTO meal_plans (user_id, calories, protein, carbs, fat) VALUES ($1, $2, $3, $4, $5)',
+        [req.userId, freshMacros.calories, freshMacros.protein, freshMacros.carbs, freshMacros.fat]
+      ).catch(err => console.warn('[plan] meal_plans sync failed:', err.message));
 
       const userProfile = {
-        userId: req.userId,
-        goal: row.goal || 'maintenance',
-        dietaryStyle: row.diet || 'omnivore',
-        allergiesText: row.allergies || '',
-        pathologies: parsePathologiesFromAllergies(row.allergies),
-        workoutDays: Number(row.workout_days) || 0,
-        trainingTime: row.training_time || null,
-        dailyCalorieTarget,
-        dailyProteinTarget,
+        userId:             req.userId,
+        goal:               row.goal || 'maintain',
+        dietaryStyle:       row.diet || 'omnivore',
+        allergiesText:      row.allergies || '',
+        pathologies:        parsePathologiesFromAllergies(row.allergies),
+        workoutDays:        Number(row.workout_days) || 0,
+        trainingTime:       row.training_time || null,
+        sportGroup,
+        dailyCalorieTarget: freshMacros.calories,
+        dailyProteinTarget: freshMacros.protein,
       };
 
       const plan = await generateDayPlan(pool, userProfile, targetDate);
@@ -253,7 +358,7 @@ module.exports = (pool) => {
     }
   });
 
-  // Get saved ingredient-based day plan
+  // ── GET /plan/ingredient-plan/:date? ─────────────────────────────────────
   router.get('/ingredient-plan/:date?', verifyToken, async (req, res) => {
     try {
       if (!(await requireHealthDataConsent(req.userId, res))) return;
@@ -265,7 +370,9 @@ module.exports = (pool) => {
       );
 
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'No plan found for this date. Call POST /plan/ingredient-plan/generate first.' });
+        return res.status(404).json({
+          error: 'No plan found for this date. Call POST /plan/ingredient-plan/generate first.',
+        });
       }
 
       const plan = result.rows[0].plan_data || {};
@@ -273,12 +380,7 @@ module.exports = (pool) => {
         plan.gi_summary = calcDailyGiSummary(plan.meals);
       }
       if (!plan.pathology_filter) {
-        plan.pathology_filter = {
-          activePathologies: [],
-          excludedCount: 0,
-          totalPool: null,
-          filteredPool: null,
-        };
+        plan.pathology_filter = { activePathologies: [], excludedCount: 0, totalPool: null, filteredPool: null };
       }
 
       res.json(plan);

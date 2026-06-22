@@ -520,10 +520,20 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
     totalMacros: {},
   };
 
+  // For omnivores, legumes should never fill the protein slot (use animal protein instead)
+  const isOmnivore = normalizeToken(userProfile.dietaryStyle) === 'omnivore' ||
+    normalizeToken(userProfile.dietaryStyle) === 'onnivoro';
+
   for (const [slot, config] of slots) {
     let candidates = filterBySlotAndTiming(eligibleIngredients, slot, mealType);
     if (candidates.length === 0) {
       candidates = eligibleIngredients.filter((ingredient) => normalizeDbArray(ingredient.template_slots).includes(slot));
+    }
+
+    // Omnivore + protein slot: exclude legumes so animal protein fills the slot
+    if (isOmnivore && slot === 'protein' && ['lunch', 'dinner'].includes(mealType)) {
+      const withoutLegumes = candidates.filter(ing => ing.category !== 'legume');
+      if (withoutLegumes.length > 0) candidates = withoutLegumes;
     }
 
     if (normalizeUserPathologies(userPathologies).length > 0 && candidates.length < 3) {
@@ -686,3 +696,4 @@ async function generateDayPlan(pool, userProfile, targetDate) {
 }
 
 module.exports = { generateDayPlan, giScore, calcDailyGiSummary, applyPathologyFilter, calcPathologyExclusions };
+gyExclusions };
