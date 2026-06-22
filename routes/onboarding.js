@@ -231,7 +231,8 @@ module.exports = (pool) => {
         terms_version,
         health_disclaimer_version,
         legal_accepted_at,
-        health_data_consent_at
+        health_data_consent_at,
+        research_consent
       } = req.body;
 
       const consentResult = await pool.query(
@@ -309,6 +310,7 @@ module.exports = (pool) => {
           health_disclaimer_version,
           legal_accepted_at,
           health_data_consent_at,
+          research_consent,
           onboarding_completed,
           updated_at
         )
@@ -316,7 +318,7 @@ module.exports = (pool) => {
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
           $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
           $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-          $31, $32, $33, $34, true, CURRENT_TIMESTAMP
+          $31, $32, $33, $34, $35, true, CURRENT_TIMESTAMP
         )
         ON CONFLICT (user_id)
         DO UPDATE SET
@@ -353,6 +355,7 @@ module.exports = (pool) => {
           health_disclaimer_version = COALESCE(EXCLUDED.health_disclaimer_version, user_onboarding.health_disclaimer_version),
           legal_accepted_at = COALESCE(EXCLUDED.legal_accepted_at, user_onboarding.legal_accepted_at),
           health_data_consent_at = COALESCE(EXCLUDED.health_data_consent_at, user_onboarding.health_data_consent_at),
+          research_consent = COALESCE(EXCLUDED.research_consent, user_onboarding.research_consent),
           onboarding_completed = true,
           updated_at = CURRENT_TIMESTAMP
         RETURNING *;
@@ -391,7 +394,8 @@ module.exports = (pool) => {
           terms_version || null,
           health_disclaimer_version || null,
           legal_accepted_at || null,
-          health_data_consent_at || null
+          health_data_consent_at || null,
+          nullableBool(research_consent)
         ]
       );
 

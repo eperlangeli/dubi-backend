@@ -64,6 +64,28 @@ const getSupabaseAdmin = () => {
 module.exports = (pool) => {
   const router = express.Router();
 
+  const createResearchPseudonym = (userId) => {
+    const salt = String(process.env.RESEARCH_SALT || '').trim();
+    if (!salt) return null;
+    return crypto.createHmac('sha256', salt).update(String(userId)).digest('hex');
+  };
+
+  const toResearchIntegerEstimate = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value === 'number') return Number.isFinite(value) ? Math.round(value) : null;
+
+    const normalized = String(value).trim().toLowerCase();
+    if (!normalized || normalized === 'unknown') return null;
+    if (normalized === '<3000') return 2999;
+    if (normalized === '10000+') return 10000;
+
+    const range = normalized.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (range) return Math.round((Number(range[1]) + Number(range[2])) / 2);
+
+    const numeric = Number(normalized);
+    return Number.isFinite(numeric) ? Math.round(numeric) : null;
+  };
+
   async function saveResearchAggregate(userId, reason) {
     const savepoint = 'research_aggregate_attempt';
 
@@ -165,16 +187,11 @@ module.exports = (pool) => {
     const savepoint = 'research_snapshot_attempt';
 
     try {
-      const salt = String(process.env.RESEARCH_SALT || '').trim();
-      if (!salt) {
+      const pseudonym = createResearchPseudonym(userId);
+      if (!pseudonym) {
         console.error('saveResearchSnapshot skipped: RESEARCH_SALT is not configured.');
         return;
       }
-
-      const pseudonym = crypto
-        .createHmac('sha256', salt)
-        .update(String(userId))
-        .digest('hex');
 
       await pool.query(`SAVEPOINT ${savepoint}`);
 
@@ -215,6 +232,31 @@ module.exports = (pool) => {
       }
 
       const research = rows[0];
+      const keyFieldsNull = ['age', 'height', 'weight', 'goal', 'diet']
+        .every((field) => research[field] === null || research[field] === undefined || research[field] === '');
+
+      if (keyFieldsNull) {
+        const { rows: longitudinalRows } = await pool.query(
+          'SELECT * FROM research_longitudinal WHERE pseudonym = $1 LIMIT 1',
+          [pseudonym]
+        );
+
+        if (longitudinalRows.length) {
+          const longitudinal = longitudinalRows[0];
+          const fallbackFields = [
+            'age', 'height', 'weight', 'goal', 'lang',
+            'target_weight', 'target_body_fat', 'competition_sport', 'competition_date',
+            'occupation', 'workout_days', 'workout_duration', 'workout_intensity',
+            'daily_steps', 'sedentary_days', 'diet', 'diet_intensity', 'allergies', 'sport',
+            'training_time', 'breakfast_pref', 'day_start', 'day_end'
+          ];
+          for (const field of fallbackFields) {
+            research[field] = research[field] ?? longitudinal[field] ?? null;
+          }
+          console.log('saveResearchSnapshot: used longitudinal fallback.');
+        }
+      }
+
       await pool.query(
         `INSERT INTO research_data_snapshots (
           pseudonym, reason, lang,
@@ -273,6 +315,147 @@ module.exports = (pool) => {
         console.error('saveResearchSnapshot savepoint recovery failed:', savepointError.message);
       }
       console.error('saveResearchSnapshot failed (non-blocking):', err.message);
+    }
+  }
+
+  async function saveResearchLongitudinal(userId) {
+    const savepoint = 'research_longitudinal_attempt';
+
+    try {
+      const pseudonym = createResearchPseudonym(userId);
+      if (!pseudonym) {
+        console.error('saveResearchLongitudinal skipped: RESEARCH_SALT is not configured.');
+        return;
+      }
+
+      await pool.query(`SAVEPOINT ${savepoint}`);
+
+      const { rows } = await pool.query(
+        `SELECT
+          COALESCE(uo.age, u.age) AS age,
+          COALESCE(uo.height, u.height) AS height,
+          COALESCE(uo.weight, u.weight) AS weight,
+          COALESCE(uo.goal, u.goal) AS goal,
+          to_jsonb(u)->>'lang' AS lang,
+          uo.target_weight,
+          uo.target_body_fat,
+          uo.competition_sport,
+          uo.competition_date,
+          uo.occupation,
+          uo.workout_days,
+          uo.workout_duration,
+          uo.workout_intensity,
+          uo.daily_steps,
+          uo.sedentary_days,
+          uo.diet,
+          uo.diet_intensity,
+          uo.allergies,
+          uo.sport,
+          uo.training_time,
+          uo.breakfast_pref,
+          uo.day_start,
+          uo.day_end
+         FROM users u
+         JOIN user_onboarding uo ON uo.user_id = u.id
+         WHERE u.id = $1
+           AND uo.research_consent = true
+           AND (
+             COALESCE(uo.age, u.age) IS NOT NULL
+             OR COALESCE(uo.height, u.height) IS NOT NULL
+             OR COALESCE(uo.weight, u.weight) IS NOT NULL
+             OR COALESCE(uo.goal, u.goal) IS NOT NULL
+             OR uo.diet IS NOT NULL
+           )`,
+        [userId]
+      );
+
+      if (!rows.length) {
+        await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+        return;
+      }
+
+      const research = rows[0];
+      await pool.query(
+        `INSERT INTO research_longitudinal (
+          pseudonym, snapshot_date, lang,
+          age, height, weight, goal,
+          target_weight, target_body_fat,
+          competition_sport, competition_date,
+          occupation, workout_days, workout_duration, workout_intensity,
+          daily_steps, sedentary_days,
+          diet, diet_intensity, allergies, sport,
+          training_time, breakfast_pref, day_start, day_end
+        ) VALUES (
+          $1, CURRENT_DATE, $2,
+          $3,$4,$5,$6,
+          $7,$8,
+          $9,$10,
+          $11,$12,$13,$14,
+          $15,$16,
+          $17,$18,$19,$20,
+          $21,$22,$23,$24
+        )
+        ON CONFLICT (pseudonym, snapshot_date) DO UPDATE SET
+          lang              = EXCLUDED.lang,
+          age               = EXCLUDED.age,
+          height            = EXCLUDED.height,
+          weight            = EXCLUDED.weight,
+          goal              = EXCLUDED.goal,
+          target_weight     = EXCLUDED.target_weight,
+          target_body_fat   = EXCLUDED.target_body_fat,
+          competition_sport = EXCLUDED.competition_sport,
+          competition_date  = EXCLUDED.competition_date,
+          occupation        = EXCLUDED.occupation,
+          workout_days      = EXCLUDED.workout_days,
+          workout_duration  = EXCLUDED.workout_duration,
+          workout_intensity = EXCLUDED.workout_intensity,
+          daily_steps       = EXCLUDED.daily_steps,
+          sedentary_days    = EXCLUDED.sedentary_days,
+          diet              = EXCLUDED.diet,
+          diet_intensity    = EXCLUDED.diet_intensity,
+          allergies         = EXCLUDED.allergies,
+          sport             = EXCLUDED.sport,
+          training_time     = EXCLUDED.training_time,
+          breakfast_pref    = EXCLUDED.breakfast_pref,
+          day_start         = EXCLUDED.day_start,
+          day_end           = EXCLUDED.day_end`,
+        [
+          pseudonym,
+          research.lang ?? null,
+          research.age ?? null,
+          research.height ?? null,
+          research.weight ?? null,
+          research.goal ?? null,
+          research.target_weight ?? null,
+          research.target_body_fat ?? null,
+          research.competition_sport ?? null,
+          research.competition_date ?? null,
+          research.occupation ?? null,
+          toResearchIntegerEstimate(research.workout_days),
+          research.workout_duration ?? null,
+          research.workout_intensity ?? null,
+          toResearchIntegerEstimate(research.daily_steps),
+          toResearchIntegerEstimate(research.sedentary_days),
+          research.diet ?? null,
+          research.diet_intensity ?? null,
+          research.allergies ?? null,
+          research.sport ?? null,
+          research.training_time ?? null,
+          research.breakfast_pref ?? null,
+          research.day_start ?? null,
+          research.day_end ?? null
+        ]
+      );
+
+      await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+    } catch (err) {
+      try {
+        await pool.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+      } catch (savepointError) {
+        console.error('saveResearchLongitudinal savepoint recovery failed:', savepointError.message);
+      }
+      console.error('saveResearchLongitudinal failed (non-blocking):', err.message);
     }
   }
 
@@ -660,7 +843,7 @@ module.exports = (pool) => {
   });
 
   router.patch('/profile', verifyToken, async (req, res) => {
-    const allowed = ['health_data_consent', 'wearable_consent'];
+    const allowed = ['health_data_consent', 'wearable_consent', 'research_consent'];
     const updates = {};
 
     for (const field of allowed) {
@@ -685,6 +868,11 @@ module.exports = (pool) => {
         `UPDATE user_onboarding SET ${setClauses} WHERE user_id = $${values.length}`,
         values
       );
+
+      if (updates.research_consent === true) {
+        await saveResearchLongitudinal(req.userId);
+      }
+
       return res.json({ success: true });
     } catch (err) {
       console.error('Profile consent update failed:', err.message);
