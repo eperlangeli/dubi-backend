@@ -5,6 +5,16 @@ module.exports = (pool) => {
   const router = express.Router();
   const authModule = require('./auth')(pool);
   const { verifyToken } = authModule;
+  const safeConnectionFields = `
+    id,
+    user_id,
+    openwearables_user_id,
+    provider,
+    status,
+    last_synced_at,
+    created_at,
+    updated_at
+  `;
 
   const getConfig = () => ({
     baseUrl: (process.env.OPENWEARABLES_BASE_URL || '').replace(/\/$/, ''),
@@ -21,6 +31,25 @@ module.exports = (pool) => {
   const verifiedProviderIds = () => parseProviderList(process.env.WEARABLE_VERIFIED_PROVIDERS || '');
 
   const normalizeProviderId = (provider) => String(provider || '').trim().toLowerCase();
+
+  const sensitiveResponseKeys = new Set([
+    'access_token',
+    'refresh_token',
+    'id_token',
+    'client_secret',
+    'api_key'
+  ]);
+
+  const sanitizeExternalPayload = (value) => {
+    if (Array.isArray(value)) return value.map(sanitizeExternalPayload);
+    if (!value || typeof value !== 'object') return value;
+
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !sensitiveResponseKeys.has(String(key).toLowerCase()))
+        .map(([key, nestedValue]) => [key, sanitizeExternalPayload(nestedValue)])
+    );
+  };
 
   const isProviderVerified = (provider) => verifiedProviderIds().has(normalizeProviderId(provider));
 
@@ -45,7 +74,7 @@ module.exports = (pool) => {
       }
     });
     const text = await response.text();
-    const body = text ? JSON.parse(text) : {};
+    const body = sanitizeExternalPayload(text ? JSON.parse(text) : {});
 
     if (!response.ok) {
       const error = new Error(body.detail || body.error || `OpenWearables request failed (${response.status})`);
@@ -59,7 +88,10 @@ module.exports = (pool) => {
 
   const getOrCreateOpenWearablesUser = async (userId) => {
     const existing = await pool.query(
-      'SELECT * FROM openwearables_connections WHERE user_id = $1 LIMIT 1',
+      `SELECT ${safeConnectionFields}
+       FROM openwearables_connections
+       WHERE user_id = $1
+       LIMIT 1`,
       [userId]
     );
     if (existing.rows.length > 0) return existing.rows[0];
@@ -84,7 +116,7 @@ module.exports = (pool) => {
       `
       INSERT INTO openwearables_connections (user_id, openwearables_user_id, status)
       VALUES ($1, $2, 'created')
-      RETURNING *
+      RETURNING ${safeConnectionFields}
       `,
       [userId, created.id]
     );
@@ -499,7 +531,10 @@ module.exports = (pool) => {
   router.get('/openwearables/status', verifyToken, async (req, res) => {
     try {
       const connection = await pool.query(
-        'SELECT * FROM openwearables_connections WHERE user_id = $1 LIMIT 1',
+        `SELECT ${safeConnectionFields}
+         FROM openwearables_connections
+         WHERE user_id = $1
+         LIMIT 1`,
         [req.userId]
       );
       res.json({ connection: connection.rows[0] || null });

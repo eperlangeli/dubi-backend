@@ -73,6 +73,31 @@ const withAuthenticatedDbContext = (pool) => async (req, res, next) => {
   }
 };
 
+const checkNotSuspended = (pool) => async (req, res, next) => {
+  if (!req.userId) return next();
+
+  try {
+    const { rows } = await pool.query(
+      'SELECT is_suspended FROM users WHERE id = $1',
+      [req.userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    if (rows[0].is_suspended) {
+      return res.status(403).json({
+        error: 'Account sospeso. Contatta support@dubi.health'
+      });
+    }
+
+    return next();
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const withSharedWriteContext = async (pool, callback) => {
   const client = await pool.connect();
 
@@ -93,5 +118,6 @@ const withSharedWriteContext = async (pool, callback) => {
 module.exports = {
   createScopedPool,
   withAuthenticatedDbContext,
+  checkNotSuspended,
   withSharedWriteContext
 };

@@ -203,13 +203,12 @@ module.exports = (pool) => {
       const lang = preferredLanguage(req);
       const minorIdentifier = minorName || user.email;
       const copy = emailCopy(lang, verifyUrl, minorIdentifier);
-      const from = process.env.RESEND_FROM_EMAIL || 'DUBI <support@dubi.health>';
       const canSend = Boolean(process.env.RESEND_API_KEY && Resend);
 
       if (canSend) {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
-          from,
+          from: 'onboarding@resend.dev',
           to: guardianEmail,
           subject: copy.subject,
           html: copy.html

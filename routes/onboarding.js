@@ -355,6 +355,11 @@ module.exports = (pool) => {
           health_disclaimer_version = COALESCE(EXCLUDED.health_disclaimer_version, user_onboarding.health_disclaimer_version),
           legal_accepted_at = COALESCE(EXCLUDED.legal_accepted_at, user_onboarding.legal_accepted_at),
           health_data_consent_at = COALESCE(EXCLUDED.health_data_consent_at, user_onboarding.health_data_consent_at),
+          research_consent_revoked_at = CASE
+            WHEN user_onboarding.research_consent = true AND EXCLUDED.research_consent = false THEN NOW()
+            WHEN EXCLUDED.research_consent = true THEN NULL
+            ELSE user_onboarding.research_consent_revoked_at
+          END,
           research_consent = COALESCE(EXCLUDED.research_consent, user_onboarding.research_consent),
           onboarding_completed = true,
           updated_at = CURRENT_TIMESTAMP

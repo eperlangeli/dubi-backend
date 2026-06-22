@@ -2,12 +2,12 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { Pool } = require('pg');
-const { createScopedPool, withAuthenticatedDbContext } = require('./services/db-context');
+const { createScopedPool, withAuthenticatedDbContext, checkNotSuspended } = require('./services/db-context');
 
 dotenv.config();
 
 if (!process.env.RESEND_API_KEY) {
-  console.warn('RESEND_API_KEY is not set. Parental consent emails will be logged instead of sent.');
+  console.warn('RESEND_API_KEY is not set. Transactional emails are unavailable.');
 }
 
 const app = express();
@@ -17,11 +17,14 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 const scopedPool = createScopedPool(pool);
+require('./cron/longitudinal')(pool);
+require('./cron/research-cleanup')(pool);
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use('/waitlist', require('./routes/waitlist')(pool));
 app.use(withAuthenticatedDbContext(pool));
+app.use(checkNotSuspended(scopedPool));
 app.get('/', (req, res) => {
   res.json({
     message: 'DUBI Backend is running successfully',

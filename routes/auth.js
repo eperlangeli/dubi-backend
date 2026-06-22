@@ -20,6 +20,8 @@ try {
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 const PASSWORD_RESET_COOLDOWN_MS = 60 * 1000;
 const PASSWORD_RESET_MESSAGE = 'If this email is registered, you will receive a reset link.';
+const DELETION_OTP_TTL_MS = 15 * 60 * 1000;
+const RESEND_FROM_EMAIL = 'onboarding@resend.dev';
 
 const hashResetToken = (token) => (
   crypto.createHash('sha256').update(token).digest('hex')
@@ -47,6 +49,34 @@ const buildResetEmail = (resetUrl) => ({
     </div>
   `
 });
+
+const buildDeletionOtpEmail = (otp) => ({
+  subject: 'Conferma cancellazione account DUBI',
+  text: `Il tuo codice di conferma è: ${otp}. Valido 15 minuti. ` +
+    'Se non hai richiesto la cancellazione, ignora questa email.'
+});
+
+const buildDeletionConfirmationEmail = () => ({
+  subject: 'Il tuo account DUBI è stato cancellato',
+  text: 'Il tuo account è stato cancellato. I tuoi dati saranno rimossi entro 24 mesi ' +
+    'come da Informativa Privacy.'
+});
+
+const sendDeletionEmail = async ({ to, subject, text }) => {
+  if (!process.env.RESEND_API_KEY || !Resend) {
+    throw new Error('Deletion email service is unavailable.');
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const result = await resend.emails.send({
+    from: RESEND_FROM_EMAIL,
+    to,
+    subject,
+    text
+  });
+
+  if (result?.error) throw new Error('Deletion email delivery failed.');
+};
 
 let supabaseAdmin = null;
 const getSupabaseAdmin = () => {
@@ -221,8 +251,9 @@ module.exports = (pool) => {
           uo.day_start,
           uo.day_end
          FROM users u
-         LEFT JOIN user_onboarding uo ON uo.user_id = u.id
-         WHERE u.id = $1`,
+         JOIN user_onboarding uo ON uo.user_id = u.id
+         WHERE u.id = $1
+           AND uo.research_consent = true`,
         [userId]
       );
 
@@ -615,6 +646,12 @@ module.exports = (pool) => {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
+      if (user.is_suspended) {
+        return res.status(403).json({
+          error: 'Account sospeso. Contatta support@dubi.health'
+        });
+      }
+
       const token = jwt.sign(
         { userId: user.id },
         process.env.JWT_SECRET,
@@ -709,7 +746,7 @@ module.exports = (pool) => {
         const copy = buildResetEmail(resetUrl);
         const resend = new Resend(process.env.RESEND_API_KEY);
         const result = await resend.emails.send({
-          from: process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || 'DUBI <support@dubi.health>',
+          from: RESEND_FROM_EMAIL,
           to: recipient,
           subject: copy.subject,
           html: copy.html
@@ -859,7 +896,17 @@ module.exports = (pool) => {
     }
 
     const setClauses = Object.keys(updates)
-      .map((field, index) => `${field} = $${index + 1}`)
+      .map((field, index) => {
+        const placeholder = `$${index + 1}`;
+        if (field !== 'research_consent') return `${field} = ${placeholder}`;
+
+        return `research_consent = ${placeholder},
+          research_consent_revoked_at = CASE
+            WHEN research_consent = true AND ${placeholder} = false THEN NOW()
+            WHEN ${placeholder} = true THEN NULL
+            ELSE research_consent_revoked_at
+          END`;
+      })
       .join(', ');
     const values = [...Object.values(updates), req.userId];
 
@@ -928,25 +975,194 @@ module.exports = (pool) => {
     }
   });
 
-  router.delete('/me', verifyToken, async (req, res) => {
+  router.get('/account/deletion-preview', verifyToken, async (req, res) => {
     try {
-      await saveResearchSnapshot(req.userId, 'account_deleted');
-      await saveResearchAggregate(req.userId, 'account_deleted');
+      const pseudonym = createResearchPseudonym(req.userId);
+      if (!pseudonym) {
+        return res.status(503).json({ error: 'research_cleanup_unavailable' });
+      }
 
-      const result = await pool.query(
-        'DELETE FROM users WHERE id = $1 RETURNING id, email',
+      const summary = await pool.query(
+        `SELECT
+          u.created_at AS account_created,
+          (SELECT COUNT(*)::integer FROM adherence WHERE user_id = u.id) AS meals_logged,
+          (SELECT COUNT(*)::integer FROM user_plans WHERE user_id = u.id) AS plans,
+          (SELECT COUNT(*)::integer FROM openwearables_connections WHERE user_id = u.id) AS wearable_connections
+         FROM users u
+         WHERE u.id = $1`,
         [req.userId]
       );
 
-      if (result.rows.length === 0) {
+      if (summary.rows.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      return res.json({ success: true });
+      const research = await pool.query(
+        `SELECT
+          EXISTS (SELECT 1 FROM research_data_snapshots WHERE pseudonym = $1)
+          OR EXISTS (SELECT 1 FROM research_longitudinal WHERE pseudonym = $1)
+          AS has_research_data`,
+        [pseudonym]
+      );
+
+      return res.json({
+        meals_logged: summary.rows[0].meals_logged,
+        plans: summary.rows[0].plans,
+        wearable_connections: summary.rows[0].wearable_connections,
+        has_research_data: Boolean(research.rows[0]?.has_research_data),
+        account_created: summary.rows[0].account_created
+      });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('Account deletion preview failed:', error.message);
+      return res.status(500).json({ error: 'deletion_preview_failed' });
     }
   });
+
+  router.post('/account/deletion-request', verifyToken, async (req, res) => {
+    const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const expiresAt = new Date(Date.now() + DELETION_OTP_TTL_MS);
+
+    try {
+      const userResult = await pool.query(
+        'SELECT email FROM users WHERE id = $1',
+        [req.userId]
+      );
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const otpHash = await bcryptjs.hash(otp, 10);
+      await pool.query('DELETE FROM deletion_requests WHERE user_id = $1', [req.userId]);
+      await pool.query(
+        `INSERT INTO deletion_requests (user_id, otp_hash, expires_at)
+         VALUES ($1, $2, $3)`,
+        [req.userId, otpHash, expiresAt]
+      );
+
+      const copy = buildDeletionOtpEmail(otp);
+      try {
+        await sendDeletionEmail({ to: userResult.rows[0].email, ...copy });
+      } catch (emailError) {
+        await pool.query('DELETE FROM deletion_requests WHERE user_id = $1', [req.userId]);
+        console.error('Account deletion OTP email failed.');
+        return res.status(502).json({ error: 'deletion_email_failed' });
+      }
+
+      return res.json({ message: 'OTP inviato via email' });
+    } catch (error) {
+      console.error('Account deletion request failed:', error.message);
+      return res.status(500).json({ error: 'deletion_request_failed' });
+    }
+  });
+
+  router.delete('/account', verifyToken, async (req, res) => {
+    const otp = String(req.body?.otp || '').trim();
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ error: 'invalid_or_expired_otp' });
+    }
+
+    const pseudonym = createResearchPseudonym(req.userId);
+    if (!pseudonym) {
+      return res.status(503).json({ error: 'research_cleanup_unavailable' });
+    }
+
+    let client;
+    let deletedEmail = null;
+    try {
+      client = await pool.connect();
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(req.userId)]);
+      await client.query("SELECT set_config('app.allow_password_reset', 'true', true)");
+
+      const requestResult = await client.query(
+        `SELECT otp_hash, expires_at
+         FROM deletion_requests
+         WHERE user_id = $1
+         FOR UPDATE`,
+        [req.userId]
+      );
+
+      const request = requestResult.rows[0];
+      const expired = !request || new Date(request.expires_at).getTime() <= Date.now();
+      const valid = !expired && await bcryptjs.compare(otp, request.otp_hash);
+      if (!valid) {
+        if (expired && request) {
+          await client.query('DELETE FROM deletion_requests WHERE user_id = $1', [req.userId]);
+          await client.query('COMMIT');
+        } else {
+          await client.query('ROLLBACK');
+        }
+        return res.status(400).json({ error: 'invalid_or_expired_otp' });
+      }
+
+      const userResult = await client.query(
+        'SELECT email FROM users WHERE id = $1 FOR UPDATE',
+        [req.userId]
+      );
+      if (userResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'User not found' });
+      }
+      deletedEmail = userResult.rows[0].email;
+
+      await client.query('DELETE FROM research_data_snapshots WHERE pseudonym = $1', [pseudonym]);
+      await client.query('DELETE FROM research_longitudinal WHERE pseudonym = $1', [pseudonym]);
+      await client.query('DELETE FROM waitlist WHERE LOWER(email) = LOWER($1)', [deletedEmail]);
+
+      const userOwnedTables = [
+        'adherence',
+        'daily_plans',
+        'nps_responses',
+        'openwearables_connections',
+        'password_reset_tokens',
+        'user_anomaly_events',
+        'user_ingredient_swaps',
+        'user_onboarding',
+        'user_plans',
+        'user_progress',
+        'wearable_data',
+        'weight_history'
+      ];
+      for (const table of userOwnedTables) {
+        await client.query(`DELETE FROM ${table} WHERE user_id = $1`, [req.userId]);
+      }
+
+      const optionalTables = ['meal_plans'];
+      for (const table of optionalTables) {
+        const exists = await client.query('SELECT to_regclass($1) AS table_name', [`public.${table}`]);
+        if (exists.rows[0]?.table_name) {
+          await client.query(`DELETE FROM ${table} WHERE user_id = $1`, [req.userId]);
+        }
+      }
+
+      await client.query('DELETE FROM deletion_requests WHERE user_id = $1', [req.userId]);
+      await client.query('DELETE FROM users WHERE id = $1', [req.userId]);
+      await client.query('COMMIT');
+    } catch (error) {
+      if (client) {
+        try { await client.query('ROLLBACK'); } catch (rollbackError) {
+          console.error('Account deletion rollback failed.');
+        }
+      }
+      console.error('Account deletion failed:', error.message);
+      return res.status(500).json({ error: 'account_deletion_failed' });
+    } finally {
+      if (client) client.release();
+    }
+
+    try {
+      const copy = buildDeletionConfirmationEmail();
+      await sendDeletionEmail({ to: deletedEmail, ...copy });
+    } catch (emailError) {
+      console.error('Account deletion confirmation email failed.');
+    }
+
+    return res.status(200).json({ message: 'Account cancellato' });
+  });
+
+  router.delete('/me', verifyToken, (req, res) => (
+    res.status(410).json({ error: 'account_deletion_otp_required' })
+  ));
 
   router.verifyToken = verifyToken;
   return router;
