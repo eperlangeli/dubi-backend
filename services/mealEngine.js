@@ -80,12 +80,12 @@ const PATHOLOGY_MAP = {
 };
 
 const CALORIE_FRACTIONS = {
-  breakfast: 0.25,
-  pre_workout: 0.12,
-  post_workout: 0.18,
-  lunch: 0.30,
-  snack: 0.08,
-  dinner: 0.25,
+  breakfast:   0.25,
+  pre_workout: 0.08,  // spuntino leggero ~45-60 min prima — solo carbo rapidi, digestione facile
+  post_workout: 0.18, // carbo + proteine per recupero glicogeno e sintesi muscolare
+  lunch:       0.30,
+  snack:       0.08,
+  dinner:      0.25,
 };
 
 const PORTION_BOUNDS = {
@@ -163,15 +163,27 @@ function buildDayStructure(trainingTime) {
   if (!trainingTime) return base;
 
   const time = normalizeToken(trainingTime);
+
   if (['morning', 'mattina', 'mattino'].includes(time)) {
+    // Mattino: niente tempo per digerire un pasto completo prima.
+    // Piccolo carbo rapido pre-workout, poi pasto completo post-workout.
     return ['pre_workout', 'post_workout', 'breakfast', 'lunch', 'snack', 'dinner'];
   }
+
   if (['afternoon', 'pomeriggio'].includes(time)) {
+    // Pomeriggio: pranzo completo ~3h prima (carbo+pro+pochi grassi),
+    // poi spuntino pre-workout 45-60 min prima (carbo rapidi, pro opzionali),
+    // poi post-workout (carbo+pro recupero), poi spuntino e cena.
     return ['breakfast', 'lunch', 'pre_workout', 'post_workout', 'snack', 'dinner'];
   }
+
   if (['evening', 'sera'].includes(time)) {
-    return ['breakfast', 'lunch', 'snack', 'pre_workout', 'post_workout', 'dinner'];
+    // Sera: la CENA è il pasto principale pre-allenamento (carbo+pro+grassi moderati),
+    // poi piccolo spuntino carbo ~45-60 min prima, poi post-workout recupero.
+    // La cena precede pre_workout — non viene dopo.
+    return ['breakfast', 'lunch', 'snack', 'dinner', 'pre_workout', 'post_workout'];
   }
+
   return base;
 }
 
@@ -696,4 +708,3 @@ async function generateDayPlan(pool, userProfile, targetDate) {
 }
 
 module.exports = { generateDayPlan, giScore, calcDailyGiSummary, applyPathologyFilter, calcPathologyExclusions };
-gyExclusions };
