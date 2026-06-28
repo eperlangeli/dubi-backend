@@ -964,7 +964,13 @@ module.exports = (pool) => {
       );
 
       await pool.query(
-        'UPDATE users SET age = NULL, height = NULL, weight = NULL, goal = NULL WHERE id = $1',
+        `UPDATE users SET
+          age = NULL,
+          height = NULL,
+          weight = NULL,
+          goal = NULL,
+          health_revoked_at = COALESCE(health_revoked_at, NOW())
+         WHERE id = $1`,
         [req.userId]
       );
 
