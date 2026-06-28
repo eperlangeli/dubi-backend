@@ -118,10 +118,63 @@ const getSportGroup = (sport) => {
   return SPORT_GROUP_MAP[normalized] || null;
 };
 
+const normalizeSports = (sports, legacySport = null) => {
+  const values = Array.isArray(sports)
+    ? sports
+    : (typeof sports === 'string' ? sports.split(',') : []);
+  const normalized = [...new Set(values
+    .map((sport) => String(sport || '').trim())
+    .filter(Boolean))];
+
+  if (normalized.length) return normalized.slice(0, 5);
+  return legacySport ? [String(legacySport).trim()].filter(Boolean) : [];
+};
+
+const getSportGroups = (sports = []) => [...new Set(
+  normalizeSports(sports).map(getSportGroup).filter(Boolean)
+)];
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const blendSportProfiles = (sportGroups = []) => {
+  const groups = [...new Set(sportGroups)].filter((group) => SPORT_GROUP_PROFILES[group]);
+  if (!groups.length) return null;
+
+  const blended = groups.reduce((result, group) => {
+    const profile = SPORT_GROUP_PROFILES[group];
+    result.tdeeBonus += profile.tdeeBonus;
+    result.protein += profile.protein;
+    result.carbs += profile.carbs;
+    result.fat += profile.fat;
+    return result;
+  }, { tdeeBonus: 0, protein: 0, carbs: 0, fat: 0 });
+
+  for (const field of Object.keys(blended)) blended[field] /= groups.length;
+
+  // Defensive bounds preserve every current single-sport profile while keeping
+  // future mixed profiles inside the supported nutritional envelope.
+  blended.tdeeBonus = clamp(blended.tdeeBonus, -0.05, 0.10);
+  blended.protein = clamp(blended.protein, 0.18, 0.32);
+  blended.carbs = clamp(blended.carbs, 0.40, 0.60);
+  blended.fat = clamp(blended.fat, 0.20, 0.30);
+
+  const macroTotal = blended.protein + blended.carbs + blended.fat;
+  blended.protein /= macroTotal;
+  blended.carbs /= macroTotal;
+  blended.fat /= macroTotal;
+
+  return { ...blended, groups };
+};
+
 // ─── Calcolo macro ────────────────────────────────────────────────────────────
 
-const calculateMacros = (tdee, goal, sportGroup = null) => {
-  const sportProfile = SPORT_GROUP_PROFILES[sportGroup] || null;
+const calculateMacros = (tdee, goal, blendedProfile = null) => {
+  // Accepting a group string keeps this helper compatible with older callers.
+  const sportProfile = typeof blendedProfile === 'string'
+    ? (SPORT_GROUP_PROFILES[blendedProfile]
+      ? { ...SPORT_GROUP_PROFILES[blendedProfile], groups: [blendedProfile] }
+      : null)
+    : blendedProfile;
 
   // Applica bonus TDEE da sport
   const adjustedTdee = sportProfile
@@ -166,7 +219,23 @@ const calculateMacros = (tdee, goal, sportGroup = null) => {
     carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
   }
 
-  return { calories, protein, carbs, fat, sportGroup: sportGroup || 'none' };
+  const sportGroups = sportProfile?.groups || [];
+  const sportGroup = sportGroups.length ? sportGroups.join('+') : 'none';
+  return {
+    calories,
+    protein,
+    carbs,
+    fat,
+    sportGroup,
+    sportGroups,
+    sportProfile: sportGroups.length > 1 ? `${sportGroups.join('-')}_blend` : sportGroup,
+    macroSplit: sportProfile ? {
+      protein: Number(sportProfile.protein.toFixed(4)),
+      carbs: Number(sportProfile.carbs.toFixed(4)),
+      fat: Number(sportProfile.fat.toFixed(4)),
+    } : null,
+    tdeeBonus: sportProfile ? Number(sportProfile.tdeeBonus.toFixed(4)) : 0,
+  };
 };
 
 // ─── Pathology helpers ────────────────────────────────────────────────────────
@@ -224,7 +293,7 @@ module.exports = (pool) => {
     try {
       const result = await pool.query(
         `SELECT u.weight, u.height, u.age, u.goal, u.is_minor, u.parental_consent_status,
-                uo.gender, uo.workout_days, uo.workout_intensity, uo.sport
+                uo.gender, uo.workout_days, uo.workout_intensity, uo.sport, uo.sports
          FROM users u
          LEFT JOIN user_onboarding uo ON uo.user_id = u.id
          WHERE u.id = $1
@@ -249,8 +318,10 @@ module.exports = (pool) => {
       const bmr        = calculateBMR(user.weight, user.height, user.age, sex);
       const actKcal    = calculateActivityKcal(user.workout_days, user.workout_intensity, bmr);
       const tdee       = calculateTDEE(bmr, actKcal);
-      const sportGroup = getSportGroup(user.sport);
-      const macros     = calculateMacros(tdee, user.goal, sportGroup);
+      const sports       = normalizeSports(user.sports, user.sport);
+      const sportGroups  = getSportGroups(sports);
+      const sportProfile = blendSportProfiles(sportGroups);
+      const macros       = calculateMacros(tdee, user.goal, sportProfile);
 
       const planResult = await pool.query(
         'INSERT INTO meal_plans (user_id, calories, protein, carbs, fat) VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -260,7 +331,7 @@ module.exports = (pool) => {
       res.json({
         plan: planResult.rows[0],
         macros,
-        calculations: { bmr: Math.round(bmr), activityKcal: actKcal, tdee, sex, sportGroup, goal: user.goal },
+        calculations: { bmr: Math.round(bmr), activityKcal: actKcal, tdee, sex, sports, sportGroups, goal: user.goal },
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -319,8 +390,10 @@ module.exports = (pool) => {
       const bmr        = calculateBMR(Number(row.weight) || 70, Number(row.height) || 170, Number(row.age) || 25, sex);
       const actKcal    = calculateActivityKcal(row.workout_days, row.workout_intensity, bmr);
       const tdee       = calculateTDEE(bmr, actKcal);
-      const sportGroup = getSportGroup(row.sport);
-      const freshMacros = calculateMacros(tdee, row.goal || 'maintain', sportGroup);
+      const sports       = normalizeSports(row.sports, row.sport);
+      const sportGroups  = getSportGroups(sports);
+      const sportProfile = blendSportProfiles(sportGroups);
+      const freshMacros  = calculateMacros(tdee, row.goal || 'maintain', sportProfile);
 
       // Sincronizza meal_plans in background (non bloccante)
       pool.query(
@@ -336,7 +409,8 @@ module.exports = (pool) => {
         pathologies:        parsePathologiesFromAllergies(row.allergies),
         workoutDays:        Number(row.workout_days) || 0,
         trainingTime:       row.training_time || null,
-        sportGroup,
+        sportGroup:         sportProfile?.groups?.[0] ?? sportGroups[0] ?? 'none',
+        sportGroups,
         dailyCalorieTarget: freshMacros.calories,
         dailyProteinTarget: freshMacros.protein,
       };

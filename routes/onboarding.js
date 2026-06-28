@@ -180,6 +180,15 @@ module.exports = (pool) => {
       .filter(Boolean))].join(', ');
   };
 
+  const canonicalSports = (sports, legacySport = null) => {
+    const values = Array.isArray(sports) && sports.length
+      ? sports
+      : (legacySport ? [legacySport] : []);
+    return [...new Set(values
+      .map((item) => canonicalFromMap(item, sportMap, cleanKey(item)))
+      .filter(Boolean))];
+  };
+
   const normalizeTrainingTime = (value) => canonicalFromMap(value, {
     mattina: 'morning',
     morning: 'morning',
@@ -219,6 +228,7 @@ module.exports = (pool) => {
         diet_intensity,
         allergies,
         sport,
+        sports,
         training_time,
         breakfast_pref,
         day_start,
@@ -257,7 +267,14 @@ module.exports = (pool) => {
       const cleanDiet = canonicalFromMap(diet, dietMap, 'omnivore');
       const cleanWorkoutIntensity = canonicalFromMap(workout_intensity, intensityMap, 'moderate');
       const cleanBreakfastPref = canonicalFromMap(breakfast_pref, breakfastMap, 'both');
-      const cleanSport = canonicalFromMap(sport, sportMap, cleanKey(sport));
+      if (sports !== undefined && !Array.isArray(sports)) {
+        return res.status(400).json({ error: 'sports_must_be_an_array' });
+      }
+      const cleanSports = canonicalSports(sports, sport);
+      if (cleanSports.length > 5) {
+        return res.status(400).json({ error: 'too_many_sports', max: 5 });
+      }
+      const cleanSport = cleanSports[0] || '';
       const cleanAllergies = canonicalList(allergies);
       const cleanTrainingTime = normalizeTrainingTime(training_time);
       const cleanTime = (value, fallback) => {
@@ -311,6 +328,7 @@ module.exports = (pool) => {
           legal_accepted_at,
           health_data_consent_at,
           research_consent,
+          sports,
           onboarding_completed,
           updated_at
         )
@@ -318,7 +336,7 @@ module.exports = (pool) => {
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
           $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
           $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-          $31, $32, $33, $34, $35, true, CURRENT_TIMESTAMP
+          $31, $32, $33, $34, $35, $36, true, CURRENT_TIMESTAMP
         )
         ON CONFLICT (user_id)
         DO UPDATE SET
@@ -361,6 +379,7 @@ module.exports = (pool) => {
             ELSE user_onboarding.research_consent_revoked_at
           END,
           research_consent = COALESCE(EXCLUDED.research_consent, user_onboarding.research_consent),
+          sports = EXCLUDED.sports,
           onboarding_completed = true,
           updated_at = CURRENT_TIMESTAMP
         RETURNING *;
@@ -400,7 +419,8 @@ module.exports = (pool) => {
           health_disclaimer_version || null,
           legal_accepted_at || null,
           health_data_consent_at || null,
-          nullableBool(research_consent)
+          nullableBool(research_consent),
+          cleanSports
         ]
       );
 
@@ -423,7 +443,7 @@ module.exports = (pool) => {
             user_id: req.userId,
             name: req.body.name,
             gender: req.body.gender,
-            age: req.body.age,
+                age: req.body.age,
             height: req.body.height,
             weight: req.body.weight,
             goal: fallbackGoal,
