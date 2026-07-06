@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const { CONSENT_POLICY } = require('../config/legal-policy');
 
 module.exports = (pool) => {
   const router = express.Router();
@@ -239,11 +240,7 @@ module.exports = (pool) => {
         terms_accepted,
         privacy_accepted,
         health_data_consent,
-        privacy_policy_version,
-        terms_version,
-        health_disclaimer_version,
-        legal_accepted_at,
-        health_data_consent_at,
+        wearable_consent,
         research_consent
       } = req.body;
 
@@ -324,12 +321,17 @@ module.exports = (pool) => {
           terms_accepted,
           privacy_accepted,
           health_data_consent,
+          wearable_consent,
           privacy_policy_version,
           terms_version,
           health_disclaimer_version,
           legal_accepted_at,
           health_data_consent_at,
+          wearable_consent_at,
           research_consent,
+          research_consent_at,
+          wearable_policy_version,
+          research_policy_version,
           sports,
           onboarding_completed,
           updated_at
@@ -338,7 +340,13 @@ module.exports = (pool) => {
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
           $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
           $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-          $31, $32, $33, $34, $35, $36, true, CURRENT_TIMESTAMP
+          $31, $32, $33,
+          CASE WHEN $27::boolean = true OR $28::boolean = true THEN NOW() ELSE NULL END,
+          CASE WHEN $29::boolean = true THEN NOW() ELSE NULL END,
+          CASE WHEN $30::boolean = true THEN NOW() ELSE NULL END,
+          $34,
+          CASE WHEN $34::boolean = true THEN NOW() ELSE NULL END,
+          $35, $36, $37, true, CURRENT_TIMESTAMP
         )
         ON CONFLICT (user_id)
         DO UPDATE SET
@@ -370,17 +378,53 @@ module.exports = (pool) => {
           terms_accepted = COALESCE(EXCLUDED.terms_accepted, user_onboarding.terms_accepted),
           privacy_accepted = COALESCE(EXCLUDED.privacy_accepted, user_onboarding.privacy_accepted),
           health_data_consent = COALESCE(EXCLUDED.health_data_consent, user_onboarding.health_data_consent),
-          privacy_policy_version = COALESCE(EXCLUDED.privacy_policy_version, user_onboarding.privacy_policy_version),
-          terms_version = COALESCE(EXCLUDED.terms_version, user_onboarding.terms_version),
-          health_disclaimer_version = COALESCE(EXCLUDED.health_disclaimer_version, user_onboarding.health_disclaimer_version),
-          legal_accepted_at = COALESCE(EXCLUDED.legal_accepted_at, user_onboarding.legal_accepted_at),
-          health_data_consent_at = COALESCE(EXCLUDED.health_data_consent_at, user_onboarding.health_data_consent_at),
+          wearable_consent = COALESCE(EXCLUDED.wearable_consent, user_onboarding.wearable_consent),
+          privacy_policy_version = CASE
+            WHEN EXCLUDED.terms_accepted = true
+              OR EXCLUDED.privacy_accepted = true
+              OR EXCLUDED.health_data_consent = true
+              THEN EXCLUDED.privacy_policy_version
+            ELSE user_onboarding.privacy_policy_version
+          END,
+          terms_version = CASE
+            WHEN EXCLUDED.terms_accepted = true OR EXCLUDED.privacy_accepted = true
+              THEN EXCLUDED.terms_version
+            ELSE user_onboarding.terms_version
+          END,
+          health_disclaimer_version = CASE
+            WHEN EXCLUDED.health_data_consent = true THEN EXCLUDED.health_disclaimer_version
+            ELSE user_onboarding.health_disclaimer_version
+          END,
+          legal_accepted_at = CASE
+            WHEN EXCLUDED.legal_accepted_at IS NOT NULL THEN EXCLUDED.legal_accepted_at
+            ELSE user_onboarding.legal_accepted_at
+          END,
+          health_data_consent_at = CASE
+            WHEN EXCLUDED.health_data_consent = true THEN EXCLUDED.health_data_consent_at
+            ELSE user_onboarding.health_data_consent_at
+          END,
+          wearable_consent_at = CASE
+            WHEN EXCLUDED.wearable_consent = true THEN EXCLUDED.wearable_consent_at
+            ELSE user_onboarding.wearable_consent_at
+          END,
           research_consent_revoked_at = CASE
             WHEN user_onboarding.research_consent = true AND EXCLUDED.research_consent = false THEN NOW()
             WHEN EXCLUDED.research_consent = true THEN NULL
             ELSE user_onboarding.research_consent_revoked_at
           END,
           research_consent = COALESCE(EXCLUDED.research_consent, user_onboarding.research_consent),
+          research_consent_at = CASE
+            WHEN EXCLUDED.research_consent = true THEN EXCLUDED.research_consent_at
+            ELSE user_onboarding.research_consent_at
+          END,
+          wearable_policy_version = CASE
+            WHEN EXCLUDED.wearable_consent = true THEN EXCLUDED.wearable_policy_version
+            ELSE user_onboarding.wearable_policy_version
+          END,
+          research_policy_version = CASE
+            WHEN EXCLUDED.research_consent = true THEN EXCLUDED.research_policy_version
+            ELSE user_onboarding.research_policy_version
+          END,
           sports = EXCLUDED.sports,
           onboarding_completed = true,
           updated_at = CURRENT_TIMESTAMP
@@ -416,12 +460,13 @@ module.exports = (pool) => {
           nullableBool(terms_accepted),
           nullableBool(privacy_accepted),
           nullableBool(health_data_consent),
-          privacy_policy_version || null,
-          terms_version || null,
-          health_disclaimer_version || null,
-          legal_accepted_at || null,
-          health_data_consent_at || null,
+          nullableBool(wearable_consent),
+          CONSENT_POLICY.privacyPolicyVersion,
+          CONSENT_POLICY.termsVersion,
+          CONSENT_POLICY.healthDisclaimerVersion,
           nullableBool(research_consent),
+          CONSENT_POLICY.wearablePolicyVersion,
+          CONSENT_POLICY.researchPolicyVersion,
           cleanSports
         ]
       );

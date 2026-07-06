@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcryptjs = require('bcryptjs');
 const crypto = require('crypto');
+const { CONSENT_POLICY } = require('../config/legal-policy');
 
 let createClient = null;
 try {
@@ -903,24 +904,83 @@ module.exports = (pool) => {
       await saveResearchAggregate(req.userId, 'consent_revoked');
     }
 
-    const setClauses = Object.keys(updates)
-      .map((field, index) => {
-        const placeholder = `$${index + 1}`;
-        if (field !== 'research_consent') return `${field} = ${placeholder}`;
+    const values = [];
+    const setClauses = [];
+    const addValue = (value) => {
+      values.push(value);
+      return `$${values.length}`;
+    };
 
-        return `research_consent = ${placeholder},
-          research_consent_revoked_at = CASE
+    for (const field of Object.keys(updates)) {
+      const placeholder = addValue(updates[field]);
+
+      if (field === 'research_consent') {
+        const policyPlaceholder = addValue(CONSENT_POLICY.researchPolicyVersion);
+        setClauses.push(
+          `research_consent = ${placeholder}`,
+          `research_consent_revoked_at = CASE
             WHEN research_consent = true AND ${placeholder} = false THEN NOW()
             WHEN ${placeholder} = true THEN NULL
             ELSE research_consent_revoked_at
-          END`;
-      })
-      .join(', ');
-    const values = [...Object.values(updates), req.userId];
+          END`,
+          `research_consent_at = CASE
+            WHEN ${placeholder} = true THEN NOW()
+            ELSE research_consent_at
+          END`,
+          `research_policy_version = CASE
+            WHEN ${placeholder} = true THEN ${policyPlaceholder}
+            ELSE research_policy_version
+          END`
+        );
+        continue;
+      }
+
+      setClauses.push(`${field} = ${placeholder}`);
+
+      if (field === 'health_data_consent') {
+        const privacyPlaceholder = addValue(CONSENT_POLICY.privacyPolicyVersion);
+        const termsPlaceholder = addValue(CONSENT_POLICY.termsVersion);
+        const disclaimerPlaceholder = addValue(CONSENT_POLICY.healthDisclaimerVersion);
+        setClauses.push(
+          `health_data_consent_at = CASE
+            WHEN ${placeholder} = true THEN NOW()
+            ELSE health_data_consent_at
+          END`,
+          `privacy_policy_version = CASE
+            WHEN ${placeholder} = true THEN ${privacyPlaceholder}
+            ELSE privacy_policy_version
+          END`,
+          `terms_version = CASE
+            WHEN ${placeholder} = true THEN ${termsPlaceholder}
+            ELSE terms_version
+          END`,
+          `health_disclaimer_version = CASE
+            WHEN ${placeholder} = true THEN ${disclaimerPlaceholder}
+            ELSE health_disclaimer_version
+          END`
+        );
+      }
+
+      if (field === 'wearable_consent') {
+        const policyPlaceholder = addValue(CONSENT_POLICY.wearablePolicyVersion);
+        setClauses.push(
+          `wearable_consent_at = CASE
+            WHEN ${placeholder} = true THEN NOW()
+            ELSE wearable_consent_at
+          END`,
+          `wearable_policy_version = CASE
+            WHEN ${placeholder} = true THEN ${policyPlaceholder}
+            ELSE wearable_policy_version
+          END`
+        );
+      }
+    }
+
+    values.push(req.userId);
 
     try {
       await pool.query(
-        `UPDATE user_onboarding SET ${setClauses} WHERE user_id = $${values.length}`,
+        `UPDATE user_onboarding SET ${setClauses.join(', ')} WHERE user_id = $${values.length}`,
         values
       );
 

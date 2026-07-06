@@ -63,11 +63,17 @@ CREATE TABLE IF NOT EXISTS user_onboarding (
   terms_accepted BOOLEAN DEFAULT FALSE,
   privacy_accepted BOOLEAN DEFAULT FALSE,
   health_data_consent BOOLEAN DEFAULT FALSE,
+  wearable_consent BOOLEAN DEFAULT FALSE,
+  research_consent BOOLEAN DEFAULT FALSE,
   privacy_policy_version VARCHAR(100),
   terms_version VARCHAR(100),
   health_disclaimer_version VARCHAR(100),
+  wearable_policy_version VARCHAR(100),
+  research_policy_version VARCHAR(100),
   legal_accepted_at TIMESTAMP,
   health_data_consent_at TIMESTAMP,
+  wearable_consent_at TIMESTAMPTZ,
+  research_consent_at TIMESTAMPTZ,
   onboarding_completed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -101,11 +107,17 @@ ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS wearable_provider VARCHAR(5
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS terms_accepted BOOLEAN DEFAULT FALSE;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS privacy_accepted BOOLEAN DEFAULT FALSE;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS health_data_consent BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS wearable_consent BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS research_consent BOOLEAN DEFAULT FALSE;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS privacy_policy_version VARCHAR(100);
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS terms_version VARCHAR(100);
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS health_disclaimer_version VARCHAR(100);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS wearable_policy_version VARCHAR(100);
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS research_policy_version VARCHAR(100);
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMP;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS health_data_consent_at TIMESTAMP;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS wearable_consent_at TIMESTAMPTZ;
+ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS research_consent_at TIMESTAMPTZ;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
