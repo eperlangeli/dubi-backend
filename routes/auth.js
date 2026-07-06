@@ -137,6 +137,7 @@ module.exports = (pool) => {
           COALESCE(uo.height, u.height) AS height,
           COALESCE(uo.weight, u.weight) AS weight,
           COALESCE(uo.goal, u.goal) AS goal,
+          uo.gender,
           uo.diet,
           uo.workout_days,
           uo.workout_intensity,
@@ -152,6 +153,7 @@ module.exports = (pool) => {
 
       if (!rows.length) {
         await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+        console.error(`saveResearchAggregate skipped: no eligible consented research row for reason=${reason}.`);
         return;
       }
 
@@ -211,6 +213,7 @@ module.exports = (pool) => {
       );
 
       await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+      console.info(`saveResearchAggregate wrote research_aggregates for reason=${reason}.`);
     } catch (err) {
       try {
         await pool.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
@@ -218,7 +221,7 @@ module.exports = (pool) => {
       } catch (savepointError) {
         console.error('saveResearchAggregate savepoint recovery failed:', savepointError.message);
       }
-      console.error('saveResearchAggregate failed (non-blocking):', err.message);
+      console.error(`saveResearchAggregate failed for reason=${reason}:`, err.message);
     }
   }
 
@@ -240,6 +243,7 @@ module.exports = (pool) => {
           COALESCE(uo.height, u.height) AS height,
           COALESCE(uo.weight, u.weight) AS weight,
           COALESCE(uo.goal, u.goal) AS goal,
+          uo.gender,
           to_jsonb(u)->>'lang' AS lang,
           uo.target_weight,
           uo.target_body_fat,
@@ -268,6 +272,7 @@ module.exports = (pool) => {
 
       if (!rows.length) {
         await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+        console.error(`saveResearchSnapshot skipped: no eligible consented research row for reason=${reason}.`);
         return;
       }
 
@@ -284,7 +289,7 @@ module.exports = (pool) => {
         if (longitudinalRows.length) {
           const longitudinal = longitudinalRows[0];
           const fallbackFields = [
-            'age', 'height', 'weight', 'goal', 'lang',
+            'age', 'height', 'weight', 'gender', 'goal', 'lang',
             'target_weight', 'target_body_fat', 'competition_sport', 'competition_date',
             'occupation', 'workout_days', 'workout_duration', 'workout_intensity',
             'daily_steps', 'sedentary_days', 'diet', 'diet_intensity', 'allergies', 'sport',
@@ -299,36 +304,33 @@ module.exports = (pool) => {
 
       await pool.query(
         `INSERT INTO research_data_snapshots (
-          pseudonym, reason, lang,
-          age, height, weight, goal,
+          captured_at, pseudonym,
+          age, height, weight, gender, goal,
           target_weight, target_body_fat,
-          competition_sport, competition_date,
           occupation, workout_days, workout_duration, workout_intensity,
           daily_steps, sedentary_days,
           diet, diet_intensity, allergies, sport,
-          training_time, breakfast_pref, day_start, day_end
+          training_time, breakfast_pref, day_start, day_end,
+          competition_sport, competition_date, reason, lang
         ) VALUES (
-          $1,$2,$3,
-          $4,$5,$6,$7,
-          $8,$9,
-          $10,$11,
-          $12,$13,$14,$15,
-          $16,$17,
-          $18,$19,$20,$21,
-          $22,$23,$24,$25
+          NOW(), $1,
+          $2,$3,$4,$5,$6,
+          $7,$8,
+          $9,$10,$11,$12,
+          $13,$14,
+          $15,$16,$17,$18,
+          $19,$20,$21,$22,
+          $23,$24,$25,$26
         )`,
         [
           pseudonym,
-          reason,
-          research.lang ?? null,
           research.age ?? null,
           research.height ?? null,
           research.weight ?? null,
+          research.gender ?? null,
           research.goal ?? null,
           research.target_weight ?? null,
           research.target_body_fat ?? null,
-          research.competition_sport ?? null,
-          research.competition_date ?? null,
           research.occupation ?? null,
           research.workout_days ?? null,
           research.workout_duration ?? null,
@@ -342,11 +344,16 @@ module.exports = (pool) => {
           research.training_time ?? null,
           research.breakfast_pref ?? null,
           research.day_start ?? null,
-          research.day_end ?? null
+          research.day_end ?? null,
+          research.competition_sport ?? null,
+          research.competition_date ?? null,
+          reason,
+          research.lang ?? null
         ]
       );
 
       await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+      console.info(`saveResearchSnapshot wrote research_data_snapshots for reason=${reason}.`);
     } catch (err) {
       try {
         await pool.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
@@ -354,7 +361,7 @@ module.exports = (pool) => {
       } catch (savepointError) {
         console.error('saveResearchSnapshot savepoint recovery failed:', savepointError.message);
       }
-      console.error('saveResearchSnapshot failed (non-blocking):', err.message);
+      console.error(`saveResearchSnapshot failed for reason=${reason}:`, err.message);
     }
   }
 
@@ -411,6 +418,7 @@ module.exports = (pool) => {
 
       if (!rows.length) {
         await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+        console.error('saveResearchLongitudinal skipped: no eligible consented research row.');
         return;
       }
 
@@ -488,6 +496,7 @@ module.exports = (pool) => {
       );
 
       await pool.query(`RELEASE SAVEPOINT ${savepoint}`);
+      console.info('saveResearchLongitudinal wrote research_longitudinal.');
     } catch (err) {
       try {
         await pool.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
@@ -495,7 +504,7 @@ module.exports = (pool) => {
       } catch (savepointError) {
         console.error('saveResearchLongitudinal savepoint recovery failed:', savepointError.message);
       }
-      console.error('saveResearchLongitudinal failed (non-blocking):', err.message);
+      console.error('saveResearchLongitudinal failed:', err.message);
     }
   }
 
