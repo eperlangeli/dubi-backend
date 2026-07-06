@@ -11,7 +11,7 @@ async function cleanupRevokedResearchData(pool) {
   const salt = String(process.env.RESEARCH_SALT || '').trim();
   if (!salt) {
     console.error('[cron:research-cleanup] Cleanup skipped: RESEARCH_SALT is not configured.');
-    return { users: 0, snapshots: 0, longitudinal: 0, skipped: true };
+    return { users: 0, snapshots: 0, longitudinal: 0, aggregates: 0, skipped: true };
   }
 
   let client;
@@ -20,12 +20,17 @@ async function cleanupRevokedResearchData(pool) {
     await client.query('BEGIN');
 
     const { rows } = await client.query(
-      'SELECT user_id AS id FROM research_cleanup_candidates()'
+      `SELECT uo.user_id AS id
+       FROM user_onboarding uo
+       WHERE uo.research_consent = FALSE
+         AND uo.research_consent_revoked_at IS NOT NULL
+         AND uo.research_consent_revoked_at <= NOW() - INTERVAL '30 days'
+       ORDER BY uo.user_id`
     );
 
     if (rows.length === 0) {
       await client.query('COMMIT');
-      return { users: 0, snapshots: 0, longitudinal: 0, skipped: false };
+      return { users: 0, snapshots: 0, longitudinal: 0, aggregates: 0, skipped: false };
     }
 
     const pseudonyms = rows.map((row) => createResearchPseudonym(row.id, salt));
@@ -37,17 +42,23 @@ async function cleanupRevokedResearchData(pool) {
       'DELETE FROM research_longitudinal WHERE pseudonym = ANY($1::text[])',
       [pseudonyms]
     );
+    const aggregates = await client.query(
+      'DELETE FROM research_aggregates WHERE pseudonym = ANY($1::text[])',
+      [pseudonyms]
+    );
 
     await client.query('COMMIT');
     const result = {
       users: rows.length,
       snapshots: snapshots.rowCount || 0,
       longitudinal: longitudinal.rowCount || 0,
+      aggregates: aggregates.rowCount || 0,
       skipped: false
     };
     console.log(
       `[cron:research-cleanup] Cleaned ${result.users} users, ` +
-      `${result.snapshots} snapshots and ${result.longitudinal} longitudinal rows.`
+      `${result.snapshots} snapshots, ${result.longitudinal} longitudinal rows ` +
+      `and ${result.aggregates} aggregate rows.`
     );
     return result;
   } catch (error) {
@@ -57,7 +68,7 @@ async function cleanupRevokedResearchData(pool) {
       }
     }
     console.error('[cron:research-cleanup] Cleanup failed:', error.message);
-    return { users: 0, snapshots: 0, longitudinal: 0, skipped: false, error: true };
+    return { users: 0, snapshots: 0, longitudinal: 0, aggregates: 0, skipped: false, error: true };
   } finally {
     if (client) client.release();
   }

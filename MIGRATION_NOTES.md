@@ -2,6 +2,21 @@
 
 These SQL statements are review notes only. Do not run them until they have been reviewed against the live Supabase schema and a fresh backup exists.
 
+## 0. Research consent re-grant repair
+
+Run this once before or immediately after deploying the consent re-grant backend fix. It removes the impossible state `research_consent = true` with a stale `research_consent_revoked_at`.
+
+```sql
+BEGIN;
+
+UPDATE public.user_onboarding
+SET research_consent_revoked_at = NULL
+WHERE research_consent = TRUE
+  AND research_consent_revoked_at IS NOT NULL;
+
+COMMIT;
+```
+
 ## 1. Schema alignment required by this backend
 
 ```sql

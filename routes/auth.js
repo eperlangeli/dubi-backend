@@ -924,6 +924,7 @@ module.exports = (pool) => {
     }
 
     const shouldCaptureResearchRevocation = updates.research_consent === false;
+    const shouldCaptureResearchGrant = updates.research_consent === true;
 
     if (shouldCaptureResearchRevocation) {
       await saveResearchSnapshot(req.userId, 'consent_revoked');
@@ -945,8 +946,8 @@ module.exports = (pool) => {
         setClauses.push(
           `research_consent = ${placeholder}`,
           `research_consent_revoked_at = CASE
-            WHEN research_consent = true AND ${placeholder} = false THEN NOW()
             WHEN ${placeholder} = true THEN NULL
+            WHEN research_consent = true AND ${placeholder} = false THEN NOW()
             ELSE research_consent_revoked_at
           END`,
           `research_consent_at = CASE
@@ -1010,7 +1011,8 @@ module.exports = (pool) => {
         values
       );
 
-      if (updates.research_consent === true) {
+      if (shouldCaptureResearchGrant) {
+        await saveResearchSnapshot(req.userId, 'consent_granted');
         await saveResearchLongitudinal(req.userId);
       }
 

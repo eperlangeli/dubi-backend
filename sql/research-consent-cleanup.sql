@@ -4,6 +4,13 @@
 ALTER TABLE public.user_onboarding
   ADD COLUMN IF NOT EXISTS research_consent_revoked_at TIMESTAMPTZ;
 
+-- Repair impossible legacy state created by old consent toggles.
+-- A currently consenting user must never remain marked as revoked.
+UPDATE public.user_onboarding
+SET research_consent_revoked_at = NULL
+WHERE research_consent = TRUE
+  AND research_consent_revoked_at IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_user_onboarding_research_cleanup
   ON public.user_onboarding(research_consent_revoked_at)
   WHERE research_consent = FALSE
