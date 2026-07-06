@@ -1,0 +1,109 @@
+# DUBI backend migration notes
+
+These SQL statements are review notes only. Do not run them until they have been reviewed against the live Supabase schema and a fresh backup exists.
+
+## 1. Schema alignment required by this backend
+
+```sql
+BEGIN;
+
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+
+ALTER TABLE public.users
+  DROP CONSTRAINT IF EXISTS users_parental_consent_status_check;
+
+ALTER TABLE public.users
+  ADD CONSTRAINT users_parental_consent_status_check
+  CHECK (parental_consent_status IN ('not_required', 'pending', 'approved', 'expired', 'denied'));
+
+ALTER TABLE public.user_onboarding
+  ADD COLUMN IF NOT EXISTS wearable_consent BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS research_consent BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS wearable_policy_version VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS research_policy_version VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS wearable_consent_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS research_consent_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS research_consent_revoked_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS sports TEXT[] DEFAULT ARRAY[]::TEXT[];
+
+ALTER TABLE public.research_aggregates
+  ADD COLUMN IF NOT EXISTS pseudonym TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_research_aggregates_pseudonym
+  ON public.research_aggregates(pseudonym);
+
+COMMIT;
+```
+
+## 2. Cleanup candidates: legacy `plans`
+
+```sql
+BEGIN;
+
+SELECT COUNT(*) AS plans_rows_before_drop
+FROM public.plans;
+
+DROP TABLE IF EXISTS public.plans CASCADE;
+
+COMMIT;
+```
+
+## 3. Cleanup candidates: legacy `wearable_tokens`
+
+Only run this if the production strategy remains OpenWearables aggregator-based and no direct provider OAuth integration depends on this table.
+
+```sql
+BEGIN;
+
+SELECT COUNT(*) AS wearable_tokens_rows_before_drop
+FROM public.wearable_tokens;
+
+DROP TABLE IF EXISTS public.wearable_tokens CASCADE;
+
+COMMIT;
+```
+
+## 4. Cleanup candidates: unused `parent_consent_*` columns
+
+The active code uses `parental_consent_*` and `guardian_*`. Do not drop those.
+
+```sql
+BEGIN;
+
+ALTER TABLE public.users
+  DROP COLUMN IF EXISTS parent_consent_token,
+  DROP COLUMN IF EXISTS parent_consent_token_expires_at,
+  DROP COLUMN IF EXISTS parent_consent_verified_at,
+  DROP COLUMN IF EXISTS parent_consent_status,
+  DROP COLUMN IF EXISTS parent_consent_at;
+
+COMMIT;
+```
+
+## 5. Purge demo wearable rows
+
+This removes wearable rows for users whose OpenWearables connection is explicitly marked as demo-seeded, then removes those demo connections.
+
+```sql
+BEGIN;
+
+SELECT COUNT(*) AS demo_wearable_rows
+FROM public.wearable_data wd
+JOIN public.openwearables_connections ow
+  ON ow.user_id = wd.user_id
+WHERE ow.provider = 'demo'
+  AND ow.status = 'demo_seeded';
+
+DELETE FROM public.wearable_data wd
+USING public.openwearables_connections ow
+WHERE ow.user_id = wd.user_id
+  AND ow.provider = 'demo'
+  AND ow.status = 'demo_seeded';
+
+DELETE FROM public.openwearables_connections
+WHERE provider = 'demo'
+  AND status = 'demo_seeded';
+
+COMMIT;
+```
