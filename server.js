@@ -20,7 +20,31 @@ const scopedPool = createScopedPool(pool);
 require('./cron/longitudinal')(pool);
 require('./cron/research-cleanup')(pool);
 
-app.use(cors());
+const DEFAULT_CORS_ORIGINS = [
+  'https://dubi-frontend.onrender.com',
+  'https://dubi.health',
+  'https://www.dubi.health',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:8080'
+];
+const corsOrigins = new Set(
+  String(process.env.CORS_ORIGINS || DEFAULT_CORS_ORIGINS.join(','))
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || corsOrigins.has(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '1mb' }));
 app.use('/waitlist', require('./routes/waitlist')(pool));
 app.use(withAuthenticatedDbContext(pool));
