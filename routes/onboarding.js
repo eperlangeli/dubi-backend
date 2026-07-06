@@ -55,6 +55,14 @@ module.exports = (pool) => {
     return map[key] || fallback || key;
   };
 
+  const isTrueBoolean = (value) => (
+    value === true
+    || value === 'true'
+    || value === 't'
+    || value === 1
+    || value === '1'
+  );
+
   const goalMap = {
     fatloss: 'fat_loss',
     'fat loss': 'fat_loss',
@@ -338,6 +346,12 @@ module.exports = (pool) => {
         return null;
       };
 
+      const existingOnboardingResult = await pool.query(
+        'SELECT 1 FROM user_onboarding WHERE user_id = $1',
+        [req.userId]
+      );
+      const isOnboardingUpdate = existingOnboardingResult.rows.length > 0;
+
       const result = await pool.query(
         `
         INSERT INTO user_onboarding (
@@ -520,9 +534,18 @@ module.exports = (pool) => {
         ]
       );
 
-      if (result.rows[0]?.research_consent === true) {
-        await saveResearchSnapshot(req.userId, 'onboarding');
+      const researchStateResult = await pool.query(
+        'SELECT research_consent FROM user_onboarding WHERE user_id = $1',
+        [req.userId]
+      );
+      const hasResearchConsent = isTrueBoolean(researchStateResult.rows[0]?.research_consent);
+
+      if (hasResearchConsent) {
+        const researchReason = isOnboardingUpdate ? 'onboarding_update' : 'onboarding';
+        await saveResearchSnapshot(req.userId, researchReason);
         await saveResearchLongitudinal(req.userId);
+      } else {
+        console.info('Onboarding research capture skipped: research_consent is not true after save.');
       }
 
       res.json({
