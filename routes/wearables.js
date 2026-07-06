@@ -32,6 +32,11 @@ module.exports = (pool) => {
 
   const normalizeProviderId = (provider) => String(provider || '').trim().toLowerCase();
 
+  const isDemoSeedEnabled = () => (
+    process.env.NODE_ENV !== 'production' &&
+    ['1', 'true', 'yes'].includes(String(process.env.ALLOW_DEMO_SEED || '').trim().toLowerCase())
+  );
+
   const sensitiveResponseKeys = new Set([
     'access_token',
     'refresh_token',
@@ -458,6 +463,10 @@ module.exports = (pool) => {
   });
 
   router.post('/demo/seed', verifyToken, async (req, res) => {
+    if (!isDemoSeedEnabled()) {
+      return res.status(403).json({ error: 'demo_seed_disabled' });
+    }
+
     try {
       const { scenario = 'balanced' } = req.body || {};
       const allowedScenarios = ['balanced', 'low_recovery', 'activity_only'];
