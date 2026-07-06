@@ -121,6 +121,12 @@ module.exports = (pool) => {
     const savepoint = 'research_aggregate_attempt';
 
     try {
+      const pseudonym = createResearchPseudonym(userId);
+      if (!pseudonym) {
+        console.error('saveResearchAggregate skipped: RESEARCH_SALT is not configured.');
+        return;
+      }
+
       // A failed statement aborts a PostgreSQL transaction even when its error
       // is caught in JavaScript. The savepoint keeps this helper non-blocking.
       await pool.query(`SAVEPOINT ${savepoint}`);
@@ -186,10 +192,11 @@ module.exports = (pool) => {
 
       await pool.query(
         `INSERT INTO research_aggregates
-          (age_range, bmi_range, goal, diet_type, workout_days,
+          (pseudonym, age_range, bmi_range, goal, diet_type, workout_days,
            workout_intensity, occupation_type, steps_range, reason, lang)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [
+          pseudonym,
           ageRange,
           bmiRange,
           research.goal || null,
@@ -1186,8 +1193,39 @@ module.exports = (pool) => {
       }
       deletedEmail = userResult.rows[0].email;
 
+      const deleteByPseudonymIfPresent = async (table) => {
+        const column = await client.query(
+          `SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'public'
+             AND table_name = $1
+             AND column_name = 'pseudonym'
+           LIMIT 1`,
+          [table]
+        );
+        if (column.rows.length > 0) {
+          await client.query(`DELETE FROM ${table} WHERE pseudonym = $1`, [pseudonym]);
+        }
+      };
+
+      const deleteByUserIdIfPresent = async (table) => {
+        const column = await client.query(
+          `SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'public'
+             AND table_name = $1
+             AND column_name = 'user_id'
+           LIMIT 1`,
+          [table]
+        );
+        if (column.rows.length > 0) {
+          await client.query(`DELETE FROM ${table} WHERE user_id::text = $1`, [String(req.userId)]);
+        }
+      };
+
       await client.query('DELETE FROM research_data_snapshots WHERE pseudonym = $1', [pseudonym]);
       await client.query('DELETE FROM research_longitudinal WHERE pseudonym = $1', [pseudonym]);
+      await deleteByPseudonymIfPresent('research_aggregates');
       await client.query('DELETE FROM waitlist WHERE LOWER(email) = LOWER($1)', [deletedEmail]);
 
       const userOwnedTables = [
@@ -1208,11 +1246,11 @@ module.exports = (pool) => {
         await client.query(`DELETE FROM ${table} WHERE user_id = $1`, [req.userId]);
       }
 
-      const optionalTables = ['meal_plans'];
+      const optionalTables = ['meal_plans', 'plans', 'wearable_tokens'];
       for (const table of optionalTables) {
         const exists = await client.query('SELECT to_regclass($1) AS table_name', [`public.${table}`]);
         if (exists.rows[0]?.table_name) {
-          await client.query(`DELETE FROM ${table} WHERE user_id = $1`, [req.userId]);
+          await deleteByUserIdIfPresent(table);
         }
       }
 
