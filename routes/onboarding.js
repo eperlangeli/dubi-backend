@@ -192,6 +192,26 @@ module.exports = (pool) => {
       .filter(Boolean))];
   };
 
+  const calculateAgeFromDate = (dateOfBirth) => {
+    if (!dateOfBirth) return null;
+    const dob = new Date(`${String(dateOfBirth).slice(0, 10)}T00:00:00Z`);
+    if (Number.isNaN(dob.getTime())) return null;
+
+    const today = new Date();
+    let calculatedAge = today.getUTCFullYear() - dob.getUTCFullYear();
+    const monthDelta = today.getUTCMonth() - dob.getUTCMonth();
+    if (monthDelta < 0 || (monthDelta === 0 && today.getUTCDate() < dob.getUTCDate())) {
+      calculatedAge -= 1;
+    }
+    return calculatedAge;
+  };
+
+  const numberInRange = (value, min, max) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < min || numeric > max) return null;
+    return numeric;
+  };
+
   const normalizeTrainingTime = (value) => canonicalFromMap(value, {
     mattina: 'morning',
     morning: 'morning',
@@ -209,6 +229,10 @@ module.exports = (pool) => {
   }, 'varies');
 
   router.post('/save', verifyToken, async (req, res) => {
+    let cleanAge;
+    let cleanHeight;
+    let cleanWeight;
+
     try {
       const {
         name,
@@ -245,7 +269,7 @@ module.exports = (pool) => {
       } = req.body;
 
       const consentResult = await pool.query(
-        'SELECT is_minor, parental_consent_status FROM users WHERE id = $1',
+        'SELECT is_minor, parental_consent_status, date_of_birth FROM users WHERE id = $1',
         [req.userId]
       );
 
@@ -253,12 +277,29 @@ module.exports = (pool) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      const consentStatus = consentResult.rows[0].parental_consent_status || 'not_required';
-      if (consentStatus === 'pending' || consentStatus === 'expired') {
+      const user = consentResult.rows[0];
+      const consentStatus = user.parental_consent_status || 'not_required';
+      if (user.is_minor && consentStatus !== 'approved') {
         return res.status(403).json({
           error: 'parental_consent_required',
           parental_consent_status: consentStatus
         });
+      }
+
+      const ageFromDateOfBirth = calculateAgeFromDate(user.date_of_birth);
+      cleanAge = Number.isFinite(ageFromDateOfBirth) ? ageFromDateOfBirth : Number(age);
+      if (!Number.isFinite(cleanAge) || cleanAge < 14 || cleanAge > 90) {
+        return res.status(400).json({ error: 'invalid_age_range', min: 14, max: 90 });
+      }
+
+      cleanHeight = numberInRange(height, 100, 230);
+      if (cleanHeight === null) {
+        return res.status(400).json({ error: 'invalid_height_range', min: 100, max: 230 });
+      }
+
+      cleanWeight = numberInRange(weight, 30, 250);
+      if (cleanWeight === null) {
+        return res.status(400).json({ error: 'invalid_weight_range', min: 30, max: 250 });
       }
 
       const cleanWearableProvider = wearableMap[wearable_provider] || 'none';
@@ -286,7 +327,15 @@ module.exports = (pool) => {
       };
       const nullableBool = (value) => {
         if (value === undefined || value === null || value === '') return null;
-        return Boolean(value);
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+          const normalized = value.trim().toLowerCase();
+          if (normalized === 'true') return true;
+          if (normalized === 'false') return false;
+        }
+        if (value === 1) return true;
+        if (value === 0) return false;
+        return null;
       };
 
       const result = await pool.query(
@@ -434,9 +483,9 @@ module.exports = (pool) => {
           req.userId,
           name,
           gender,
-          age,
-          height,
-          weight,
+          cleanAge,
+          cleanHeight,
+          cleanWeight,
           goal,
           target_weight,
           target_body_fat,
@@ -483,11 +532,15 @@ module.exports = (pool) => {
     } catch (error) {
       console.error('Onboarding save error:', error);
       try {
+        if (!Number.isFinite(cleanAge) || !Number.isFinite(cleanHeight) || !Number.isFinite(cleanWeight)) {
+          return res.status(500).json({ error: 'Failed to save onboarding data' });
+        }
+
         const fallbackGoal = canonicalFromMap(req.body.goal, goalMap, 'maintenance');
         const fallbackDiet = canonicalFromMap(req.body.diet, dietMap, 'omnivore');
         await pool.query(
           'UPDATE users SET age = $1, height = $2, weight = $3, goal = $4 WHERE id = $5',
-          [Number(req.body.age), Number(req.body.height), Number(req.body.weight), fallbackGoal, req.userId]
+          [cleanAge, cleanHeight, cleanWeight, fallbackGoal, req.userId]
         );
         res.json({
           message: 'Onboarding essentials saved successfully',
@@ -495,9 +548,9 @@ module.exports = (pool) => {
             user_id: req.userId,
             name: req.body.name,
             gender: req.body.gender,
-                age: req.body.age,
-            height: req.body.height,
-            weight: req.body.weight,
+            age: cleanAge,
+            height: cleanHeight,
+            weight: cleanWeight,
             goal: fallbackGoal,
             diet: fallbackDiet,
             fallback_storage: true

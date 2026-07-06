@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  date_of_birth DATE,
   age INT,
   weight DOUBLE PRECISION,
   height INT,
@@ -16,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
   guardian_name TEXT,
   guardian_email TEXT,
   parental_consent_status TEXT NOT NULL DEFAULT 'not_required'
-    CHECK (parental_consent_status IN ('not_required', 'pending', 'approved', 'expired')),
+    CHECK (parental_consent_status IN ('not_required', 'pending', 'approved', 'expired', 'denied')),
   parental_consent_token TEXT,
   parental_consent_token_expires_at TIMESTAMPTZ,
   parental_consent_verified_at TIMESTAMPTZ,
@@ -24,10 +25,14 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_minor BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_name TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_email TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_status TEXT NOT NULL DEFAULT 'not_required'
-  CHECK (parental_consent_status IN ('not_required', 'pending', 'approved', 'expired'));
+  CHECK (parental_consent_status IN ('not_required', 'pending', 'approved', 'expired', 'denied'));
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_parental_consent_status_check;
+ALTER TABLE users ADD CONSTRAINT users_parental_consent_status_check
+  CHECK (parental_consent_status IN ('not_required', 'pending', 'approved', 'expired', 'denied'));
 ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_token TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_token_expires_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_verified_at TIMESTAMPTZ;

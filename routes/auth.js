@@ -532,6 +532,13 @@ module.exports = (pool) => {
     return age;
   };
 
+  const normalizeDateOfBirth = (dateOfBirth) => {
+    if (!dateOfBirth) return null;
+    const normalized = String(dateOfBirth).slice(0, 10);
+    const dob = new Date(`${normalized}T00:00:00Z`);
+    return Number.isNaN(dob.getTime()) ? null : normalized;
+  };
+
   const normalizeAge = ({ age, dateOfBirth }) => {
     const calculated = calculateAgeFromDate(dateOfBirth);
     if (Number.isFinite(calculated)) return calculated;
@@ -572,6 +579,7 @@ module.exports = (pool) => {
 
       const isMinor = resolvedAge < 18;
       const consentStatus = isMinor ? 'pending' : 'not_required';
+      const normalizedDateOfBirth = normalizeDateOfBirth(dateOfBirth);
       const passwordHash = bcryptjs.hashSync(password, 10);
 
       client = await pool.connect();
@@ -582,6 +590,7 @@ module.exports = (pool) => {
         INSERT INTO users (
           email,
           password_hash,
+          date_of_birth,
           age,
           weight,
           height,
@@ -589,12 +598,13 @@ module.exports = (pool) => {
           is_minor,
           parental_consent_status
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING ${publicUserFields}
         `,
         [
           email,
           passwordHash,
+          normalizedDateOfBirth,
           resolvedAge,
           weight ?? null,
           height ?? null,
