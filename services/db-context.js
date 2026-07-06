@@ -2,6 +2,10 @@ const { AsyncLocalStorage } = require('async_hooks');
 const jwt = require('jsonwebtoken');
 
 const storage = new AsyncLocalStorage();
+const DB_CONTEXT_IDLE_TIMEOUT_MS = Math.max(
+  1000,
+  Number(process.env.DB_CONTEXT_IDLE_TIMEOUT_MS || 60000)
+);
 
 const createScopedPool = (pool) => ({
   query: (...args) => {
@@ -35,6 +39,7 @@ const withAuthenticatedDbContext = (pool) => async (req, res, next) => {
 
   let client;
   let finalized = false;
+  let ended = false;
 
   const finalize = async () => {
     if (finalized) return;
@@ -53,21 +58,43 @@ const withAuthenticatedDbContext = (pool) => async (req, res, next) => {
   try {
     client = await pool.connect();
     await client.query('BEGIN');
+    await client.query(
+      "SELECT set_config('idle_in_transaction_session_timeout', $1, true)",
+      [String(DB_CONTEXT_IDLE_TIMEOUT_MS)]
+    );
     await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(userId)]);
     req.userId = userId;
 
+    const originalEnd = res.end.bind(res);
+    res.end = (...args) => {
+      if (ended) return res;
+      ended = true;
+
+      finalize()
+        .catch((error) => {
+          console.error('Failed to finalize request DB context before response end:', error.message);
+        })
+        .finally(() => {
+          originalEnd(...args);
+        });
+
+      return res;
+    };
+
     storage.run({ client, userId }, () => {
-      res.once('finish', finalize);
       res.once('close', finalize);
       next();
     });
   } catch (error) {
-    try {
-      if (client) await client.query('ROLLBACK');
-    } catch (rollbackError) {
-      console.error('Failed to rollback request DB context:', rollbackError.message);
-    } finally {
-      if (client) client.release();
+    if (client && !finalized) {
+      finalized = true;
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('Failed to rollback request DB context:', rollbackError.message);
+      } finally {
+        client.release();
+      }
     }
     next(error);
   }
