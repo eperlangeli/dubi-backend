@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 
 module.exports = (pool) => {
   const router = express.Router();
+  const authModule = require('./auth')(pool);
+  const { saveResearchSnapshot, saveResearchLongitudinal } = authModule;
 
   const verifyToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -423,6 +425,11 @@ module.exports = (pool) => {
           cleanSports
         ]
       );
+
+      if (result.rows[0]?.research_consent === true) {
+        await saveResearchSnapshot(req.userId, 'onboarding');
+        await saveResearchLongitudinal(req.userId);
+      }
 
       res.json({
         message: 'Onboarding saved successfully',

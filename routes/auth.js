@@ -137,8 +137,9 @@ module.exports = (pool) => {
           uo.daily_steps,
           to_jsonb(u)->>'lang' AS lang
          FROM users u
-         LEFT JOIN user_onboarding uo ON uo.user_id = u.id
-         WHERE u.id = $1`,
+         JOIN user_onboarding uo ON uo.user_id = u.id
+         WHERE u.id = $1
+           AND uo.research_consent = true`,
         [userId]
       );
 
@@ -895,6 +896,13 @@ module.exports = (pool) => {
       return res.status(400).json({ error: 'no_profile_fields' });
     }
 
+    const shouldCaptureResearchRevocation = updates.research_consent === false;
+
+    if (shouldCaptureResearchRevocation) {
+      await saveResearchSnapshot(req.userId, 'consent_revoked');
+      await saveResearchAggregate(req.userId, 'consent_revoked');
+    }
+
     const setClauses = Object.keys(updates)
       .map((field, index) => {
         const placeholder = `$${index + 1}`;
@@ -928,9 +936,6 @@ module.exports = (pool) => {
   });
 
   router.post('/anonymise-health-data', verifyToken, async (req, res) => {
-    await saveResearchSnapshot(req.userId, 'consent_revoked');
-    await saveResearchAggregate(req.userId, 'consent_revoked');
-
     try {
       // The request-scoped pool runs both statements in the transaction opened
       // by withAuthenticatedDbContext, preserving the RLS user context.
@@ -1171,5 +1176,8 @@ module.exports = (pool) => {
   ));
 
   router.verifyToken = verifyToken;
+  router.saveResearchSnapshot = saveResearchSnapshot;
+  router.saveResearchLongitudinal = saveResearchLongitudinal;
+  router.saveResearchAggregate = saveResearchAggregate;
   return router;
 };
