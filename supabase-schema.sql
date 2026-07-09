@@ -126,6 +126,60 @@ ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS research_consent_at TIMESTA
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
 ALTER TABLE user_onboarding ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
+CREATE TABLE IF NOT EXISTS training_week_plans (
+  id BIGSERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  week_start DATE NOT NULL,
+  planned_days JSONB,
+  source TEXT DEFAULT 'user',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (user_id, week_start)
+);
+
+CREATE TABLE IF NOT EXISTS training_confirmations (
+  id BIGSERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day DATE NOT NULL,
+  planned BOOLEAN,
+  status TEXT CHECK (status IN (
+    'confirmed_yes',
+    'confirmed_no',
+    'detected_wearable',
+    'unconfirmed'
+  )),
+  training_time_slot TEXT,
+  answered_at TIMESTAMPTZ,
+  detected_strain NUMERIC,
+  detected_duration_min INTEGER,
+  detected_active_kcal INTEGER,
+  UNIQUE (user_id, day)
+);
+
+CREATE INDEX IF NOT EXISTS idx_training_week_plans_user_week
+  ON training_week_plans(user_id, week_start DESC);
+
+CREATE INDEX IF NOT EXISTS idx_training_confirmations_user_day
+  ON training_confirmations(user_id, day DESC);
+
+DO $$
+BEGIN
+  IF to_regclass('public.research_data_snapshots') IS NOT NULL THEN
+    ALTER TABLE public.research_data_snapshots
+      DROP CONSTRAINT IF EXISTS valid_snapshot_reason;
+
+    ALTER TABLE public.research_data_snapshots
+      ADD CONSTRAINT valid_snapshot_reason
+      CHECK (reason IN (
+        'onboarding',
+        'onboarding_update',
+        'consent_granted',
+        'consent_revoked',
+        'account_deleted'
+      ));
+  END IF;
+END
+$$;
+
 CREATE TABLE IF NOT EXISTS wearable_data (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -372,6 +426,10 @@ ALTER TABLE adherence ENABLE ROW LEVEL SECURITY;
 ALTER TABLE nps_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_ingredient_swaps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_anomaly_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE training_week_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE training_confirmations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE training_week_plans FORCE ROW LEVEL SECURITY;
+ALTER TABLE training_confirmations FORCE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION app_shared_write_enabled()
 RETURNS boolean
@@ -476,6 +534,16 @@ CREATE POLICY user_ingredient_swaps_isolation ON user_ingredient_swaps
 
 DROP POLICY IF EXISTS user_anomaly_events_isolation ON user_anomaly_events;
 CREATE POLICY user_anomaly_events_isolation ON user_anomaly_events
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
+
+DROP POLICY IF EXISTS training_week_plans_isolation ON training_week_plans;
+CREATE POLICY training_week_plans_isolation ON training_week_plans
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
+
+DROP POLICY IF EXISTS training_confirmations_isolation ON training_confirmations;
+CREATE POLICY training_confirmations_isolation ON training_confirmations
   FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
   WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 

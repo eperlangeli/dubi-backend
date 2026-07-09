@@ -47,6 +47,8 @@ ALTER TABLE adherence FORCE ROW LEVEL SECURITY;
 ALTER TABLE nps_responses FORCE ROW LEVEL SECURITY;
 ALTER TABLE user_ingredient_swaps FORCE ROW LEVEL SECURITY;
 ALTER TABLE user_anomaly_events FORCE ROW LEVEL SECURITY;
+ALTER TABLE training_week_plans FORCE ROW LEVEL SECURITY;
+ALTER TABLE training_confirmations FORCE ROW LEVEL SECURITY;
 
 -- Render DATABASE_URL template:
 -- postgresql://dubi_app:<URL_ENCODED_PASSWORD>@db.cfxtqnbfgsufpmzlxdca.supabase.co:5432/postgres?sslmode=require
@@ -88,7 +90,9 @@ WHERE schemaname = 'public'
     'adherence',
     'nps_responses',
     'user_ingredient_swaps',
-    'user_anomaly_events'
+    'user_anomaly_events',
+    'training_week_plans',
+    'training_confirmations'
   )
 ORDER BY tablename;
 

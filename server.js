@@ -116,6 +116,7 @@ app.use('/api/ai', require('./routes/ai-engine')(scopedPool));
 app.use('/api/ask-dubi', require('./routes/ask-dubi')(scopedPool));
 app.use('/api/nutrition-brain', require('./routes/nutrition-brain')(scopedPool));
 app.use('/api/wearables', require('./routes/wearables')(scopedPool));
+app.use('/api/training', require('./routes/training')(scopedPool));
 app.use('/user', require('./routes/user')(scopedPool));
 app.use('/plan', require('./routes/plan')(scopedPool));
 app.use('/adherence', require('./routes/adherence')(scopedPool));

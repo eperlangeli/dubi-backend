@@ -1074,6 +1074,85 @@ module.exports = (pool) => {
     }
   });
 
+  router.get('/account/export', verifyToken, async (req, res) => {
+    const selectUserOwnedRows = async (table, orderBy = 'id ASC') => {
+      const { rows } = await pool.query(
+        `SELECT *
+         FROM ${table}
+         WHERE user_id = $1
+         ORDER BY ${orderBy}`,
+        [req.userId]
+      );
+      return rows;
+    };
+
+    try {
+      const userResult = await pool.query(
+        `SELECT
+           id, email, date_of_birth, age, weight, height, goal,
+           is_minor, guardian_email, parental_consent_status,
+           parental_consent_verified_at, created_at
+         FROM users
+         WHERE id = $1`,
+        [req.userId]
+      );
+
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const [
+        onboarding,
+        userPlans,
+        dailyPlans,
+        mealPlans,
+        progress,
+        weightHistory,
+        adherenceRows,
+        npsResponses,
+        openwearablesConnections,
+        wearableData,
+        trainingWeekPlans,
+        trainingConfirmations
+      ] = await Promise.all([
+        selectUserOwnedRows('user_onboarding', 'updated_at DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('user_plans', 'created_at DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('daily_plans', 'plan_date DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('meal_plans', 'created_at DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('user_progress', 'created_at DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('weight_history', 'logged_at DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('adherence', 'date DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('nps_responses', 'submitted_at DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('openwearables_connections', 'updated_at DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('wearable_data', 'data_date DESC NULLS LAST, synced_at DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('training_week_plans', 'week_start DESC, id ASC'),
+        selectUserOwnedRows('training_confirmations', 'day DESC, id ASC')
+      ]);
+
+      return res.json({
+        generated_at: new Date().toISOString(),
+        user: userResult.rows[0],
+        data: {
+          user_onboarding: onboarding,
+          user_plans: userPlans,
+          daily_plans: dailyPlans,
+          meal_plans: mealPlans,
+          user_progress: progress,
+          weight_history: weightHistory,
+          adherence: adherenceRows,
+          nps_responses: npsResponses,
+          openwearables_connections: openwearablesConnections,
+          wearable_data: wearableData,
+          training_week_plans: trainingWeekPlans,
+          training_confirmations: trainingConfirmations
+        }
+      });
+    } catch (error) {
+      console.error('Account data export failed:', error.message);
+      return res.status(500).json({ error: 'data_export_failed' });
+    }
+  });
+
   router.get('/account/deletion-preview', verifyToken, async (req, res) => {
     try {
       const pseudonym = createResearchPseudonym(req.userId);
@@ -1250,6 +1329,8 @@ module.exports = (pool) => {
         'user_onboarding',
         'user_plans',
         'user_progress',
+        'training_confirmations',
+        'training_week_plans',
         'wearable_data',
         'weight_history'
       ];
