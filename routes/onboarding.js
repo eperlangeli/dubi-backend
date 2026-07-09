@@ -534,18 +534,19 @@ module.exports = (pool) => {
         ]
       );
 
-      const researchStateResult = await pool.query(
-        'SELECT research_consent FROM user_onboarding WHERE user_id = $1',
-        [req.userId]
-      );
-      const hasResearchConsent = isTrueBoolean(researchStateResult.rows[0]?.research_consent);
+      const savedOnboarding = result.rows[0] || {};
+      const hasResearchConsent = isTrueBoolean(savedOnboarding.research_consent);
 
       if (hasResearchConsent) {
         const researchReason = isOnboardingUpdate ? 'onboarding_update' : 'onboarding';
+        console.info(`Onboarding research capture started for user_id=${req.userId}, reason=${researchReason}.`);
         await saveResearchSnapshot(req.userId, researchReason);
         await saveResearchLongitudinal(req.userId);
       } else {
-        console.info('Onboarding research capture skipped: research_consent is not true after save.');
+        console.info(
+          `Onboarding research capture skipped for user_id=${req.userId}: ` +
+          `saved research_consent=${String(savedOnboarding.research_consent)}.`
+        );
       }
 
       res.json({

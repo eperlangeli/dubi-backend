@@ -136,7 +136,7 @@ async function syncResearchLongitudinal(pool) {
             toIntegerEstimate(research.workout_days),
             research.workout_duration ?? null,
             research.workout_intensity ?? null,
-            toIntegerEstimate(research.daily_steps),
+            research.daily_steps ?? null,
             toIntegerEstimate(research.sedentary_days),
             research.diet ?? null,
             research.diet_intensity ?? null,

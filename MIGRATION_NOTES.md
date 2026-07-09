@@ -2,7 +2,38 @@
 
 These SQL statements are review notes only. Do not run them until they have been reviewed against the live Supabase schema and a fresh backup exists.
 
-## 0. Research consent re-grant repair
+## 0. Research textual ranges alignment — run before deploying backend commit
+
+The frontend stores `daily_steps` and `workout_duration` as textual bands (for example `6000-8000`), not exact integers. Keep the research pipeline consistent and privacy-friendly by storing those bands as text in both snapshot and longitudinal tables.
+
+Optional pre-check:
+
+```sql
+SELECT table_name, column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name IN ('research_data_snapshots', 'research_longitudinal')
+  AND column_name IN ('daily_steps', 'workout_duration', 'workout_days', 'sedentary_days', 'age', 'height', 'weight', 'target_weight', 'target_body_fat')
+ORDER BY table_name, column_name;
+```
+
+Required migration:
+
+```sql
+BEGIN;
+
+ALTER TABLE public.research_data_snapshots
+  ALTER COLUMN daily_steps TYPE TEXT USING daily_steps::text,
+  ALTER COLUMN workout_duration TYPE TEXT USING workout_duration::text;
+
+ALTER TABLE public.research_longitudinal
+  ALTER COLUMN daily_steps TYPE TEXT USING daily_steps::text,
+  ALTER COLUMN workout_duration TYPE TEXT USING workout_duration::text;
+
+COMMIT;
+```
+
+## 0b. Research consent re-grant repair
 
 Run this once before or immediately after deploying the consent re-grant backend fix. It removes the impossible state `research_consent = true` with a stale `research_consent_revoked_at`.
 
