@@ -22,6 +22,7 @@ require('./cron/research-cleanup')(pool);
 
 const DEFAULT_CORS_ORIGINS = [
   'https://dubi-frontend.onrender.com',
+  'https://app.dubi.health',
   'https://dubi.health',
   'https://www.dubi.health',
   'http://localhost:3000',
