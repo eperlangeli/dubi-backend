@@ -1164,4 +1164,220 @@ module.exports = (pool) => {
         `SELECT
           u.created_at AS account_created,
           (SELECT COUNT(*)::integer FROM adherence WHERE user_id = u.id) AS meals_logged,
-          (SELECT COU
+          (SELECT COUNT(*)::integer FROM user_plans WHERE user_id = u.id) AS plans,
+          (SELECT COUNT(*)::integer FROM openwearables_connections WHERE user_id = u.id) AS wearable_connections
+         FROM users u
+         WHERE u.id = $1`,
+        [req.userId]
+      );
+
+      if (summary.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const research = await pool.query(
+        `SELECT
+          EXISTS (SELECT 1 FROM research_data_snapshots WHERE pseudonym = $1)
+          OR EXISTS (SELECT 1 FROM research_longitudinal WHERE pseudonym = $1)
+          AS has_research_data`,
+        [pseudonym]
+      );
+
+      return res.json({
+        meals_logged: summary.rows[0].meals_logged,
+        plans: summary.rows[0].plans,
+        wearable_connections: summary.rows[0].wearable_connections,
+        has_research_data: Boolean(research.rows[0]?.has_research_data),
+        account_created: summary.rows[0].account_created
+      });
+    } catch (error) {
+      console.error('Account deletion preview failed:', error.message);
+      return res.status(500).json({ error: 'deletion_preview_failed' });
+    }
+  });
+
+  router.post('/account/deletion-request', verifyToken, async (req, res) => {
+    const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const expiresAt = new Date(Date.now() + DELETION_OTP_TTL_MS);
+
+    try {
+      const userResult = await pool.query(
+        'SELECT email FROM users WHERE id = $1',
+        [req.userId]
+      );
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const otpHash = await bcryptjs.hash(otp, 10);
+      await pool.query('DELETE FROM deletion_requests WHERE user_id = $1', [req.userId]);
+      await pool.query(
+        `INSERT INTO deletion_requests (user_id, otp_hash, expires_at)
+         VALUES ($1, $2, $3)`,
+        [req.userId, otpHash, expiresAt]
+      );
+
+      const copy = buildDeletionOtpEmail(otp);
+      try {
+        await sendDeletionEmail({ to: userResult.rows[0].email, ...copy });
+      } catch (emailError) {
+        await pool.query('DELETE FROM deletion_requests WHERE user_id = $1', [req.userId]);
+        console.error('Account deletion OTP email failed.');
+        return res.status(502).json({ error: 'deletion_email_failed' });
+      }
+
+      return res.json({ message: 'OTP inviato via email' });
+    } catch (error) {
+      console.error('Account deletion request failed:', error.message);
+      return res.status(500).json({ error: 'deletion_request_failed' });
+    }
+  });
+
+  router.delete('/account', verifyToken, async (req, res) => {
+    const otp = String(req.body?.otp || '').trim();
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ error: 'invalid_or_expired_otp' });
+    }
+
+    const pseudonym = createResearchPseudonym(req.userId);
+    if (!pseudonym) {
+      return res.status(503).json({ error: 'research_cleanup_unavailable' });
+    }
+
+    let client;
+    let deletedEmail = null;
+    try {
+      client = await pool.connect();
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(req.userId)]);
+      await client.query("SELECT set_config('app.allow_password_reset', 'true', true)");
+
+      const requestResult = await client.query(
+        `SELECT otp_hash, expires_at
+         FROM deletion_requests
+         WHERE user_id = $1
+         FOR UPDATE`,
+        [req.userId]
+      );
+
+      const request = requestResult.rows[0];
+      const expired = !request || new Date(request.expires_at).getTime() <= Date.now();
+      const valid = !expired && await bcryptjs.compare(otp, request.otp_hash);
+      if (!valid) {
+        if (expired && request) {
+          await client.query('DELETE FROM deletion_requests WHERE user_id = $1', [req.userId]);
+          await client.query('COMMIT');
+        } else {
+          await client.query('ROLLBACK');
+        }
+        return res.status(400).json({ error: 'invalid_or_expired_otp' });
+      }
+
+      const userResult = await client.query(
+        'SELECT email FROM users WHERE id = $1 FOR UPDATE',
+        [req.userId]
+      );
+      if (userResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'User not found' });
+      }
+      deletedEmail = userResult.rows[0].email;
+
+      const deleteByPseudonymIfPresent = async (table) => {
+        const column = await client.query(
+          `SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'public'
+             AND table_name = $1
+             AND column_name = 'pseudonym'
+           LIMIT 1`,
+          [table]
+        );
+        if (column.rows.length > 0) {
+          await client.query(`DELETE FROM ${table} WHERE pseudonym = $1`, [pseudonym]);
+        }
+      };
+
+      const deleteByUserIdIfPresent = async (table) => {
+        const column = await client.query(
+          `SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'public'
+             AND table_name = $1
+             AND column_name = 'user_id'
+           LIMIT 1`,
+          [table]
+        );
+        if (column.rows.length > 0) {
+          await client.query(`DELETE FROM ${table} WHERE user_id::text = $1`, [String(req.userId)]);
+        }
+      };
+
+      await client.query('DELETE FROM research_data_snapshots WHERE pseudonym = $1', [pseudonym]);
+      await client.query('DELETE FROM research_longitudinal WHERE pseudonym = $1', [pseudonym]);
+      await deleteByPseudonymIfPresent('research_aggregates');
+      await client.query('DELETE FROM waitlist WHERE LOWER(email) = LOWER($1)', [deletedEmail]);
+
+      const userOwnedTables = [
+        'adherence',
+        'daily_plans',
+        'nps_responses',
+        'openwearables_connections',
+        'password_reset_tokens',
+        'user_anomaly_events',
+        'user_ingredient_swaps',
+        'user_onboarding',
+        'user_plans',
+        'user_progress',
+        'training_confirmations',
+        'training_week_plans',
+        'wearable_data',
+        'weight_history'
+      ];
+      for (const table of userOwnedTables) {
+        await client.query(`DELETE FROM ${table} WHERE user_id = $1`, [req.userId]);
+      }
+
+      const optionalTables = ['meal_plans', 'plans', 'wearable_tokens'];
+      for (const table of optionalTables) {
+        const exists = await client.query('SELECT to_regclass($1) AS table_name', [`public.${table}`]);
+        if (exists.rows[0]?.table_name) {
+          await deleteByUserIdIfPresent(table);
+        }
+      }
+
+      await client.query('DELETE FROM deletion_requests WHERE user_id = $1', [req.userId]);
+      await client.query('DELETE FROM users WHERE id = $1', [req.userId]);
+      await client.query('COMMIT');
+    } catch (error) {
+      if (client) {
+        try { await client.query('ROLLBACK'); } catch (rollbackError) {
+          console.error('Account deletion rollback failed.');
+        }
+      }
+      console.error('Account deletion failed:', error.message);
+      return res.status(500).json({ error: 'account_deletion_failed' });
+    } finally {
+      if (client) client.release();
+    }
+
+    try {
+      const copy = buildDeletionConfirmationEmail();
+      await sendDeletionEmail({ to: deletedEmail, ...copy });
+    } catch (emailError) {
+      console.error('Account deletion confirmation email failed.');
+    }
+
+    return res.status(200).json({ message: 'Account cancellato' });
+  });
+
+  router.delete('/me', verifyToken, (req, res) => (
+    res.status(410).json({ error: 'account_deletion_otp_required' })
+  ));
+
+  router.verifyToken = verifyToken;
+  router.saveResearchSnapshot = saveResearchSnapshot;
+  router.saveResearchLongitudinal = saveResearchLongitudinal;
+  router.saveResearchAggregate = saveResearchAggregate;
+  return router;
+};
