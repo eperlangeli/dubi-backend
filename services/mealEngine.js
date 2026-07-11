@@ -139,19 +139,19 @@ function normalizeBreakfastPref(value) {
   if (['none', 'skip', 'no', 'nessuna', 'nessuno', 'senza colazione', 'no breakfast'].includes(pref)) {
     return 'none';
   }
-  if (['daily', 'giornaliera', 'giornaliero', 'day by day', 'choose daily'].includes(pref)) {
-    return 'daily';
+  if (['variable', 'variabile', 'daily', 'giornaliera', 'giornaliero', 'mattina', 'day by day', 'choose daily'].includes(pref)) {
+    return 'variable';
   }
-  if (['dolce', 'sweet'].includes(pref)) return 'dolce';
-  if (['salata', 'salato', 'savory', 'savoury'].includes(pref)) return 'salata';
+  if (['dolce', 'sweet'].includes(pref)) return 'sweet';
+  if (['salata', 'salato', 'savory', 'savoury'].includes(pref)) return 'savory';
   if (['both', 'entrambi', 'entrambe', 'mixed', 'mista', 'misto'].includes(pref)) return 'both';
   return 'both';
 }
 
 function normalizeBreakfastChoice(value) {
   const choice = normalizeToken(value);
-  if (['dolce', 'sweet'].includes(choice)) return 'dolce';
-  if (['salata', 'salato', 'savory', 'savoury'].includes(choice)) return 'salata';
+  if (['dolce', 'sweet'].includes(choice)) return 'sweet';
+  if (['salata', 'salato', 'savory', 'savoury'].includes(choice)) return 'savory';
   if (['skip', 'none', 'no', 'nessuna', 'nessuno'].includes(choice)) return 'skip';
   return null;
 }
@@ -171,13 +171,13 @@ function shouldSkipBreakfast(userProfile = {}) {
 function effectiveBreakfastStyle(userProfile = {}) {
   const choice = getBreakfastChoice(userProfile);
   if (choice === 'skip') return null;
-  if (choice === 'dolce' || choice === 'salata') return choice;
+  if (choice === 'sweet' || choice === 'savory') return choice;
 
   const pref = getBreakfastPreference(userProfile);
-  if (pref === 'dolce' || pref === 'salata') return pref;
+  if (pref === 'sweet' || pref === 'savory') return pref;
   if (pref === 'none') return null;
 
-  // "daily" means no fixed style until the daily frontend choice arrives.
+  // "variable" means no fixed style until the daily frontend choice arrives.
   return 'both';
 }
 
@@ -306,8 +306,36 @@ function getPortionBounds(category) {
   return PORTION_BOUNDS[category] || { min: 50, max: 200, typical: 100 };
 }
 
-function calcPortion(ingredient, targetCalories) {
+function positiveConfigNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
+}
+
+function isDenseVegetableIngredient(ingredient = {}) {
+  if (ingredient.category !== 'vegetable') return false;
+  const kcal = Number(ingredient.calories_per_100g || 0);
+  const carbs = Number(ingredient.carbs_g || 0);
+  const kcalThreshold = positiveConfigNumber(MEAL_FLOORS.dense_vegetable_max_calories_per_100g, 120);
+  const carbsThreshold = positiveConfigNumber(MEAL_FLOORS.dense_vegetable_max_carbs_per_100g, 20);
+  return kcal > kcalThreshold || carbs > carbsThreshold;
+}
+
+function getPortionBoundsForIngredient(ingredient = {}) {
   const bounds = getPortionBounds(ingredient.category);
+  if (!isDenseVegetableIngredient(ingredient)) return bounds;
+
+  const max = positiveConfigNumber(MEAL_FLOORS.dense_vegetable_max_portion_g, 40);
+  const typical = Math.min(max, positiveConfigNumber(MEAL_FLOORS.dense_vegetable_typical_portion_g, 25));
+
+  return {
+    min: Math.min(bounds.min, typical),
+    max: Math.min(bounds.max, max),
+    typical,
+  };
+}
+
+function calcPortion(ingredient, targetCalories) {
+  const bounds = getPortionBoundsForIngredient(ingredient);
   const caloriesPer100g = Number(ingredient.calories_per_100g || 0);
   if (!caloriesPer100g) return bounds.typical;
 
@@ -458,10 +486,10 @@ function breakfastIngredientText(ingredient) {
 
 function matchesBreakfastStyle(ingredient, style) {
   const text = breakfastIngredientText(ingredient);
-  if (style === 'dolce') {
+  if (style === 'sweet') {
     return /frutta|fruit|banana|mela|pera|fragol|mirtill|berry|berries|avena|oat|muesli|granola|yogurt|skyr|kefir|latte|milk|cacao|cocoa|miele|honey|marmellata|jam|pane|toast|ricotta/.test(text);
   }
-  if (style === 'salata') {
+  if (style === 'savory') {
     return /uov|egg|album|avocado|salmone|salmon|tonno|tuna|tacchino|turkey|pollo|chicken|bresaola|prosciutto|hummus|tofu|tempeh|formaggio|cheese|fiocchi di latte|cottage|legume|legumi|pane|toast/.test(text);
   }
   return true;
@@ -471,10 +499,32 @@ function applyBreakfastStylePreference(candidates, mealType, userProfile) {
   if (mealType !== 'breakfast') return candidates;
 
   const style = effectiveBreakfastStyle(userProfile);
-  if (style !== 'dolce' && style !== 'salata') return candidates;
+  if (style !== 'sweet' && style !== 'savory') return candidates;
 
   const preferred = candidates.filter((ingredient) => matchesBreakfastStyle(ingredient, style));
   return preferred.length > 0 ? preferred : candidates;
+}
+
+function inferBreakfastStyleFromMeal(meal, userProfile = {}) {
+  const explicitStyle = effectiveBreakfastStyle(userProfile);
+  if (explicitStyle === 'sweet' || explicitStyle === 'savory') return explicitStyle;
+
+  let sweetScore = 0;
+  let savoryScore = 0;
+  for (const ingredient of meal.ingredients || []) {
+    if (matchesBreakfastStyle(ingredient, 'sweet')) sweetScore += 1;
+    if (matchesBreakfastStyle(ingredient, 'savory')) savoryScore += 1;
+  }
+
+  return savoryScore > sweetScore ? 'savory' : 'sweet';
+}
+
+function annotateBreakfastStyle(meal, userProfile = {}) {
+  if (!meal || meal.mealType !== 'breakfast' || meal.error) return meal;
+  const style = inferBreakfastStyleFromMeal(meal, userProfile);
+  meal.breakfast_style = style;
+  meal.breakfastStyle = style;
+  return meal;
 }
 
 function pickIngredient(candidates, dayTracker, mealTracker, rng, userProfile, selectionSeed) {
@@ -543,6 +593,7 @@ function buildPlanItem(ingredient, slot, portionG) {
 }
 
 function isVegetableFloorItem(item) {
+  if (isDenseVegetableIngredient(item)) return false;
   return item.category === 'vegetable' || item.slot === 'vegetable';
 }
 
@@ -575,6 +626,20 @@ function dinnerFatFloor() {
   return Number.isFinite(floor) && floor > 0 ? floor : 0;
 }
 
+function proteinCeilingForMeal(userProfile = {}) {
+  const perKg = positiveConfigNumber(MEAL_FLOORS.protein_per_meal_max_g_per_kg, 0.55);
+  const weightKg = Number(userProfile.weightKg || userProfile.weight || userProfile.currentWeight || 0);
+  if (!Number.isFinite(weightKg) || weightKg <= 0) return 0;
+  return Math.round(weightKg * perKg * 10) / 10;
+}
+
+function mealCalorieCeiling(dailyCalTarget) {
+  const dailyCalories = Number(dailyCalTarget || 0);
+  const fraction = positiveConfigNumber(MEAL_FLOORS.max_meal_calorie_fraction, 0.4);
+  if (!Number.isFinite(dailyCalories) || dailyCalories <= 0) return 0;
+  return Math.round(dailyCalories * fraction);
+}
+
 function recomputeMealTotals(meal) {
   meal.totalCalories = Math.round(meal.ingredients.reduce((sum, item) => sum + (item.calories || 0), 0));
   meal.totalMacros = {
@@ -588,6 +653,7 @@ function recomputeMealTotals(meal) {
 function pickMainMealVegetableFallback(ingredients, mealType, dayTracker, mealTracker, rng, userProfile, date) {
   const candidates = ingredients.filter((ingredient) => {
     if (ingredient.category !== 'vegetable') return false;
+    if (isDenseVegetableIngredient(ingredient)) return false;
     const timings = normalizeDbArray(ingredient.meal_timing);
     return timings.length === 0 || timings.includes(mealType);
   });
@@ -622,7 +688,9 @@ function ensureMainMealVegetable(meal, eligibleIngredients, dayTracker, mealTrac
   }
 
   recordVariety(vegetable, dayTracker, mealTracker);
-  meal.ingredients.push(buildPlanItem(vegetable, 'vegetable', mainMealVegetableFloor() || getPortionBounds('vegetable').typical));
+  const bounds = getPortionBoundsForIngredient(vegetable);
+  const vegetablePortionG = Math.min(bounds.max, Math.max(bounds.min, mainMealVegetableFloor() || bounds.typical));
+  meal.ingredients.push(buildPlanItem(vegetable, 'vegetable', vegetablePortionG));
 }
 
 function ensureDinnerFat(meal, eligibleIngredients) {
@@ -636,7 +704,7 @@ function ensureDinnerFat(meal, eligibleIngredients) {
   });
   if (!fat) return;
 
-  meal.ingredients.push(buildPlanItem(fat, 'fat', getPortionBounds(fat.category).typical));
+  meal.ingredients.push(buildPlanItem(fat, 'fat', getPortionBoundsForIngredient(fat).typical));
 }
 
 function calcDailyGiSummary(mealPlan) {
@@ -789,6 +857,7 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
   ensureMainMealVegetable(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date);
   ensureDinnerFat(meal, eligibleIngredients);
   recomputeMealTotals(meal);
+  annotateBreakfastStyle(meal, userProfile);
   return meal;
 }
 
@@ -803,9 +872,10 @@ function setItemPortion(item, portionG) {
 }
 
 function adjustItemPortion(item, ratio, options = {}) {
-  const bounds = getPortionBounds(item.category);
+  const bounds = getPortionBoundsForIngredient(item);
   const maxPortion = options.allowAboveMax ? Number.POSITIVE_INFINITY : bounds.max;
-  const nextPortion = Math.round(Math.max(bounds.min, Math.min(maxPortion, item.portionG * ratio)));
+  const minPortion = options.allowBelowMin ? 1 : bounds.min;
+  const nextPortion = Math.round(Math.max(minPortion, Math.min(maxPortion, item.portionG * ratio)));
   if (nextPortion === item.portionG) return;
 
   setItemPortion(item, nextPortion);
@@ -969,34 +1039,288 @@ function enforceMainMealDistributionFloors(meals, userProfile = {}) {
   return meals;
 }
 
-function buildMealFloorAudit(meals, userProfile = {}) {
+function calorieDensity(item) {
+  return Math.max(0, Number(item.calories_per_100g || 0) / 100);
+}
+
+function proteinPerGram(item) {
+  return Math.max(0, proteinDensity(item) / 100);
+}
+
+function remainingPortionCapacity(item) {
+  const bounds = getPortionBoundsForIngredient(item);
+  return Math.max(0, bounds.max - Number(item.portionG || 0));
+}
+
+function mealProteinItems(meal) {
+  return (meal.ingredients || [])
+    .filter((item) => proteinPerGram(item) > 0)
+    .sort((a, b) => Number(b.protein || 0) - Number(a.protein || 0));
+}
+
+function mealProteinRedistributionItems(meal) {
+  return mealProteinItems(meal)
+    .filter(isProteinFloorItem)
+    .sort((a, b) => proteinDensity(b) - proteinDensity(a));
+}
+
+function mealCalorieRedistributionItems(meal) {
+  const priority = {
+    fat: 5,
+    nut_seed: 4,
+    grain: 3,
+    fruit: 3,
+    dairy: 2,
+    dairy_alt: 2,
+    legume: 1,
+    protein_plant: 1,
+    protein_animal: 1,
+    egg: 1,
+  };
+
+  return (meal.ingredients || [])
+    .filter((item) => calorieDensity(item) > 0 && !isDenseVegetableIngredient(item))
+    .sort((a, b) => {
+      const priorityDiff = (priority[b.category] || 0) - (priority[a.category] || 0);
+      if (priorityDiff !== 0) return priorityDiff;
+      return calorieDensity(b) - calorieDensity(a);
+    });
+}
+
+function shrinkMealProteinToCeiling(meal, proteinCeilingG) {
+  if (proteinCeilingG <= 0) return;
+
+  const currentProtein = Number(meal.totalMacros?.protein || 0);
+  if (currentProtein <= proteinCeilingG) return;
+
+  const proteinItems = mealProteinItems(meal);
+  if (proteinItems.length === 0) {
+    console.warn(`[mealEngine] Protein ceiling unmet for ${meal.mealType}: no protein-bearing item available`);
+    return;
+  }
+
+  const ratio = proteinCeilingG / Math.max(currentProtein, 1);
+  for (const item of proteinItems) {
+    adjustItemPortion(item, ratio, { allowBelowMin: true });
+  }
+  recomputeMealTotals(meal);
+
+  let guard = 0;
+  while (Number(meal.totalMacros?.protein || 0) > proteinCeilingG + 0.4 && guard < 12) {
+    guard += 1;
+    const strongest = mealProteinItems(meal)[0];
+    if (!strongest || Number(strongest.portionG || 0) <= 1) break;
+
+    const gramsToRemove = Math.max(
+      1,
+      Math.ceil((Number(meal.totalMacros?.protein || 0) - proteinCeilingG) / Math.max(proteinPerGram(strongest), 0.01))
+    );
+    setItemPortion(strongest, Math.max(1, Number(strongest.portionG || 0) - gramsToRemove));
+    recomputeMealTotals(meal);
+  }
+}
+
+function shrinkMealCaloriesToCeiling(meal, calorieCeilingKcal) {
+  if (calorieCeilingKcal <= 0) return;
+  if (Number(meal.totalCalories || 0) <= calorieCeilingKcal) return;
+
+  const calorieItems = mealCalorieRedistributionItems(meal);
+  const reducibleItems = calorieItems.length > 0
+    ? calorieItems
+    : (meal.ingredients || []).filter((item) => calorieDensity(item) > 0);
+  if (reducibleItems.length === 0) {
+    console.warn(`[mealEngine] Calorie ceiling unmet for ${meal.mealType}: no calorie-bearing item available`);
+    return;
+  }
+
+  const ratio = calorieCeilingKcal / Math.max(Number(meal.totalCalories || 0), 1);
+  for (const item of reducibleItems) {
+    adjustItemPortion(item, ratio, { allowBelowMin: true });
+  }
+  recomputeMealTotals(meal);
+
+  let guard = 0;
+  while (Number(meal.totalCalories || 0) > calorieCeilingKcal + 5 && guard < 12) {
+    guard += 1;
+    const richest = [...reducibleItems]
+      .filter((item) => Number(item.portionG || 0) > 1)
+      .sort((a, b) => Number(b.calories || 0) - Number(a.calories || 0))[0];
+    if (!richest) break;
+
+    const gramsToRemove = Math.max(
+      1,
+      Math.ceil((Number(meal.totalCalories || 0) - calorieCeilingKcal) / Math.max(calorieDensity(richest), 0.01))
+    );
+    setItemPortion(richest, Math.max(1, Number(richest.portionG || 0) - gramsToRemove));
+    recomputeMealTotals(meal);
+  }
+}
+
+function addPortionUnderCeilings(item, meal, grams, proteinCeilingG, calorieCeilingKcal) {
+  const addG = Math.floor(Number(grams || 0));
+  if (addG <= 0) return 0;
+
+  const currentPortion = Number(item.portionG || 0);
+  setItemPortion(item, currentPortion + addG);
+  recomputeMealTotals(meal);
+
+  if (
+    (proteinCeilingG > 0 && Number(meal.totalMacros?.protein || 0) > proteinCeilingG + 0.4)
+    || (calorieCeilingKcal > 0 && Number(meal.totalCalories || 0) > calorieCeilingKcal + 5)
+  ) {
+    setItemPortion(item, currentPortion);
+    recomputeMealTotals(meal);
+    return 0;
+  }
+
+  return addG;
+}
+
+function redistributeProteinUnderCeilings(meals, dailyProteinTarget, proteinCeilingG, calorieCeilingKcal) {
+  const targetProtein = Number(dailyProteinTarget || 0);
+  if (!Number.isFinite(targetProtein) || targetProtein <= 0 || proteinCeilingG <= 0) return;
+
+  let guard = 0;
+  while (buildDaySummary(meals).totalProtein < targetProtein - 0.5 && guard < 24) {
+    guard += 1;
+    const missingProtein = targetProtein - buildDaySummary(meals).totalProtein;
+    let changed = false;
+
+    const candidateMeals = [...meals]
+      .filter((meal) => Number(meal.totalMacros?.protein || 0) < proteinCeilingG - 0.5)
+      .filter((meal) => calorieCeilingKcal <= 0 || Number(meal.totalCalories || 0) < calorieCeilingKcal - 5)
+      .sort((a, b) => Number(a.totalMacros?.protein || 0) - Number(b.totalMacros?.protein || 0));
+
+    for (const meal of candidateMeals) {
+      const proteinRoom = Math.max(0, proteinCeilingG - Number(meal.totalMacros?.protein || 0));
+      const calorieRoom = calorieCeilingKcal > 0
+        ? Math.max(0, calorieCeilingKcal - Number(meal.totalCalories || 0))
+        : Number.POSITIVE_INFINITY;
+
+      for (const item of mealProteinRedistributionItems(meal)) {
+        const itemProteinPerGram = proteinPerGram(item);
+        const itemCaloriePerGram = calorieDensity(item);
+        const portionRoom = remainingPortionCapacity(item);
+        if (itemProteinPerGram <= 0 || portionRoom <= 0) continue;
+
+        const gramsByProteinNeed = missingProtein / itemProteinPerGram;
+        const gramsByProteinRoom = proteinRoom / itemProteinPerGram;
+        const gramsByCalorieRoom = itemCaloriePerGram > 0 ? calorieRoom / itemCaloriePerGram : portionRoom;
+        const gramsToAdd = Math.min(portionRoom, gramsByProteinNeed, gramsByProteinRoom, gramsByCalorieRoom);
+        const added = addPortionUnderCeilings(item, meal, gramsToAdd, proteinCeilingG, calorieCeilingKcal);
+        if (added > 0) {
+          changed = true;
+          break;
+        }
+      }
+
+      if (buildDaySummary(meals).totalProtein >= targetProtein - 0.5) break;
+    }
+
+    if (!changed) break;
+  }
+}
+
+function redistributeCaloriesUnderCeilings(meals, dailyCalTarget, proteinCeilingG, calorieCeilingKcal) {
+  const targetCalories = Number(dailyCalTarget || 0);
+  if (!Number.isFinite(targetCalories) || targetCalories <= 0 || calorieCeilingKcal <= 0) return;
+
+  let guard = 0;
+  while (buildDaySummary(meals).totalCalories < targetCalories - 20 && guard < 24) {
+    guard += 1;
+    const missingCalories = targetCalories - buildDaySummary(meals).totalCalories;
+    let changed = false;
+
+    const candidateMeals = [...meals]
+      .filter((meal) => Number(meal.totalCalories || 0) < calorieCeilingKcal - 5)
+      .filter((meal) => proteinCeilingG <= 0 || Number(meal.totalMacros?.protein || 0) < proteinCeilingG - 0.4)
+      .sort((a, b) => Number(a.totalCalories || 0) - Number(b.totalCalories || 0));
+
+    for (const meal of candidateMeals) {
+      const calorieRoom = Math.max(0, calorieCeilingKcal - Number(meal.totalCalories || 0));
+      const proteinRoom = proteinCeilingG > 0
+        ? Math.max(0, proteinCeilingG - Number(meal.totalMacros?.protein || 0))
+        : Number.POSITIVE_INFINITY;
+
+      for (const item of mealCalorieRedistributionItems(meal)) {
+        const itemCaloriePerGram = calorieDensity(item);
+        const itemProteinPerGram = proteinPerGram(item);
+        const portionRoom = remainingPortionCapacity(item);
+        if (itemCaloriePerGram <= 0 || portionRoom <= 0) continue;
+
+        const gramsByCalorieNeed = missingCalories / itemCaloriePerGram;
+        const gramsByCalorieRoom = calorieRoom / itemCaloriePerGram;
+        const gramsByProteinRoom = itemProteinPerGram > 0 ? proteinRoom / itemProteinPerGram : portionRoom;
+        const gramsToAdd = Math.min(portionRoom, gramsByCalorieNeed, gramsByCalorieRoom, gramsByProteinRoom);
+        const added = addPortionUnderCeilings(item, meal, gramsToAdd, proteinCeilingG, calorieCeilingKcal);
+        if (added > 0) {
+          changed = true;
+          break;
+        }
+      }
+
+      if (buildDaySummary(meals).totalCalories >= targetCalories - 20) break;
+    }
+
+    if (!changed) break;
+  }
+}
+
+function enforceMealCeilings(meals, userProfile = {}, dailyCalTarget = null, dailyProteinTarget = null) {
+  const proteinCeilingG = proteinCeilingForMeal(userProfile);
+  const calorieCeilingKcal = mealCalorieCeiling(dailyCalTarget);
+
+  for (const meal of meals) {
+    shrinkMealProteinToCeiling(meal, proteinCeilingG);
+    shrinkMealCaloriesToCeiling(meal, calorieCeilingKcal);
+  }
+
+  redistributeProteinUnderCeilings(meals, dailyProteinTarget, proteinCeilingG, calorieCeilingKcal);
+  redistributeCaloriesUnderCeilings(meals, dailyCalTarget, proteinCeilingG, calorieCeilingKcal);
+
+  for (const meal of meals) {
+    shrinkMealProteinToCeiling(meal, proteinCeilingG);
+    shrinkMealCaloriesToCeiling(meal, calorieCeilingKcal);
+  }
+
+  return meals;
+}
+
+function buildMealFloorAudit(meals, userProfile = {}, dailyCalTarget = null) {
   const proteinFloorG = proteinFloorForMeal(userProfile);
+  const proteinCeilingG = proteinCeilingForMeal(userProfile);
+  const calorieCeilingKcal = mealCalorieCeiling(dailyCalTarget);
   const vegetableFloorG = mainMealVegetableFloor(userProfile);
   const fiberFloorG = mainMealFiberFloor(userProfile);
   const dinnerFatFloorG = dinnerFatFloor(userProfile);
 
   return meals
-    .filter((meal) => ['lunch', 'dinner'].includes(meal.mealType))
     .map((meal) => {
+      const isMainMeal = ['lunch', 'dinner'].includes(meal.mealType);
       const proteinG = Number(meal.totalMacros?.protein || 0);
       const fiberG = Number(meal.totalMacros?.fiber || 0);
       const fatG = Number(meal.totalMacros?.fat || 0);
       const vegetableG = vegetableGramsForMeal(meal);
       const checks = {
-        protein: proteinFloorG <= 0 || proteinG >= proteinFloorG,
-        fiber: fiberFloorG <= 0 || fiberG >= fiberFloorG,
-        vegetables: vegetableFloorG <= 0 || vegetableG >= vegetableFloorG,
+        proteinMin: !isMainMeal || proteinFloorG <= 0 || proteinG >= proteinFloorG,
+        proteinMax: proteinCeilingG <= 0 || proteinG <= proteinCeilingG + 0.4,
+        calorieMax: calorieCeilingKcal <= 0 || Number(meal.totalCalories || 0) <= calorieCeilingKcal + 5,
+        fiber: !isMainMeal || fiberFloorG <= 0 || fiberG >= fiberFloorG,
+        vegetables: !isMainMeal || vegetableFloorG <= 0 || vegetableG >= vegetableFloorG,
         dinnerFat: meal.mealType !== 'dinner' || dinnerFatFloorG <= 0 || fatG >= dinnerFatFloorG,
       };
 
       return {
         mealType: meal.mealType,
+        calories: Math.round(Number(meal.totalCalories || 0)),
+        calorieCeilingKcal,
         proteinG: Math.round(proteinG * 10) / 10,
-        proteinFloorG,
+        proteinFloorG: isMainMeal ? proteinFloorG : null,
+        proteinCeilingG,
         fiberG: Math.round(fiberG * 10) / 10,
-        fiberFloorG,
+        fiberFloorG: isMainMeal ? fiberFloorG : null,
         vegetableG,
-        vegetableFloorG,
+        vegetableFloorG: isMainMeal ? vegetableFloorG : null,
         fatG: Math.round(fatG * 10) / 10,
         dinnerFatFloorG: meal.mealType === 'dinner' ? dinnerFatFloorG : null,
         passed: Object.values(checks).every(Boolean),
@@ -1070,13 +1394,21 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     meals.push(meal);
   }
 
-  const adjustedMeals = enforceMainMealDistributionFloors(
-    enforceProteinFloors(
-      adjustMacros(meals, dailyCal, dailyProtein, dailyCarbs, dailyFat),
+  const adjustedMeals = enforceMealCeilings(
+    enforceMainMealDistributionFloors(
+      enforceProteinFloors(
+        adjustMacros(meals, dailyCal, dailyProtein, dailyCarbs, dailyFat),
+        engineProfile
+      ),
       engineProfile
     ),
-    engineProfile
+    engineProfile,
+    dailyCal,
+    dailyProtein
   );
+  const generatedBreakfastStyle = adjustedMeals
+    .find((meal) => meal.mealType === 'breakfast')
+    ?.breakfast_style || null;
 
   return {
     userId: userProfile.userId,
@@ -1091,6 +1423,7 @@ async function generateDayPlan(pool, userProfile, targetDate) {
       choice: breakfastChoice,
       skipped: skipBreakfast,
       style: breakfastStyle,
+      generated_style: generatedBreakfastStyle,
       reason: breakfastChoice ? (userProfile.breakfastChoiceReason || 'breakfast_choice') : null,
     },
     proteinFloor: {
@@ -1099,13 +1432,17 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     },
     mealFloors: {
       proteinPerMainMealG: proteinFloorForMeal(engineProfile),
+      proteinMaxPerMealG: proteinCeilingForMeal(engineProfile),
+      maxMealCaloriesKcal: mealCalorieCeiling(dailyCal),
+      maxMealCalorieFraction: positiveConfigNumber(MEAL_FLOORS.max_meal_calorie_fraction, 0.4),
       mainMealFiberG: mainMealFiberFloor(engineProfile),
       mainMealVegetableG: mainMealVegetableFloor(engineProfile),
       dinnerFatG: dinnerFatFloor(engineProfile),
+      denseVegetableMaxPortionG: positiveConfigNumber(MEAL_FLOORS.dense_vegetable_max_portion_g, 40),
       source: 'config/meal-floors.js',
       status: 'provisional_da_validare_col_nutrizionista',
     },
-    mealFloorAudit: buildMealFloorAudit(adjustedMeals, engineProfile),
+    mealFloorAudit: buildMealFloorAudit(adjustedMeals, engineProfile, dailyCal),
     meals: adjustedMeals,
     daySummary: buildDaySummary(adjustedMeals),
     gi_summary: calcDailyGiSummary(adjustedMeals),

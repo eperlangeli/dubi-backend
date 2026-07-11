@@ -123,7 +123,13 @@ module.exports = (pool) => {
     entrambi: 'both',
     both: 'both',
     none: 'none',
-    nessuna: 'none'
+    nessuna: 'none',
+    daily: 'variable',
+    variable: 'variable',
+    variabile: 'variable',
+    mattina: 'variable',
+    'choose daily': 'variable',
+    'day by day': 'variable'
   };
 
   const sportMap = {
