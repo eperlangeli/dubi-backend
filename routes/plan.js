@@ -1,5 +1,14 @@
 const express = require('express');
 const { generateDayPlan, calcDailyGiSummary } = require('../services/mealEngine');
+const { buildDailyBiometricAdaptation } = require('../services/daily-adaptation');
+
+const ALLOWED_BREAKFAST_CHOICES = new Set(['dolce', 'salata', 'skip']);
+
+function normalizeBreakfastChoiceInput(value) {
+  if (value === undefined || value === null) return null;
+  const choice = String(value).trim().toLowerCase();
+  return ALLOWED_BREAKFAST_CHOICES.has(choice) ? choice : undefined;
+}
 
 // ─── Formule scientifiche DUBI ────────────────────────────────────────────────
 
@@ -356,8 +365,16 @@ module.exports = (pool) => {
   // ── POST /plan/ingredient-plan/generate ───────────────────────────────────
   router.post('/ingredient-plan/generate', verifyToken, async (req, res) => {
     try {
-      const { date } = req.body || {};
+      const { date, breakfastChoice } = req.body || {};
       const targetDate = date || new Date().toISOString().split('T')[0];
+      const normalizedBreakfastChoice = normalizeBreakfastChoiceInput(breakfastChoice);
+
+      if (breakfastChoice !== undefined && breakfastChoice !== null && !normalizedBreakfastChoice) {
+        return res.status(400).json({
+          error: 'invalid_breakfast_choice',
+          allowed: [...ALLOWED_BREAKFAST_CHOICES],
+        });
+      }
 
       const profileResult = await pool.query(
         `SELECT uo.*, u.age, u.weight, u.height, u.goal, u.is_minor, u.parental_consent_status
@@ -394,11 +411,20 @@ module.exports = (pool) => {
       const sportGroups  = getSportGroups(sports);
       const sportProfile = blendSportProfiles(sportGroups);
       const freshMacros  = calculateMacros(tdee, row.goal || 'maintain', sportProfile);
+      const dailyAdaptation = await buildDailyBiometricAdaptation(pool, {
+        userId: req.userId,
+        targetDate,
+        baseTargets: freshMacros,
+        profile: row,
+        bmr,
+        tdee
+      });
+      const adaptedMacros = dailyAdaptation.adjustedTargets || freshMacros;
 
       // Sincronizza meal_plans in background (non bloccante)
       pool.query(
         'INSERT INTO meal_plans (user_id, calories, protein, carbs, fat) VALUES ($1, $2, $3, $4, $5)',
-        [req.userId, freshMacros.calories, freshMacros.protein, freshMacros.carbs, freshMacros.fat]
+        [req.userId, adaptedMacros.calories, adaptedMacros.protein, adaptedMacros.carbs, adaptedMacros.fat]
       ).catch(err => console.warn('[plan] meal_plans sync failed:', err.message));
 
       const userProfile = {
@@ -411,11 +437,25 @@ module.exports = (pool) => {
         trainingTime:       row.training_time || null,
         sportGroup:         sportProfile?.groups?.[0] ?? sportGroups[0] ?? 'none',
         sportGroups,
-        dailyCalorieTarget: freshMacros.calories,
-        dailyProteinTarget: freshMacros.protein,
+        dailyCalorieTarget: adaptedMacros.calories,
+        dailyProteinTarget: adaptedMacros.protein,
+        dailyCarbTarget:    adaptedMacros.carbs,
+        dailyFatTarget:     adaptedMacros.fat,
+        weightKg:           Number(row.weight) || 70,
+        breakfastPref:      row.breakfast_pref || 'both',
+        breakfastChoice:    normalizedBreakfastChoice,
+        breakfastChoiceReason: normalizedBreakfastChoice ? 'breakfast_choice' : null,
       };
 
       const plan = await generateDayPlan(pool, userProfile, targetDate);
+      plan.dailyAdaptation = dailyAdaptation;
+      plan.baseTargets = dailyAdaptation.baseTargets || freshMacros;
+      plan.adjustedTargets = adaptedMacros;
+      plan.adaptationSignature = dailyAdaptation.signature;
+      plan.sports = sports;
+      plan.sport_groups = sportGroups;
+      plan.sport_profile = freshMacros.sportProfile;
+      plan.macro_split = freshMacros.macroSplit;
 
       await pool.query(
         `INSERT INTO daily_plans (user_id, plan_date, plan_data)

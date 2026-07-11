@@ -6,6 +6,8 @@
  * No OpenAI dependency: pure nutritional logic.
  */
 
+const { MEAL_FLOORS } = require('../config/meal-floors');
+
 const DIET_COL = {
   omnivore: 'compatible_omnivore',
   onnivoro: 'compatible_omnivore',
@@ -132,6 +134,53 @@ function normalizeList(value) {
     .filter((token) => !['none', 'nessuna', 'nessuno', 'no'].includes(token));
 }
 
+function normalizeBreakfastPref(value) {
+  const pref = normalizeToken(value);
+  if (['none', 'skip', 'no', 'nessuna', 'nessuno', 'senza colazione', 'no breakfast'].includes(pref)) {
+    return 'none';
+  }
+  if (['daily', 'giornaliera', 'giornaliero', 'day by day', 'choose daily'].includes(pref)) {
+    return 'daily';
+  }
+  if (['dolce', 'sweet'].includes(pref)) return 'dolce';
+  if (['salata', 'salato', 'savory', 'savoury'].includes(pref)) return 'salata';
+  if (['both', 'entrambi', 'entrambe', 'mixed', 'mista', 'misto'].includes(pref)) return 'both';
+  return 'both';
+}
+
+function normalizeBreakfastChoice(value) {
+  const choice = normalizeToken(value);
+  if (['dolce', 'sweet'].includes(choice)) return 'dolce';
+  if (['salata', 'salato', 'savory', 'savoury'].includes(choice)) return 'salata';
+  if (['skip', 'none', 'no', 'nessuna', 'nessuno'].includes(choice)) return 'skip';
+  return null;
+}
+
+function getBreakfastPreference(userProfile = {}) {
+  return normalizeBreakfastPref(userProfile.breakfastPref ?? userProfile.breakfast_pref);
+}
+
+function getBreakfastChoice(userProfile = {}) {
+  return normalizeBreakfastChoice(userProfile.breakfastChoice ?? userProfile.breakfast_choice);
+}
+
+function shouldSkipBreakfast(userProfile = {}) {
+  return getBreakfastChoice(userProfile) === 'skip' || getBreakfastPreference(userProfile) === 'none';
+}
+
+function effectiveBreakfastStyle(userProfile = {}) {
+  const choice = getBreakfastChoice(userProfile);
+  if (choice === 'skip') return null;
+  if (choice === 'dolce' || choice === 'salata') return choice;
+
+  const pref = getBreakfastPreference(userProfile);
+  if (pref === 'dolce' || pref === 'salata') return pref;
+  if (pref === 'none') return null;
+
+  // "daily" means no fixed style until the daily frontend choice arrives.
+  return 'both';
+}
+
 function parseRestrictions(allergiesText) {
   const tokens = normalizeList(allergiesText);
   const allergenCols = [];
@@ -158,33 +207,38 @@ function normalizeUserPathologies(userPathologies) {
   )];
 }
 
-function buildDayStructure(trainingTime) {
+function withoutBreakfastIfNeeded(mealTypes, options = {}) {
+  if (!options.skipBreakfast) return mealTypes;
+  return mealTypes.filter((mealType) => mealType !== 'breakfast');
+}
+
+function buildDayStructure(trainingTime, options = {}) {
   const base = ['breakfast', 'lunch', 'snack', 'dinner'];
-  if (!trainingTime) return base;
+  if (!trainingTime) return withoutBreakfastIfNeeded(base, options);
 
   const time = normalizeToken(trainingTime);
 
   if (['morning', 'mattina', 'mattino'].includes(time)) {
     // Mattino: niente tempo per digerire un pasto completo prima.
     // Piccolo carbo rapido pre-workout, poi pasto completo post-workout.
-    return ['pre_workout', 'post_workout', 'breakfast', 'lunch', 'snack', 'dinner'];
+    return withoutBreakfastIfNeeded(['pre_workout', 'post_workout', 'breakfast', 'lunch', 'snack', 'dinner'], options);
   }
 
   if (['afternoon', 'pomeriggio'].includes(time)) {
     // Pomeriggio: pranzo completo ~3h prima (carbo+pro+pochi grassi),
     // poi spuntino pre-workout 45-60 min prima (carbo rapidi, pro opzionali),
     // poi post-workout (carbo+pro recupero), poi spuntino e cena.
-    return ['breakfast', 'lunch', 'pre_workout', 'post_workout', 'snack', 'dinner'];
+    return withoutBreakfastIfNeeded(['breakfast', 'lunch', 'pre_workout', 'post_workout', 'snack', 'dinner'], options);
   }
 
   if (['evening', 'sera'].includes(time)) {
     // Sera: la CENA è il pasto principale pre-allenamento (carbo+pro+grassi moderati),
     // poi piccolo spuntino carbo ~45-60 min prima, poi post-workout recupero.
     // La cena precede pre_workout — non viene dopo.
-    return ['breakfast', 'lunch', 'snack', 'dinner', 'pre_workout', 'post_workout'];
+    return withoutBreakfastIfNeeded(['breakfast', 'lunch', 'snack', 'dinner', 'pre_workout', 'post_workout'], options);
   }
 
-  return base;
+  return withoutBreakfastIfNeeded(base, options);
 }
 
 function isTrainingDay(userProfile, targetDate) {
@@ -392,6 +446,37 @@ function filterBySlotAndTiming(ingredients, slot, mealType) {
   });
 }
 
+function breakfastIngredientText(ingredient) {
+  return normalizeToken([
+    ingredient.category,
+    ingredient.subcategory,
+    ingredient.name,
+    ingredient.name_en,
+    ...normalizeDbArray(ingredient.health_tags),
+  ].filter(Boolean).join(' '));
+}
+
+function matchesBreakfastStyle(ingredient, style) {
+  const text = breakfastIngredientText(ingredient);
+  if (style === 'dolce') {
+    return /frutta|fruit|banana|mela|pera|fragol|mirtill|berry|berries|avena|oat|muesli|granola|yogurt|skyr|kefir|latte|milk|cacao|cocoa|miele|honey|marmellata|jam|pane|toast|ricotta/.test(text);
+  }
+  if (style === 'salata') {
+    return /uov|egg|album|avocado|salmone|salmon|tonno|tuna|tacchino|turkey|pollo|chicken|bresaola|prosciutto|hummus|tofu|tempeh|formaggio|cheese|fiocchi di latte|cottage|legume|legumi|pane|toast/.test(text);
+  }
+  return true;
+}
+
+function applyBreakfastStylePreference(candidates, mealType, userProfile) {
+  if (mealType !== 'breakfast') return candidates;
+
+  const style = effectiveBreakfastStyle(userProfile);
+  if (style !== 'dolce' && style !== 'salata') return candidates;
+
+  const preferred = candidates.filter((ingredient) => matchesBreakfastStyle(ingredient, style));
+  return preferred.length > 0 ? preferred : candidates;
+}
+
 function pickIngredient(candidates, dayTracker, mealTracker, rng, userProfile, selectionSeed) {
   const eligible = candidates.filter((candidate) => checkVariety(candidate, dayTracker, mealTracker));
   if (eligible.length === 0) return null;
@@ -407,6 +492,24 @@ function pickIngredient(candidates, dayTracker, mealTracker, rng, userProfile, s
         giScore(candidate, rankingProfile),
     }))
     .sort((a, b) => b.score - a.score || String(a.candidate.name).localeCompare(String(b.candidate.name)))
+    .map((entry) => entry.candidate)[0] || null;
+}
+
+function pickRequiredProteinFallback(candidates, userProfile, selectionSeed) {
+  const proteinCandidates = candidates.filter(isProteinFloorItem);
+  if (proteinCandidates.length === 0) return null;
+
+  return proteinCandidates
+    .map((candidate) => ({
+      candidate,
+      score: deterministicSelectionScore(`${selectionSeed}:protein-floor:${candidate.id}:${candidate.name}`) *
+        giScore(candidate, userProfile),
+    }))
+    .sort((a, b) =>
+      b.score - a.score ||
+      proteinDensity(b.candidate) - proteinDensity(a.candidate) ||
+      String(a.candidate.name || '').localeCompare(String(b.candidate.name || ''))
+    )
     .map((entry) => entry.candidate)[0] || null;
 }
 
@@ -439,6 +542,39 @@ function buildPlanItem(ingredient, slot, portionG) {
   };
 }
 
+function isVegetableFloorItem(item) {
+  return item.category === 'vegetable' || item.slot === 'vegetable';
+}
+
+function isFiberFloorItem(item) {
+  return ['vegetable', 'fruit', 'grain', 'legume'].includes(item.category);
+}
+
+function isDinnerFatFloorItem(item) {
+  return ['fat', 'nut_seed'].includes(item.category) || Number(item.fat_g || 0) >= 10;
+}
+
+function vegetableGramsForMeal(meal) {
+  return Math.round(meal.ingredients
+    .filter(isVegetableFloorItem)
+    .reduce((sum, item) => sum + Number(item.portionG || 0), 0) * 10) / 10;
+}
+
+function mainMealFiberFloor() {
+  const floor = Number(MEAL_FLOORS.main_meal_fiber_g || 0);
+  return Number.isFinite(floor) && floor > 0 ? floor : 0;
+}
+
+function mainMealVegetableFloor() {
+  const floor = Number(MEAL_FLOORS.main_meal_vegetable_g || 0);
+  return Number.isFinite(floor) && floor > 0 ? floor : 0;
+}
+
+function dinnerFatFloor() {
+  const floor = Number(MEAL_FLOORS.dinner_fat_g || 0);
+  return Number.isFinite(floor) && floor > 0 ? floor : 0;
+}
+
 function recomputeMealTotals(meal) {
   meal.totalCalories = Math.round(meal.ingredients.reduce((sum, item) => sum + (item.calories || 0), 0));
   meal.totalMacros = {
@@ -447,6 +583,60 @@ function recomputeMealTotals(meal) {
     fat: Math.round(meal.ingredients.reduce((sum, item) => sum + (item.fat || 0), 0) * 10) / 10,
     fiber: Math.round(meal.ingredients.reduce((sum, item) => sum + (item.fiber || 0), 0) * 10) / 10,
   };
+}
+
+function pickMainMealVegetableFallback(ingredients, mealType, dayTracker, mealTracker, rng, userProfile, date) {
+  const candidates = ingredients.filter((ingredient) => {
+    if (ingredient.category !== 'vegetable') return false;
+    const timings = normalizeDbArray(ingredient.meal_timing);
+    return timings.length === 0 || timings.includes(mealType);
+  });
+  if (candidates.length === 0) return null;
+
+  return pickIngredient(
+    candidates,
+    dayTracker,
+    mealTracker,
+    rng,
+    { ...userProfile, currentMealType: mealType },
+    `${userProfile.userId || 'anonymous'}:${date}:${mealType}:vegetable-floor`
+  ) || candidates[0];
+}
+
+function ensureMainMealVegetable(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date) {
+  if (!['lunch', 'dinner'].includes(meal.mealType)) return;
+  if (meal.ingredients.some(isVegetableFloorItem)) return;
+
+  const vegetable = pickMainMealVegetableFallback(
+    eligibleIngredients,
+    meal.mealType,
+    dayTracker,
+    mealTracker,
+    rng,
+    userProfile,
+    date
+  );
+  if (!vegetable) {
+    console.warn(`[mealEngine] Vegetable floor unmet for ${meal.mealType}: no eligible vegetable item available`);
+    return;
+  }
+
+  recordVariety(vegetable, dayTracker, mealTracker);
+  meal.ingredients.push(buildPlanItem(vegetable, 'vegetable', mainMealVegetableFloor() || getPortionBounds('vegetable').typical));
+}
+
+function ensureDinnerFat(meal, eligibleIngredients) {
+  if (meal.mealType !== 'dinner' || dinnerFatFloor() <= 0) return;
+  if (meal.ingredients.some(isDinnerFatFloorItem)) return;
+
+  const fat = eligibleIngredients.find((ingredient) => {
+    if (!['fat', 'nut_seed'].includes(ingredient.category)) return false;
+    const timings = normalizeDbArray(ingredient.meal_timing);
+    return timings.length === 0 || timings.includes('dinner');
+  });
+  if (!fat) return;
+
+  meal.ingredients.push(buildPlanItem(fat, 'fat', getPortionBounds(fat.category).typical));
 }
 
 function calcDailyGiSummary(mealPlan) {
@@ -556,6 +746,8 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
       candidates = applyPathologyFilter(fallbackCandidates, userPathologies);
     }
 
+    candidates = applyBreakfastStylePreference(candidates, mealType, userProfile);
+
     if (candidates.length === 0) {
       if (config && config.required) {
         console.error(`[mealEngine] No eligible ingredients for required slot "${slot}" in "${mealType}"`);
@@ -565,14 +757,27 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
 
     const count = Number(config && config.count) || 1;
     for (let index = 0; index < count; index++) {
-      const chosen = pickIngredient(
+      const selectionSeed = `${userProfile.userId || 'anonymous'}:${date}:${mealType}:${slot}:${index}`;
+      let chosen = pickIngredient(
         candidates,
         dayTracker,
         mealTracker,
         rng,
         { ...userProfile, currentMealType: mealType },
-        `${userProfile.userId || 'anonymous'}:${date}:${mealType}:${slot}:${index}`
+        selectionSeed
       );
+
+      if (!chosen && config && config.required && slot === 'protein' && ['lunch', 'dinner'].includes(mealType)) {
+        chosen = pickRequiredProteinFallback(
+          candidates,
+          { ...userProfile, currentMealType: mealType },
+          selectionSeed
+        );
+        if (chosen) {
+          console.warn(`[mealEngine] Variety relaxed for required protein slot in "${mealType}"`);
+        }
+      }
+
       if (!chosen) break;
 
       recordVariety(chosen, dayTracker, mealTracker);
@@ -581,17 +786,15 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
     }
   }
 
+  ensureMainMealVegetable(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date);
+  ensureDinnerFat(meal, eligibleIngredients);
   recomputeMealTotals(meal);
   return meal;
 }
 
-function adjustItemPortion(item, ratio) {
-  const bounds = getPortionBounds(item.category);
-  const nextPortion = Math.round(Math.max(bounds.min, Math.min(bounds.max, item.portionG * ratio)));
-  if (nextPortion === item.portionG) return;
-
-  item.portionG = nextPortion;
-  const macros = macrosForPortion(item, nextPortion);
+function setItemPortion(item, portionG) {
+  item.portionG = Math.round(portionG);
+  const macros = macrosForPortion(item, item.portionG);
   item.calories = macros.calories;
   item.protein = macros.protein;
   item.carbs = macros.carbs;
@@ -599,27 +802,49 @@ function adjustItemPortion(item, ratio) {
   item.fiber = macros.fiber;
 }
 
-function adjustMacros(meals, dailyCalTarget, dailyProteinTarget) {
+function adjustItemPortion(item, ratio, options = {}) {
+  const bounds = getPortionBounds(item.category);
+  const maxPortion = options.allowAboveMax ? Number.POSITIVE_INFINITY : bounds.max;
+  const nextPortion = Math.round(Math.max(bounds.min, Math.min(maxPortion, item.portionG * ratio)));
+  if (nextPortion === item.portionG) return;
+
+  setItemPortion(item, nextPortion);
+}
+
+function adjustMacros(meals, dailyCalTarget, dailyProteinTarget, dailyCarbTarget = null, dailyFatTarget = null) {
   const actualCal = meals.reduce((sum, meal) => sum + (meal.totalCalories || 0), 0);
   const actualProtein = meals.reduce((sum, meal) => sum + (meal.totalMacros?.protein || 0), 0);
+  const actualCarbs = meals.reduce((sum, meal) => sum + (meal.totalMacros?.carbs || 0), 0);
+  const actualFat = meals.reduce((sum, meal) => sum + (meal.totalMacros?.fat || 0), 0);
   const calRatio = dailyCalTarget / (actualCal || 1);
   const proteinRatio = dailyProteinTarget / (actualProtein || 1);
+  const carbRatio = dailyCarbTarget ? dailyCarbTarget / (actualCarbs || 1) : calRatio;
+  const fatRatio = dailyFatTarget ? dailyFatTarget / (actualFat || 1) : calRatio;
 
-  if (Math.abs(calRatio - 1) < 0.1 && Math.abs(proteinRatio - 1) < 0.15) {
+  if (
+    Math.abs(calRatio - 1) < 0.1
+    && Math.abs(proteinRatio - 1) < 0.15
+    && Math.abs(carbRatio - 1) < 0.15
+    && Math.abs(fatRatio - 1) < 0.15
+  ) {
     return meals;
   }
 
   const boundedProteinRatio = Math.max(0.75, Math.min(1.35, proteinRatio));
   const boundedCalRatio = Math.max(0.75, Math.min(1.35, calRatio));
+  const boundedCarbRatio = Math.max(0.75, Math.min(1.35, carbRatio));
+  const boundedFatRatio = Math.max(0.75, Math.min(1.35, fatRatio));
 
   for (const meal of meals) {
-    if (!['lunch', 'dinner', 'post_workout'].includes(meal.mealType)) continue;
+    if (!['breakfast', 'lunch', 'dinner', 'post_workout', 'pre_workout', 'snack'].includes(meal.mealType)) continue;
 
     for (const item of meal.ingredients) {
-      if (['protein_animal', 'protein_plant', 'legume'].includes(item.category)) {
+      if (['protein_animal', 'protein_plant', 'legume', 'egg', 'dairy', 'dairy_alt', 'supplement'].includes(item.category)) {
         adjustItemPortion(item, boundedProteinRatio);
-      } else if (item.category === 'grain') {
-        adjustItemPortion(item, boundedCalRatio);
+      } else if (['grain', 'fruit'].includes(item.category)) {
+        adjustItemPortion(item, dailyCarbTarget ? boundedCarbRatio : boundedCalRatio);
+      } else if (['fat', 'nut_seed'].includes(item.category)) {
+        adjustItemPortion(item, dailyFatTarget ? boundedFatRatio : boundedCalRatio);
       }
     }
 
@@ -627,6 +852,157 @@ function adjustMacros(meals, dailyCalTarget, dailyProteinTarget) {
   }
 
   return meals;
+}
+
+function proteinFloorForMeal(userProfile = {}) {
+  const perKg = Number(MEAL_FLOORS.protein_per_meal_g_per_kg || 0.3);
+  const weightKg = Number(userProfile.weightKg || userProfile.weight || userProfile.currentWeight || 0);
+  if (!Number.isFinite(perKg) || perKg <= 0 || !Number.isFinite(weightKg) || weightKg <= 0) return 0;
+  return Math.round(weightKg * perKg * 10) / 10;
+}
+
+function isProteinFloorItem(item) {
+  return ['protein_animal', 'protein_plant', 'legume', 'egg', 'dairy', 'dairy_alt', 'supplement']
+    .includes(item.category);
+}
+
+function proteinDensity(item) {
+  return Math.max(0, Number(item.protein_g || 0));
+}
+
+function enforceProteinFloors(meals, userProfile = {}) {
+  const floorG = proteinFloorForMeal(userProfile);
+  if (floorG <= 0) return meals;
+
+  for (const meal of meals) {
+    if (!['lunch', 'dinner'].includes(meal.mealType)) continue;
+
+    const currentProtein = Number(meal.totalMacros?.protein || 0);
+    if (currentProtein >= floorG) continue;
+
+    const proteinItems = meal.ingredients.filter(isProteinFloorItem);
+    if (proteinItems.length === 0) {
+      console.warn(`[mealEngine] Protein floor unmet for ${meal.mealType}: no protein item available`);
+      continue;
+    }
+
+    const boundedRatio = floorG / Math.max(currentProtein, 1);
+    for (const item of proteinItems) {
+      adjustItemPortion(item, boundedRatio);
+    }
+    recomputeMealTotals(meal);
+
+    const afterBoundedProtein = Number(meal.totalMacros?.protein || 0);
+    if (afterBoundedProtein >= floorG) continue;
+
+    const strongestProtein = [...proteinItems]
+      .sort((a, b) => proteinDensity(b) - proteinDensity(a))[0];
+
+    const proteinPerGram = proteinDensity(strongestProtein) / 100;
+    if (proteinPerGram <= 0) {
+      console.warn(`[mealEngine] Protein floor unmet for ${meal.mealType}: protein density unavailable`);
+      continue;
+    }
+
+    const missingProtein = floorG - afterBoundedProtein;
+    const extraGrams = Math.ceil(missingProtein / proteinPerGram);
+    setItemPortion(strongestProtein, strongestProtein.portionG + extraGrams);
+    recomputeMealTotals(meal);
+  }
+
+  return meals;
+}
+
+function enforceMainMealDistributionFloors(meals, userProfile = {}) {
+  const vegetableFloorG = mainMealVegetableFloor(userProfile);
+  const fiberFloorG = mainMealFiberFloor(userProfile);
+  const dinnerFatFloorG = dinnerFatFloor(userProfile);
+
+  for (const meal of meals) {
+    if (!['lunch', 'dinner'].includes(meal.mealType)) continue;
+
+    if (vegetableFloorG > 0 && vegetableGramsForMeal(meal) < vegetableFloorG) {
+      const vegetableItems = meal.ingredients.filter(isVegetableFloorItem);
+      if (vegetableItems.length === 0) {
+        console.warn(`[mealEngine] Vegetable floor unmet for ${meal.mealType}: no vegetable item available`);
+      } else {
+        const currentVegetableG = Math.max(vegetableGramsForMeal(meal), 1);
+        const ratio = vegetableFloorG / currentVegetableG;
+        for (const item of vegetableItems) adjustItemPortion(item, ratio);
+        recomputeMealTotals(meal);
+      }
+    }
+
+    if (fiberFloorG > 0 && Number(meal.totalMacros?.fiber || 0) < fiberFloorG) {
+      const fiberItems = meal.ingredients
+        .filter(isFiberFloorItem)
+        .sort((a, b) => Number(b.fiber_g || 0) - Number(a.fiber_g || 0));
+      const strongestFiber = fiberItems[0];
+      const fiberPerGram = Number(strongestFiber?.fiber_g || 0) / 100;
+      if (!strongestFiber || fiberPerGram <= 0) {
+        console.warn(`[mealEngine] Fiber floor unmet for ${meal.mealType}: no high-fiber item available`);
+      } else {
+        const missingFiber = fiberFloorG - Number(meal.totalMacros?.fiber || 0);
+        const extraGrams = Math.ceil(missingFiber / fiberPerGram);
+        setItemPortion(strongestFiber, strongestFiber.portionG + extraGrams);
+        recomputeMealTotals(meal);
+      }
+    }
+
+    if (meal.mealType === 'dinner' && dinnerFatFloorG > 0 && Number(meal.totalMacros?.fat || 0) < dinnerFatFloorG) {
+      const fatItems = meal.ingredients
+        .filter(isDinnerFatFloorItem)
+        .sort((a, b) => Number(b.fat_g || 0) - Number(a.fat_g || 0));
+      const strongestFat = fatItems[0];
+      const fatPerGram = Number(strongestFat?.fat_g || 0) / 100;
+      if (!strongestFat || fatPerGram <= 0) {
+        console.warn('[mealEngine] Dinner fat floor unmet: no fat item available');
+      } else {
+        const missingFat = dinnerFatFloorG - Number(meal.totalMacros?.fat || 0);
+        const extraGrams = Math.ceil(missingFat / fatPerGram);
+        setItemPortion(strongestFat, strongestFat.portionG + extraGrams);
+        recomputeMealTotals(meal);
+      }
+    }
+  }
+
+  return meals;
+}
+
+function buildMealFloorAudit(meals, userProfile = {}) {
+  const proteinFloorG = proteinFloorForMeal(userProfile);
+  const vegetableFloorG = mainMealVegetableFloor(userProfile);
+  const fiberFloorG = mainMealFiberFloor(userProfile);
+  const dinnerFatFloorG = dinnerFatFloor(userProfile);
+
+  return meals
+    .filter((meal) => ['lunch', 'dinner'].includes(meal.mealType))
+    .map((meal) => {
+      const proteinG = Number(meal.totalMacros?.protein || 0);
+      const fiberG = Number(meal.totalMacros?.fiber || 0);
+      const fatG = Number(meal.totalMacros?.fat || 0);
+      const vegetableG = vegetableGramsForMeal(meal);
+      const checks = {
+        protein: proteinFloorG <= 0 || proteinG >= proteinFloorG,
+        fiber: fiberFloorG <= 0 || fiberG >= fiberFloorG,
+        vegetables: vegetableFloorG <= 0 || vegetableG >= vegetableFloorG,
+        dinnerFat: meal.mealType !== 'dinner' || dinnerFatFloorG <= 0 || fatG >= dinnerFatFloorG,
+      };
+
+      return {
+        mealType: meal.mealType,
+        proteinG: Math.round(proteinG * 10) / 10,
+        proteinFloorG,
+        fiberG: Math.round(fiberG * 10) / 10,
+        fiberFloorG,
+        vegetableG,
+        vegetableFloorG,
+        fatG: Math.round(fatG * 10) / 10,
+        dinnerFatFloorG: meal.mealType === 'dinner' ? dinnerFatFloorG : null,
+        passed: Object.values(checks).every(Boolean),
+        checks,
+      };
+    });
 }
 
 function buildDaySummary(meals) {
@@ -652,7 +1028,13 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   const dietCol = DIET_COL[normalizeToken(userProfile.dietaryStyle)] || 'compatible_omnivore';
   const dailyCal = Number(userProfile.dailyCalorieTarget || 2000);
   const dailyProtein = Number(userProfile.dailyProteinTarget || Math.round((dailyCal * 0.25) / 4));
-  const rng = createRng(`${userProfile.userId || 'anonymous'}:${date}:${userProfile.trainingTime || 'rest'}`);
+  const dailyCarbs = Number(userProfile.dailyCarbTarget || 0) || null;
+  const dailyFat = Number(userProfile.dailyFatTarget || 0) || null;
+  const breakfastPref = getBreakfastPreference(userProfile);
+  const breakfastChoice = getBreakfastChoice(userProfile);
+  const skipBreakfast = shouldSkipBreakfast(userProfile);
+  const breakfastStyle = effectiveBreakfastStyle(userProfile);
+  const rng = createRng(`${userProfile.userId || 'anonymous'}:${date}:${userProfile.trainingTime || 'rest'}:${breakfastChoice || breakfastPref}`);
   const userPathologies = normalizeUserPathologies(userProfile.pathologies || []);
   const engineProfile = {
     ...userProfile,
@@ -663,7 +1045,9 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   const safeIngredients = applyPathologyFilter(eligibleIngredients, userPathologies);
   const pathologyFilter = calcPathologyExclusions(eligibleIngredients, userPathologies);
   const trainingToday = isTrainingDay(userProfile, date);
-  const mealTypes = trainingToday ? buildDayStructure(userProfile.trainingTime) : buildDayStructure(null);
+  const mealTypes = trainingToday
+    ? buildDayStructure(userProfile.trainingTime, { skipBreakfast })
+    : buildDayStructure(null, { skipBreakfast });
   const totalFraction = mealTypes.reduce((sum, mealType) => sum + (CALORIE_FRACTIONS[mealType] || 0.1), 0);
   const dayTracker = buildVarietyTracker();
   const meals = [];
@@ -686,7 +1070,13 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     meals.push(meal);
   }
 
-  const adjustedMeals = adjustMacros(meals, dailyCal, dailyProtein);
+  const adjustedMeals = enforceMainMealDistributionFloors(
+    enforceProteinFloors(
+      adjustMacros(meals, dailyCal, dailyProtein, dailyCarbs, dailyFat),
+      engineProfile
+    ),
+    engineProfile
+  );
 
   return {
     userId: userProfile.userId,
@@ -694,6 +1084,28 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     isTrainingDay: trainingToday,
     targetCalories: dailyCal,
     targetProtein: dailyProtein,
+    targetCarbs: dailyCarbs,
+    targetFat: dailyFat,
+    breakfast: {
+      preference: breakfastPref,
+      choice: breakfastChoice,
+      skipped: skipBreakfast,
+      style: breakfastStyle,
+      reason: breakfastChoice ? (userProfile.breakfastChoiceReason || 'breakfast_choice') : null,
+    },
+    proteinFloor: {
+      lunchDinnerG: proteinFloorForMeal(engineProfile),
+      source: 'config/meal-floors.js',
+    },
+    mealFloors: {
+      proteinPerMainMealG: proteinFloorForMeal(engineProfile),
+      mainMealFiberG: mainMealFiberFloor(engineProfile),
+      mainMealVegetableG: mainMealVegetableFloor(engineProfile),
+      dinnerFatG: dinnerFatFloor(engineProfile),
+      source: 'config/meal-floors.js',
+      status: 'provisional_da_validare_col_nutrizionista',
+    },
+    mealFloorAudit: buildMealFloorAudit(adjustedMeals, engineProfile),
     meals: adjustedMeals,
     daySummary: buildDaySummary(adjustedMeals),
     gi_summary: calcDailyGiSummary(adjustedMeals),

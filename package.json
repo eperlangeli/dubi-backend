@@ -22,7 +22,7 @@
     "verify-dubi-engine-cases": "node scripts/verify-dubi-engine-cases.js",
     "export-recipes-pdf-data": "node scripts/export-recipes-pdf-data.js",
     "migrate-canonical-onboarding": "node scripts/migrate-onboarding-canonical-values.js",
-    "test": "node --check server.js && node --check seed-recipes.js && node --check services/db-context.js && node --check config/training-adaptation.js && node --check scripts/ingest-usda-ingredients.js && node --check scripts/import-official-nutrition-csv.js && node --check scripts/audit-recipes-with-sources.js && node --check scripts/test-training-routes.js && node --check routes/ask-dubi.js && node --check routes/ai-engine.js && node --check routes/onboarding.js && node --check routes/training.js && node --check routes/wearables.js && node --check routes/waitlist.js && node scripts/test-training-routes.js"
+    "test": "node --check server.js && node --check seed-recipes.js && node --check services/db-context.js && node --check services/daily-adaptation.js && node --check services/mealEngine.js && node --check config/training-adaptation.js && node --check config/meal-floors.js && node --check scripts/ingest-usda-ingredients.js && node --check scripts/import-official-nutrition-csv.js && node --check scripts/audit-recipes-with-sources.js && node --check scripts/test-training-routes.js && node --check routes/ask-dubi.js && node --check routes/ai-engine.js && node --check routes/onboarding.js && node --check routes/plan.js && node --check routes/training.js && node --check routes/wearables.js && node --check routes/waitlist.js && node scripts/test-training-routes.js"
   },
   "dependencies": {
     "express": "^4.18.2",
