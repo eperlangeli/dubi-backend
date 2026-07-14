@@ -648,6 +648,176 @@ function annotateBreakfastStyle(meal, userProfile = {}) {
   return meal;
 }
 
+function normalizeDietaryPattern(userProfile = {}) {
+  const diet = normalizeToken(userProfile.dietaryStyle || userProfile.diet || 'omnivore');
+  if (['vegan', 'vegano', 'vegana'].includes(diet)) return 'vegan';
+  if (['vegetarian', 'vegetariano', 'vegetariana'].includes(diet)) return 'vegetarian';
+  if (['pescatarian', 'pescetariano', 'pescetariana'].includes(diet)) return 'pescatarian';
+  return 'omnivore';
+}
+
+function isMainMeal(mealType) {
+  return ['lunch', 'dinner'].includes(mealType);
+}
+
+function isAnimalProteinSource(ingredient = {}) {
+  if (['protein_animal', 'egg', 'dairy'].includes(ingredient.category)) return true;
+  if (ingredient.category !== 'supplement') return false;
+  return /whey|casein|caseina|latte|milk/.test(ingredientText(ingredient));
+}
+
+function isPlantProteinSource(ingredient = {}) {
+  if (['protein_plant', 'legume', 'dairy_alt'].includes(ingredient.category)) return true;
+  if (ingredient.category !== 'supplement') return false;
+  return /plant|pea|pisello|soy|soia|rice protein|proteina vegetale/.test(ingredientText(ingredient));
+}
+
+function isProteinSlotForMainMeal(mealType, slot) {
+  return isMainMeal(mealType) && slot === 'protein';
+}
+
+function proteinSourcePriorityWeight(ingredient = {}, userProfile = {}) {
+  if (!isProteinSlotForMainMeal(userProfile.currentMealType, userProfile.currentSlot)) return 1;
+
+  const diet = normalizeDietaryPattern(userProfile);
+  if (diet === 'vegan') {
+    if (isPlantProteinSource(ingredient)) return 1.4;
+    return 0.05;
+  }
+
+  if (diet === 'vegetarian') {
+    if (['egg', 'dairy'].includes(ingredient.category)) return 1.45;
+    if (isPlantProteinSource(ingredient)) return 1.0;
+    return 0.2;
+  }
+
+  if (isAnimalProteinSource(ingredient)) {
+    if (ingredient.category === 'protein_animal') return 2.2;
+    if (ingredient.category === 'egg') return 1.75;
+    if (ingredient.category === 'dairy') return 1.35;
+    return 1.2;
+  }
+
+  if (isPlantProteinSource(ingredient)) return 0.25;
+  return 0.7;
+}
+
+function prioritizeProteinCandidatesForDiet(candidates, mealType, slot, userProfile = {}) {
+  if (!isProteinSlotForMainMeal(mealType, slot) || !Array.isArray(candidates) || candidates.length === 0) {
+    return candidates;
+  }
+
+  const diet = normalizeDietaryPattern(userProfile);
+  if (diet === 'vegan') {
+    const plant = candidates.filter(isPlantProteinSource);
+    return plant.length > 0 ? plant : candidates;
+  }
+
+  if (diet === 'vegetarian') {
+    const lactoOvoAndPlant = candidates.filter((ingredient) =>
+      ['egg', 'dairy'].includes(ingredient.category) || isPlantProteinSource(ingredient)
+    );
+    return lactoOvoAndPlant.length > 0 ? lactoOvoAndPlant : candidates;
+  }
+
+  // Omnivore/pescatarian: compatibility decides which animal foods are allowed;
+  // hierarchy decides they should beat tofu/legumes as the main protein source.
+  const animalMain = candidates.filter((ingredient) => ingredient.category === 'protein_animal');
+  if (animalMain.length > 0) return animalMain;
+  const animal = candidates.filter(isAnimalProteinSource);
+  return animal.length > 0 ? animal : candidates;
+}
+
+function proteinSlotCandidatesForMeal(ingredients, mealType, userProfile = {}) {
+  let candidates = filterBySlotAndTiming(ingredients, 'protein', mealType);
+  if (candidates.length === 0) {
+    candidates = ingredients.filter((ingredient) => normalizeDbArray(ingredient.template_slots).includes('protein'));
+  }
+  return prioritizeProteinCandidatesForDiet(candidates, mealType, 'protein', userProfile);
+}
+
+function chooseAnimalProteinForMeal(ingredients, meal, dayTracker, mealTracker, rng, userProfile, date) {
+  const allProteinCandidates = proteinSlotCandidatesForMeal(ingredients, meal.mealType, {
+    ...userProfile,
+    currentMealType: meal.mealType,
+    currentSlot: 'protein',
+  });
+  const animalCandidates = allProteinCandidates.filter(isAnimalProteinSource);
+  if (animalCandidates.length === 0) return null;
+
+  const selectionProfile = {
+    ...userProfile,
+    currentMealType: meal.mealType,
+    currentSlot: 'protein',
+  };
+  const seed = `${userProfile.userId || 'anonymous'}:${date}:${meal.mealType}:protein:animal-hierarchy`;
+  return pickIngredient(animalCandidates, dayTracker, mealTracker, rng, selectionProfile, seed)
+    || animalCandidates
+      .map((candidate) => ({
+        candidate,
+        score: proteinSourcePriorityWeight(candidate, selectionProfile) * Math.max(proteinDensity(candidate), 1),
+      }))
+      .sort((a, b) => b.score - a.score || String(a.candidate.name || '').localeCompare(String(b.candidate.name || '')))
+      .map((entry) => entry.candidate)[0]
+    || null;
+}
+
+function replaceMainPlantProteinWithAnimal(meal, animalIngredient) {
+  const replaceIndex = meal.ingredients.findIndex((item) => item.slot === 'protein' && !isAnimalProteinSource(item));
+  const fallbackIndex = meal.ingredients.findIndex((item) => isPlantProteinSource(item));
+  const index = replaceIndex >= 0 ? replaceIndex : fallbackIndex;
+  const previous = index >= 0 ? meal.ingredients[index] : null;
+  const targetCalories = Number(previous?.calories || 0) || 260;
+  const portionG = calcPortion(animalIngredient, targetCalories);
+  const nextItem = buildPlanItem(animalIngredient, 'protein', portionG);
+
+  if (index >= 0) meal.ingredients[index] = nextItem;
+  else meal.ingredients.push(nextItem);
+  recomputeMealTotals(meal);
+}
+
+function limitOmnivorePlantProteinComplements(meal) {
+  if (!isMainMeal(meal.mealType) || !meal.ingredients.some(isAnimalProteinSource)) return;
+
+  const plantProteinIndexes = meal.ingredients
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => isPlantProteinSource(item));
+  if (plantProteinIndexes.length <= 1) return;
+
+  const [keep, ...remove] = plantProteinIndexes
+    .sort((a, b) => Number(b.item.protein || 0) - Number(a.item.protein || 0));
+  const keepIndex = keep.index;
+  const removeIndexes = new Set(remove.map(({ index }) => index));
+  meal.ingredients = meal.ingredients.filter((_, index) => index === keepIndex || !removeIndexes.has(index));
+  recomputeMealTotals(meal);
+}
+
+function enforceDietProteinSourceHierarchy(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date) {
+  if (!isMainMeal(meal.mealType)) return;
+  const diet = normalizeDietaryPattern(userProfile);
+  if (!['omnivore', 'pescatarian'].includes(diet)) return;
+
+  const animalCandidates = proteinSlotCandidatesForMeal(eligibleIngredients, meal.mealType, {
+    ...userProfile,
+    currentMealType: meal.mealType,
+    currentSlot: 'protein',
+  }).filter(isAnimalProteinSource);
+
+  if (!meal.ingredients.some(isAnimalProteinSource) && animalCandidates.length > 0) {
+    const animal = chooseAnimalProteinForMeal(eligibleIngredients, meal, dayTracker, mealTracker, rng, userProfile, date);
+    if (animal) {
+      replaceMainPlantProteinWithAnimal(meal, animal);
+      recordVariety(animal, dayTracker, mealTracker);
+    }
+  }
+
+  if (meal.mealType === 'dinner' && !meal.ingredients.some(isAnimalProteinSource) && animalCandidates.length === 0) {
+    console.warn('[mealEngine] Omnivore dinner has no animal protein source: compatible pool exhausted by diet/allergy/pathology filters');
+  }
+
+  limitOmnivorePlantProteinComplements(meal);
+}
+
 function pickIngredient(candidates, dayTracker, mealTracker, rng, userProfile, selectionSeed) {
   const eligible = candidates.filter((candidate) => checkVariety(candidate, dayTracker, mealTracker));
   if (eligible.length === 0) return null;
@@ -660,7 +830,8 @@ function pickIngredient(candidates, dayTracker, mealTracker, rng, userProfile, s
     .map((candidate) => ({
       candidate,
       score: deterministicSelectionScore(`${selectionSeed}:${candidate.id}:${candidate.name}`) *
-        giScore(candidate, rankingProfile),
+        giScore(candidate, rankingProfile) *
+        proteinSourcePriorityWeight(candidate, rankingProfile),
     }))
     .sort((a, b) => b.score - a.score || String(a.candidate.name).localeCompare(String(b.candidate.name)))
     .map((entry) => entry.candidate)[0] || null;
@@ -674,7 +845,8 @@ function pickRequiredProteinFallback(candidates, userProfile, selectionSeed) {
     .map((candidate) => ({
       candidate,
       score: deterministicSelectionScore(`${selectionSeed}:protein-floor:${candidate.id}:${candidate.name}`) *
-        giScore(candidate, userProfile),
+        giScore(candidate, userProfile) *
+        proteinSourcePriorityWeight(candidate, { ...userProfile, currentSlot: 'protein' }),
     }))
     .sort((a, b) =>
       b.score - a.score ||
@@ -912,20 +1084,10 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
     totalMacros: {},
   };
 
-  // For omnivores, legumes should never fill the protein slot (use animal protein instead)
-  const isOmnivore = normalizeToken(userProfile.dietaryStyle) === 'omnivore' ||
-    normalizeToken(userProfile.dietaryStyle) === 'onnivoro';
-
   for (const [slot, config] of slots) {
     let candidates = filterBySlotAndTiming(eligibleIngredients, slot, mealType);
     if (candidates.length === 0) {
       candidates = eligibleIngredients.filter((ingredient) => normalizeDbArray(ingredient.template_slots).includes(slot));
-    }
-
-    // Omnivore + protein slot: exclude legumes so animal protein fills the slot
-    if (isOmnivore && slot === 'protein' && ['lunch', 'dinner'].includes(mealType)) {
-      const withoutLegumes = candidates.filter(ing => ing.category !== 'legume');
-      if (withoutLegumes.length > 0) candidates = withoutLegumes;
     }
 
     if (normalizeUserPathologies(userPathologies).length > 0 && candidates.length < 3) {
@@ -936,6 +1098,7 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
       candidates = applyPathologyFilter(fallbackCandidates, userPathologies);
     }
 
+    candidates = prioritizeProteinCandidatesForDiet(candidates, mealType, slot, userProfile);
     candidates = applyBreakfastStylePreference(candidates, mealType, userProfile);
     candidates = applyWorkoutCandidateRules(candidates, mealType, slot, {
       ...userProfile,
@@ -957,14 +1120,14 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
         dayTracker,
         mealTracker,
         rng,
-        { ...userProfile, currentMealType: mealType, workoutNutritionContext: workoutContext },
+        { ...userProfile, currentMealType: mealType, currentSlot: slot, workoutNutritionContext: workoutContext },
         selectionSeed
       );
 
       if (!chosen && config && config.required && slot === 'protein' && ['lunch', 'dinner'].includes(mealType)) {
         chosen = pickRequiredProteinFallback(
           candidates,
-          { ...userProfile, currentMealType: mealType, workoutNutritionContext: workoutContext },
+          { ...userProfile, currentMealType: mealType, currentSlot: slot, workoutNutritionContext: workoutContext },
           selectionSeed
         );
         if (chosen) {
@@ -982,6 +1145,7 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
 
   ensureMainMealVegetable(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date);
   ensureDinnerFat(meal, eligibleIngredients);
+  enforceDietProteinSourceHierarchy(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date);
   recomputeMealTotals(meal);
   annotateBreakfastStyle(meal, userProfile);
   return meal;
