@@ -405,6 +405,53 @@ module.exports = (pool) => {
     };
   };
 
+  const attachPlanContext = (plan, context) => {
+    plan.dailyAdaptation = context.dailyAdaptation;
+    plan.baseTargets = context.dailyAdaptation.baseTargets || context.freshMacros;
+    plan.adjustedTargets = context.adaptedMacros;
+    plan.adaptationSignature = context.dailyAdaptation.signature;
+    plan.sports = context.sports;
+    plan.sport_groups = context.sportGroups;
+    plan.sport_profile = context.freshMacros.sportProfile;
+    plan.macro_split = context.freshMacros.macroSplit;
+    return plan;
+  };
+
+  const saveDailyIngredientPlan = async (userId, targetDate, plan) => {
+    await pool.query(
+      `INSERT INTO daily_plans (user_id, plan_date, plan_data)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, plan_date)
+       DO UPDATE SET plan_data = EXCLUDED.plan_data, generated_at = NOW()`,
+      [userId, targetDate, JSON.stringify(plan)]
+    );
+  };
+
+  const generateAndSaveIngredientPlan = async (userId, targetDate, breakfastChoice = null, options = {}) => {
+    const context = await buildIngredientPlanContext(userId, targetDate, breakfastChoice);
+
+    if (options.syncMealPlans !== false) {
+      pool.query(
+        'INSERT INTO meal_plans (user_id, calories, protein, carbs, fat) VALUES ($1, $2, $3, $4, $5)',
+        [
+          userId,
+          context.adaptedMacros.calories,
+          context.adaptedMacros.protein,
+          context.adaptedMacros.carbs,
+          context.adaptedMacros.fat
+        ]
+      ).catch(err => console.warn('[plan] meal_plans sync failed:', err.message));
+    }
+
+    const plan = attachPlanContext(
+      await generateDayPlan(pool, context.userProfile, targetDate),
+      context
+    );
+
+    await saveDailyIngredientPlan(userId, targetDate, plan);
+    return plan;
+  };
+
   // ── POST /plan/generate ───────────────────────────────────────────────────
   router.post('/generate', verifyToken, async (req, res) => {
     try {
@@ -484,39 +531,7 @@ module.exports = (pool) => {
         });
       }
 
-      const {
-        sports,
-        sportGroups,
-        freshMacros,
-        dailyAdaptation,
-        adaptedMacros,
-        userProfile,
-      } = await buildIngredientPlanContext(req.userId, targetDate, normalizedBreakfastChoice);
-
-      // Sincronizza meal_plans in background (non bloccante)
-      pool.query(
-        'INSERT INTO meal_plans (user_id, calories, protein, carbs, fat) VALUES ($1, $2, $3, $4, $5)',
-        [req.userId, adaptedMacros.calories, adaptedMacros.protein, adaptedMacros.carbs, adaptedMacros.fat]
-      ).catch(err => console.warn('[plan] meal_plans sync failed:', err.message));
-
-      const plan = await generateDayPlan(pool, userProfile, targetDate);
-      plan.dailyAdaptation = dailyAdaptation;
-      plan.baseTargets = dailyAdaptation.baseTargets || freshMacros;
-      plan.adjustedTargets = adaptedMacros;
-      plan.adaptationSignature = dailyAdaptation.signature;
-      plan.sports = sports;
-      plan.sport_groups = sportGroups;
-      plan.sport_profile = freshMacros.sportProfile;
-      plan.macro_split = freshMacros.macroSplit;
-
-      await pool.query(
-        `INSERT INTO daily_plans (user_id, plan_date, plan_data)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (user_id, plan_date)
-         DO UPDATE SET plan_data = EXCLUDED.plan_data, generated_at = NOW()`,
-        [req.userId, targetDate, JSON.stringify(plan)]
-      );
-
+      const plan = await generateAndSaveIngredientPlan(req.userId, targetDate, normalizedBreakfastChoice);
       res.json(plan);
     } catch (error) {
       if (error.status) return res.status(error.status).json(error.payload || { error: error.message });
@@ -548,15 +563,20 @@ module.exports = (pool) => {
       if (!(await requireHealthDataConsent(req.userId, res))) return;
 
       const targetDate = req.params.date || new Date().toISOString().split('T')[0];
+      const shouldGenerateIfMissing = String(req.query.generateIfMissing ?? 'true').toLowerCase() !== 'false';
       const result = await pool.query(
         'SELECT plan_data FROM daily_plans WHERE user_id = $1 AND plan_date = $2',
         [req.userId, targetDate]
       );
 
       if (result.rows.length === 0) {
-        return res.status(404).json({
-          error: 'No plan found for this date. Call POST /plan/ingredient-plan/generate first.',
-        });
+        if (!shouldGenerateIfMissing) {
+          return res.status(404).json({
+            error: 'No plan found for this date. Call POST /plan/ingredient-plan/generate first.',
+          });
+        }
+
+        return res.json(await generateAndSaveIngredientPlan(req.userId, targetDate, null));
       }
 
       const plan = result.rows[0].plan_data || {};
@@ -569,6 +589,8 @@ module.exports = (pool) => {
 
       res.json(plan);
     } catch (error) {
+      if (error.status) return res.status(error.status).json(error.payload || { error: error.message });
+      console.error('[plan] ingredient-plan fetch/generate error:', error);
       res.status(500).json({ error: error.message });
     }
   });
