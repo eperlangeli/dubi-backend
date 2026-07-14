@@ -1,5 +1,5 @@
 const express = require('express');
-const { generateDayPlan, calcDailyGiSummary } = require('../services/mealEngine');
+const { generateDayPlan, generateBreakfastOptions, calcDailyGiSummary } = require('../services/mealEngine');
 const { buildDailyBiometricAdaptation } = require('../services/daily-adaptation');
 
 const ALLOWED_BREAKFAST_CHOICES = new Set(['dolce', 'salata', 'skip']);
@@ -297,6 +297,114 @@ module.exports = (pool) => {
     return true;
   };
 
+  const httpError = (status, error, extra = {}) => {
+    const err = new Error(error);
+    err.status = status;
+    err.payload = { error, ...extra };
+    return err;
+  };
+
+  const buildIngredientPlanContext = async (userId, targetDate, breakfastChoice = null) => {
+    const profileResult = await pool.query(
+      `SELECT uo.*, u.age, u.weight, u.height, u.goal, u.is_minor, u.parental_consent_status
+       FROM user_onboarding uo
+       JOIN users u ON u.id = uo.user_id
+       WHERE uo.user_id = $1
+       ORDER BY uo.created_at DESC LIMIT 1`,
+      [userId]
+    );
+
+    if (profileResult.rows.length === 0) {
+      throw httpError(404, 'User profile not found. Complete onboarding first.');
+    }
+
+    const row = profileResult.rows[0];
+
+    if (row.is_minor && row.parental_consent_status !== 'approved') {
+      throw httpError(403, 'parental_consent_required', {
+        parental_consent_status: row.parental_consent_status || 'pending',
+      });
+    }
+
+    if (!row.health_data_consent) {
+      throw httpError(403, 'health_data_consent_required');
+    }
+
+    // Ricalcola macro sempre dal profilo corrente (mai da meal_plans cache)
+    const sex          = String(row.gender || 'M').toUpperCase().startsWith('F') ? 'female' : 'male';
+    const bmr          = calculateBMR(Number(row.weight) || 70, Number(row.height) || 170, Number(row.age) || 25, sex);
+    const actKcal      = calculateActivityKcal(row.workout_days, row.workout_intensity, bmr);
+    const tdee         = calculateTDEE(bmr, actKcal);
+    const sports       = normalizeSports(row.sports, row.sport);
+    const sportGroups  = getSportGroups(sports);
+    const sportProfile = blendSportProfiles(sportGroups);
+    const freshMacros  = calculateMacros(tdee, row.goal || 'maintain', sportProfile);
+    const dailyAdaptation = await buildDailyBiometricAdaptation(pool, {
+      userId,
+      targetDate,
+      baseTargets: freshMacros,
+      profile: row,
+      bmr,
+      tdee
+    });
+    const adaptedMacros = dailyAdaptation.adjustedTargets || freshMacros;
+    const trainingSignal = dailyAdaptation.signals?.training || {};
+    const hasResolvedTrainingToday = trainingSignal.performedTraining === true
+      || trainingSignal.planned === true;
+    const plannedTrainingWithoutResolvedSlot = trainingSignal.planned === true
+      && !trainingSignal.trainingTimeSlot
+      && trainingSignal.status === 'unconfirmed';
+    const workoutTimeSlot = plannedTrainingWithoutResolvedSlot
+      ? 'unset'
+      : (
+          hasResolvedTrainingToday
+            ? (trainingSignal.trainingTimeSlot || row.training_time || null)
+            : (trainingSignal.hasWeekPlan ? null : (row.training_time || null))
+        );
+    const workoutSport = trainingSignal.trainingSport || sports[0] || row.sport || null;
+    const workoutSportGroup = getSportGroup(workoutSport)
+      || sportProfile?.groups?.[0]
+      || sportGroups[0]
+      || 'none';
+
+    const userProfile = {
+      userId,
+      goal:               row.goal || 'maintain',
+      dietaryStyle:       row.diet || 'omnivore',
+      allergiesText:      row.allergies || '',
+      pathologies:        parsePathologiesFromAllergies(row.allergies),
+      workoutDays:        Number(row.workout_days) || 0,
+      trainingTime:       workoutTimeSlot,
+      trainingTimeSlot:   workoutTimeSlot,
+      trainingStatus:     trainingSignal.status || null,
+      trainingPlanned:    trainingSignal.planned === true,
+      trainingPerformed:  trainingSignal.performedTraining === true,
+      trainingMissed:     trainingSignal.missedTraining === true,
+      trainingSport:      workoutSport,
+      trainingSportGroup: workoutSportGroup,
+      sportGroup:         sportProfile?.groups?.[0] ?? sportGroups[0] ?? 'none',
+      sportGroups,
+      dailyCalorieTarget: adaptedMacros.calories,
+      dailyProteinTarget: adaptedMacros.protein,
+      dailyCarbTarget:    adaptedMacros.carbs,
+      dailyFatTarget:     adaptedMacros.fat,
+      weightKg:           Number(row.weight) || 70,
+      breakfastPref:      row.breakfast_pref || 'both',
+      breakfastChoice:    breakfastChoice,
+      breakfastChoiceReason: breakfastChoice ? 'breakfast_choice' : null,
+    };
+
+    return {
+      row,
+      sports,
+      sportGroups,
+      freshMacros,
+      dailyAdaptation,
+      adaptedMacros,
+      userProfile,
+    };
+  };
+
   // ── POST /plan/generate ───────────────────────────────────────────────────
   router.post('/generate', verifyToken, async (req, res) => {
     try {
@@ -376,101 +484,20 @@ module.exports = (pool) => {
         });
       }
 
-      const profileResult = await pool.query(
-        `SELECT uo.*, u.age, u.weight, u.height, u.goal, u.is_minor, u.parental_consent_status
-         FROM user_onboarding uo
-         JOIN users u ON u.id = uo.user_id
-         WHERE uo.user_id = $1
-         ORDER BY uo.created_at DESC LIMIT 1`,
-        [req.userId]
-      );
-
-      if (profileResult.rows.length === 0) {
-        return res.status(404).json({ error: 'User profile not found. Complete onboarding first.' });
-      }
-
-      const row = profileResult.rows[0];
-
-      if (row.is_minor && row.parental_consent_status !== 'approved') {
-        return res.status(403).json({
-          error: 'parental_consent_required',
-          parental_consent_status: row.parental_consent_status || 'pending',
-        });
-      }
-
-      if (!row.health_data_consent) {
-        return res.status(403).json({ error: 'health_data_consent_required' });
-      }
-
-      // Ricalcola macro sempre dal profilo corrente (mai da meal_plans cache)
-      const sex        = String(row.gender || 'M').toUpperCase().startsWith('F') ? 'female' : 'male';
-      const bmr        = calculateBMR(Number(row.weight) || 70, Number(row.height) || 170, Number(row.age) || 25, sex);
-      const actKcal    = calculateActivityKcal(row.workout_days, row.workout_intensity, bmr);
-      const tdee       = calculateTDEE(bmr, actKcal);
-      const sports       = normalizeSports(row.sports, row.sport);
-      const sportGroups  = getSportGroups(sports);
-      const sportProfile = blendSportProfiles(sportGroups);
-      const freshMacros  = calculateMacros(tdee, row.goal || 'maintain', sportProfile);
-      const dailyAdaptation = await buildDailyBiometricAdaptation(pool, {
-        userId: req.userId,
-        targetDate,
-        baseTargets: freshMacros,
-        profile: row,
-        bmr,
-        tdee
-      });
-      const adaptedMacros = dailyAdaptation.adjustedTargets || freshMacros;
-      const trainingSignal = dailyAdaptation.signals?.training || {};
-      const hasResolvedTrainingToday = trainingSignal.performedTraining === true
-        || trainingSignal.planned === true;
-      const plannedTrainingWithoutResolvedSlot = trainingSignal.planned === true
-        && !trainingSignal.trainingTimeSlot
-        && trainingSignal.status === 'unconfirmed';
-      const workoutTimeSlot = plannedTrainingWithoutResolvedSlot
-        ? 'unset'
-        : (
-            hasResolvedTrainingToday
-              ? (trainingSignal.trainingTimeSlot || row.training_time || null)
-              : (trainingSignal.hasWeekPlan ? null : (row.training_time || null))
-          );
-      const workoutSport = trainingSignal.trainingSport || sports[0] || row.sport || null;
-      const workoutSportGroup = getSportGroup(workoutSport)
-        || sportProfile?.groups?.[0]
-        || sportGroups[0]
-        || 'none';
+      const {
+        sports,
+        sportGroups,
+        freshMacros,
+        dailyAdaptation,
+        adaptedMacros,
+        userProfile,
+      } = await buildIngredientPlanContext(req.userId, targetDate, normalizedBreakfastChoice);
 
       // Sincronizza meal_plans in background (non bloccante)
       pool.query(
         'INSERT INTO meal_plans (user_id, calories, protein, carbs, fat) VALUES ($1, $2, $3, $4, $5)',
         [req.userId, adaptedMacros.calories, adaptedMacros.protein, adaptedMacros.carbs, adaptedMacros.fat]
       ).catch(err => console.warn('[plan] meal_plans sync failed:', err.message));
-
-      const userProfile = {
-        userId:             req.userId,
-        goal:               row.goal || 'maintain',
-        dietaryStyle:       row.diet || 'omnivore',
-        allergiesText:      row.allergies || '',
-        pathologies:        parsePathologiesFromAllergies(row.allergies),
-        workoutDays:        Number(row.workout_days) || 0,
-        trainingTime:       workoutTimeSlot,
-        trainingTimeSlot:   workoutTimeSlot,
-        trainingStatus:     trainingSignal.status || null,
-        trainingPlanned:    trainingSignal.planned === true,
-        trainingPerformed:  trainingSignal.performedTraining === true,
-        trainingMissed:     trainingSignal.missedTraining === true,
-        trainingSport:      workoutSport,
-        trainingSportGroup: workoutSportGroup,
-        sportGroup:         sportProfile?.groups?.[0] ?? sportGroups[0] ?? 'none',
-        sportGroups,
-        dailyCalorieTarget: adaptedMacros.calories,
-        dailyProteinTarget: adaptedMacros.protein,
-        dailyCarbTarget:    adaptedMacros.carbs,
-        dailyFatTarget:     adaptedMacros.fat,
-        weightKg:           Number(row.weight) || 70,
-        breakfastPref:      row.breakfast_pref || 'both',
-        breakfastChoice:    normalizedBreakfastChoice,
-        breakfastChoiceReason: normalizedBreakfastChoice ? 'breakfast_choice' : null,
-      };
 
       const plan = await generateDayPlan(pool, userProfile, targetDate);
       plan.dailyAdaptation = dailyAdaptation;
@@ -492,8 +519,26 @@ module.exports = (pool) => {
 
       res.json(plan);
     } catch (error) {
+      if (error.status) return res.status(error.status).json(error.payload || { error: error.message });
       console.error('[plan] ingredient-plan generate error:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── GET /plan/breakfast-options ──────────────────────────────────────────
+  router.get('/breakfast-options', verifyToken, async (req, res) => {
+    try {
+      const targetDate = req.query.date || new Date().toISOString().split('T')[0];
+      const { userProfile } = await buildIngredientPlanContext(req.userId, targetDate, null);
+      const options = await generateBreakfastOptions(pool, userProfile, targetDate);
+      return res.json(options);
+    } catch (error) {
+      if (error.status) return res.status(error.status).json(error.payload || { error: error.message });
+      if (error.code === 'breakfast_options_unavailable') {
+        return res.status(409).json({ error: 'breakfast_options_unavailable' });
+      }
+      console.error('[plan] breakfast-options error:', error);
+      return res.status(500).json({ error: error.message });
     }
   });
 

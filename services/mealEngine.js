@@ -1796,6 +1796,56 @@ function buildDaySummary(meals) {
   };
 }
 
+function serializeBreakfastOption(meal, style) {
+  if (!meal || meal.error) return null;
+
+  return {
+    style,
+    ingredients: (meal.ingredients || []).map((item) => ({
+      name: item.name,
+      name_en: item.name_en || null,
+      portionG: item.portionG,
+      calories: item.calories,
+      protein: item.protein,
+      carbs: item.carbs,
+      fat: item.fat,
+      source_id: item.source_id || null,
+    })),
+    totalMacros: {
+      calories: Math.round(Number(meal.totalCalories || 0)),
+      protein: Math.round(Number(meal.totalMacros?.protein || 0) * 10) / 10,
+      carbs: Math.round(Number(meal.totalMacros?.carbs || 0) * 10) / 10,
+      fat: Math.round(Number(meal.totalMacros?.fat || 0) * 10) / 10,
+    },
+  };
+}
+
+async function generateBreakfastOptions(pool, userProfile, targetDate) {
+  const date = targetDate || new Date().toISOString().split('T')[0];
+  const buildForStyle = async (style) => {
+    const plan = await generateDayPlan(pool, {
+      ...userProfile,
+      breakfastChoice: style,
+      breakfastChoiceReason: 'breakfast_options_preview',
+    }, date);
+    const breakfast = (plan.meals || []).find((meal) => meal.mealType === 'breakfast');
+    return serializeBreakfastOption(breakfast, style);
+  };
+
+  const [sweet, savory] = await Promise.all([
+    buildForStyle('sweet'),
+    buildForStyle('savory'),
+  ]);
+
+  if (!sweet || !savory) {
+    const error = new Error('breakfast_options_unavailable');
+    error.code = 'breakfast_options_unavailable';
+    throw error;
+  }
+
+  return { date, sweet, savory };
+}
+
 function publicWorkoutTargets(targets = null) {
   if (!targets) return null;
   return {
@@ -1995,4 +2045,11 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   };
 }
 
-module.exports = { generateDayPlan, giScore, calcDailyGiSummary, applyPathologyFilter, calcPathologyExclusions };
+module.exports = {
+  generateDayPlan,
+  generateBreakfastOptions,
+  giScore,
+  calcDailyGiSummary,
+  applyPathologyFilter,
+  calcPathologyExclusions
+};

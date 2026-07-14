@@ -107,6 +107,7 @@ app.get('/health', async (req, res) => {
 
 // ROUTES
 const authRoutes = require('./routes/auth');
+const planRoutes = require('./routes/plan');
 app.use('/auth', authRoutes(scopedPool));
 app.use('/api/auth', authRoutes(scopedPool));
 app.use('/api/onboarding', require('./routes/onboarding')(scopedPool));
@@ -118,8 +119,9 @@ app.use('/api/ask-dubi', require('./routes/ask-dubi')(scopedPool));
 app.use('/api/nutrition-brain', require('./routes/nutrition-brain')(scopedPool));
 app.use('/api/wearables', require('./routes/wearables')(scopedPool));
 app.use('/api/training', require('./routes/training')(scopedPool));
+app.use('/api/plan', planRoutes(scopedPool));
 app.use('/user', require('./routes/user')(scopedPool));
-app.use('/plan', require('./routes/plan')(scopedPool));
+app.use('/plan', planRoutes(scopedPool));
 app.use('/adherence', require('./routes/adherence')(scopedPool));
 app.use('/weight', require('./routes/weight')(scopedPool));
 app.use('/nps', require('./routes/nps')(scopedPool));
