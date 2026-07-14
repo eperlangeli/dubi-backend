@@ -175,7 +175,9 @@ const fetchTrainingContext = async (pool, userId, targetDate) => {
       [userId, weekStart]
     ),
     pool.query(
-      `SELECT planned, status, training_time_slot, answered_at,
+      `SELECT planned, status, training_time_slot,
+              row_to_json(training_confirmations)->>'training_sport' AS training_sport,
+              answered_at,
               detected_strain, detected_duration_min, detected_active_kcal
          FROM training_confirmations
         WHERE user_id = $1 AND day = $2
@@ -206,6 +208,7 @@ const fetchTrainingContext = async (pool, userId, targetDate) => {
     planned,
     status,
     trainingTimeSlot: confirmation?.training_time_slot || null,
+    trainingSport: confirmation?.training_sport || null,
     answeredAt: confirmation?.answered_at || null,
     detected: {
       activeKcal: detectedActiveKcal,
@@ -609,6 +612,8 @@ const calculateAdaptation = ({ baseTargets, profile, bmr, tdee, wearable, traini
     training: {
       planned: training.planned,
       status: training.status,
+      trainingTimeSlot: training.trainingTimeSlot,
+      trainingSport: training.trainingSport,
       detected: training.detected
     }
   });

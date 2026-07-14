@@ -42,7 +42,7 @@ const makePool = () => {
       }
 
       if (normalized.startsWith('INSERT INTO training_confirmations')) {
-        const [userId, day, planned, status, trainingTimeSlot] = params;
+        const [userId, day, planned, status, trainingTimeSlot, trainingSport = null] = params;
         const row = {
           id: state.nextConfirmationId++,
           user_id: userId,
@@ -50,6 +50,7 @@ const makePool = () => {
           planned,
           status,
           training_time_slot: trainingTimeSlot,
+          training_sport: trainingSport,
           answered_at: status === 'unconfirmed' ? null : new Date().toISOString(),
           detected_strain: null,
           detected_duration_min: null,
@@ -59,7 +60,10 @@ const makePool = () => {
         return { rows: [row] };
       }
 
-      if (normalized.startsWith('SELECT * FROM training_confirmations')) {
+      if (
+        normalized.startsWith('SELECT * FROM training_confirmations')
+        || normalized.startsWith('SELECT training_confirmations.*')
+      ) {
         const [userId, day] = params;
         const row = state.confirmations.get(key(userId, day));
         return { rows: row ? [row] : [] };
@@ -116,17 +120,28 @@ const main = async () => {
     const confirm = await requestJson(baseUrl, '/api/training/day/confirm', {
       method: 'POST',
       token,
-      body: { day: today, answer: 'yes', time_slot: 'evening' }
+      body: { day: today, answer: 'yes', time_slot: 'morning_fasted', sport: 'running' }
     });
     assert.strictEqual(confirm.status, 200);
     assert.strictEqual(confirm.json.confirmation.status, 'confirmed_yes');
     assert.strictEqual(confirm.json.confirmation.planned, true);
-    assert.strictEqual(confirm.json.confirmation.training_time_slot, 'evening');
+    assert.strictEqual(confirm.json.confirmation.training_time_slot, 'morning_fasted');
+    assert.strictEqual(confirm.json.confirmation.training_sport, 'running');
+
+    const invalidSlot = await requestJson(baseUrl, '/api/training/day/confirm', {
+      method: 'POST',
+      token,
+      body: { day: today, answer: 'yes', time_slot: 'night_owl' }
+    });
+    assert.strictEqual(invalidSlot.status, 400);
+    assert.strictEqual(invalidSlot.json.error, 'invalid_time_slot');
 
     const todayState = await requestJson(baseUrl, '/api/training/day/today', { token });
     assert.strictEqual(todayState.status, 200);
     assert.strictEqual(todayState.json.planned, true);
     assert.strictEqual(todayState.json.status, 'confirmed_yes');
+    assert.strictEqual(todayState.json.training_time_slot, 'morning_fasted');
+    assert.strictEqual(todayState.json.training_sport, 'running');
 
     console.log('training route endpoint tests passed');
   } finally {

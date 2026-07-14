@@ -7,6 +7,7 @@
  */
 
 const { MEAL_FLOORS } = require('../config/meal-floors');
+const { WORKOUT_NUTRITION } = require('../config/workout-nutrition');
 
 const DIET_COL = {
   omnivore: 'compatible_omnivore',
@@ -81,15 +82,6 @@ const PATHOLOGY_MAP = {
   nichel: 'ok_nickel',
 };
 
-const CALORIE_FRACTIONS = {
-  breakfast:   0.25,
-  pre_workout: 0.08,  // spuntino leggero ~45-60 min prima — solo carbo rapidi, digestione facile
-  post_workout: 0.18, // carbo + proteine per recupero glicogeno e sintesi muscolare
-  lunch:       0.30,
-  snack:       0.08,
-  dinner:      0.25,
-};
-
 const PORTION_BOUNDS = {
   protein_animal: { min: 100, max: 220, typical: 150 },
   protein_plant: { min: 100, max: 200, typical: 150 },
@@ -132,6 +124,73 @@ function normalizeList(value) {
     .map(normalizeToken)
     .filter(Boolean)
     .filter((token) => !['none', 'nessuna', 'nessuno', 'no'].includes(token));
+}
+
+function normalizeWorkoutTimeSlot(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const token = normalizeToken(value).replace(/[\s-]+/g, '_');
+  if (!token) return null;
+  return WORKOUT_NUTRITION.timeSlotAliases[token]
+    || (WORKOUT_NUTRITION.allowedTimeSlots.includes(token) ? token : null);
+}
+
+function normalizeWorkoutSportGroup(userProfile = {}) {
+  const explicit = normalizeToken(userProfile.trainingSportGroup || userProfile.workoutSportGroup).replace(/\s+/g, '_');
+  if (explicit) return explicit;
+
+  const groups = Array.isArray(userProfile.sportGroups)
+    ? userProfile.sportGroups
+    : normalizeList(userProfile.sportGroup || userProfile.sport_profile || userProfile.sportProfile);
+  const normalized = groups.map((group) => normalizeToken(group).replace(/\s+/g, '_')).filter(Boolean);
+  const unique = [...new Set(normalized)];
+  if (unique.length > 1) return 'mixed';
+  return unique[0] || normalizeToken(userProfile.sportGroup).replace(/\s+/g, '_') || 'none';
+}
+
+function getWorkoutSportModifier(userProfile = {}) {
+  const sportGroup = normalizeWorkoutSportGroup(userProfile);
+  return WORKOUT_NUTRITION.sportModifiers[sportGroup]
+    || WORKOUT_NUTRITION.sportModifiers.mixed
+    || WORKOUT_NUTRITION.sportModifiers.none;
+}
+
+function resolveWorkoutNutritionContext(userProfile = {}) {
+  const sportsList = Array.isArray(userProfile.sports)
+    ? userProfile.sports
+    : normalizeList(userProfile.sports);
+  const explicitSlot = normalizeWorkoutTimeSlot(
+    userProfile.trainingTimeSlot
+      ?? userProfile.training_time_slot
+      ?? userProfile.timeSlot
+      ?? userProfile.trainingTime
+      ?? userProfile.training_time
+  );
+  const planned = userProfile.trainingPlanned === true;
+  const performed = userProfile.trainingPerformed === true
+    || ['confirmed_yes', 'detected_wearable'].includes(normalizeToken(userProfile.trainingStatus));
+  const missed = userProfile.trainingMissed === true
+    || normalizeToken(userProfile.trainingStatus) === 'confirmed_no';
+  const shouldFuelTraining = !missed && (performed || planned || Boolean(explicitSlot && explicitSlot !== 'unset'));
+  const timeSlot = shouldFuelTraining
+    ? (explicitSlot || (planned || performed ? 'unset' : null))
+    : null;
+  const config = timeSlot
+    ? WORKOUT_NUTRITION.timeSlots[timeSlot] || WORKOUT_NUTRITION.timeSlots.unset
+    : null;
+  const sportGroup = normalizeWorkoutSportGroup(userProfile);
+  const sportModifier = getWorkoutSportModifier(userProfile);
+
+  return {
+    active: Boolean(timeSlot && config),
+    timeSlot,
+    rawTimeSlot: explicitSlot,
+    resolved: Boolean(config?.resolved),
+    defaulted: timeSlot === 'unset',
+    config,
+    sport: userProfile.trainingSport || userProfile.sport || sportsList[0] || null,
+    sportGroup,
+    sportModifier,
+  };
 }
 
 function normalizeBreakfastPref(value) {
@@ -214,34 +273,23 @@ function withoutBreakfastIfNeeded(mealTypes, options = {}) {
 
 function buildDayStructure(trainingTime, options = {}) {
   const base = ['breakfast', 'lunch', 'snack', 'dinner'];
-  if (!trainingTime) return withoutBreakfastIfNeeded(base, options);
+  const workoutContext = options.workoutContext || resolveWorkoutNutritionContext({ trainingTime });
+  if (!workoutContext.active) return withoutBreakfastIfNeeded(base, options);
 
-  const time = normalizeToken(trainingTime);
-
-  if (['morning', 'mattina', 'mattino'].includes(time)) {
-    // Mattino: niente tempo per digerire un pasto completo prima.
-    // Piccolo carbo rapido pre-workout, poi pasto completo post-workout.
-    return withoutBreakfastIfNeeded(['pre_workout', 'post_workout', 'breakfast', 'lunch', 'snack', 'dinner'], options);
-  }
-
-  if (['afternoon', 'pomeriggio'].includes(time)) {
-    // Pomeriggio: pranzo completo ~3h prima (carbo+pro+pochi grassi),
-    // poi spuntino pre-workout 45-60 min prima (carbo rapidi, pro opzionali),
-    // poi post-workout (carbo+pro recupero), poi spuntino e cena.
-    return withoutBreakfastIfNeeded(['breakfast', 'lunch', 'pre_workout', 'post_workout', 'snack', 'dinner'], options);
-  }
-
-  if (['evening', 'sera'].includes(time)) {
-    // Sera: la CENA è il pasto principale pre-allenamento (carbo+pro+grassi moderati),
-    // poi piccolo spuntino carbo ~45-60 min prima, poi post-workout recupero.
-    // La cena precede pre_workout — non viene dopo.
-    return withoutBreakfastIfNeeded(['breakfast', 'lunch', 'snack', 'dinner', 'pre_workout', 'post_workout'], options);
-  }
-
-  return withoutBreakfastIfNeeded(base, options);
+  const structure = workoutContext.config?.structure || base;
+  return withoutBreakfastIfNeeded([...structure], options);
 }
 
 function isTrainingDay(userProfile, targetDate) {
+  if (userProfile.trainingMissed === true || normalizeToken(userProfile.trainingStatus) === 'confirmed_no') return false;
+  if (
+    userProfile.trainingPlanned === true
+    || userProfile.trainingPerformed === true
+    || ['confirmed_yes', 'detected_wearable'].includes(normalizeToken(userProfile.trainingStatus))
+  ) {
+    return true;
+  }
+
   const explicitDays = normalizeList(userProfile.trainingDays);
   if (explicitDays.length > 0) {
     const weekday = new Date(targetDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
@@ -249,6 +297,13 @@ function isTrainingDay(userProfile, targetDate) {
   }
 
   return Number(userProfile.workoutDays || 0) > 0 && Boolean(userProfile.trainingTime);
+}
+
+function getMealFraction(mealType, workoutContext = null) {
+  const fractionSet = workoutContext?.active
+    ? WORKOUT_NUTRITION.mealFractions[workoutContext.timeSlot]
+    : WORKOUT_NUTRITION.mealFractions.rest;
+  return Number(fractionSet?.[mealType] || WORKOUT_NUTRITION.mealFractions.rest?.[mealType] || 0.1);
 }
 
 function createRng(seedText) {
@@ -474,7 +529,7 @@ function filterBySlotAndTiming(ingredients, slot, mealType) {
   });
 }
 
-function breakfastIngredientText(ingredient) {
+function ingredientText(ingredient = {}) {
   return normalizeToken([
     ingredient.category,
     ingredient.subcategory,
@@ -482,6 +537,72 @@ function breakfastIngredientText(ingredient) {
     ingredient.name_en,
     ...normalizeDbArray(ingredient.health_tags),
   ].filter(Boolean).join(' '));
+}
+
+function isRapidCarbIngredient(ingredient = {}) {
+  const text = ingredientText(ingredient);
+  const gi = Number(ingredient.gi_numeric);
+  return (
+    (Number.isFinite(gi) && gi >= WORKOUT_NUTRITION.giRules.mediumGiMin)
+    || WORKOUT_NUTRITION.rapidCarbPatterns.some((pattern) => text.includes(normalizeToken(pattern)))
+  );
+}
+
+function isCarbSlot(slot, ingredient = {}) {
+  return ['carb', 'fruit'].includes(slot)
+    || ['grain', 'fruit'].includes(ingredient.category);
+}
+
+function isFatHeavyIngredient(ingredient = {}, maxFatG = WORKOUT_NUTRITION.giRules.lowFatNearWorkoutMaxG) {
+  return Number(ingredient.fat_g || 0) > maxFatG
+    || ['fat', 'nut_seed'].includes(ingredient.category);
+}
+
+function isCompleteWorkoutPreMeal(mealType, workoutContext = null) {
+  return Boolean(workoutContext?.active && workoutContext.config?.mainPreMeal === mealType);
+}
+
+function applyWorkoutCandidateRules(candidates, mealType, slot, userProfile = {}) {
+  if (!Array.isArray(candidates) || candidates.length === 0) return candidates;
+  const workoutContext = userProfile.workoutNutritionContext || resolveWorkoutNutritionContext(userProfile);
+  if (!workoutContext.active) return candidates;
+
+  if (mealType === 'pre_workout') {
+    if (isCarbSlot(slot)) {
+      const rapid = candidates.filter((ingredient) => isRapidCarbIngredient(ingredient));
+      if (rapid.length > 0) return rapid;
+    }
+    const lowFat = candidates.filter((ingredient) => !isFatHeavyIngredient(ingredient, workoutContext.config?.preWorkout?.maxFatG));
+    return lowFat.length > 0 ? lowFat : candidates;
+  }
+
+  if (mealType === 'post_workout') {
+    if (isCarbSlot(slot)) {
+      const mediumHigh = candidates.filter((ingredient) => isRapidCarbIngredient(ingredient));
+      if (mediumHigh.length > 0) return mediumHigh;
+    }
+    const lowerFat = candidates.filter((ingredient) => !isFatHeavyIngredient(ingredient, WORKOUT_NUTRITION.giRules.moderateFatNearWorkoutMaxG));
+    return lowerFat.length > 0 ? lowerFat : candidates;
+  }
+
+  if (isCompleteWorkoutPreMeal(mealType, workoutContext) && isCarbSlot(slot)) {
+    const mediumLowGi = candidates.filter((ingredient) => {
+      const gi = Number(ingredient.gi_numeric);
+      return !Number.isFinite(gi) || gi <= WORKOUT_NUTRITION.giRules.completeMealMaxGi;
+    });
+    return mediumLowGi.length > 0 ? mediumLowGi : candidates;
+  }
+
+  if (!WORKOUT_NUTRITION.giRules.rapidCarbMealTypes.includes(mealType) && isCarbSlot(slot)) {
+    const withoutRapidOnly = candidates.filter((ingredient) => !isRapidCarbIngredient(ingredient));
+    return withoutRapidOnly.length > 0 ? withoutRapidOnly : candidates;
+  }
+
+  return candidates;
+}
+
+function breakfastIngredientText(ingredient) {
+  return ingredientText(ingredient);
 }
 
 function matchesBreakfastStyle(ingredient, style) {
@@ -763,6 +884,7 @@ function calcDailyGiSummary(mealPlan) {
 }
 
 async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredients, allIngredients, userPathologies, dayTracker, rng, userProfile, date) {
+  const workoutContext = userProfile.workoutNutritionContext || resolveWorkoutNutritionContext(userProfile);
   const tmplResult = await pool.query(
     'SELECT slots FROM meal_templates WHERE meal_type = $1',
     [mealType]
@@ -815,6 +937,10 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
     }
 
     candidates = applyBreakfastStylePreference(candidates, mealType, userProfile);
+    candidates = applyWorkoutCandidateRules(candidates, mealType, slot, {
+      ...userProfile,
+      workoutNutritionContext: workoutContext,
+    });
 
     if (candidates.length === 0) {
       if (config && config.required) {
@@ -831,14 +957,14 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
         dayTracker,
         mealTracker,
         rng,
-        { ...userProfile, currentMealType: mealType },
+        { ...userProfile, currentMealType: mealType, workoutNutritionContext: workoutContext },
         selectionSeed
       );
 
       if (!chosen && config && config.required && slot === 'protein' && ['lunch', 'dinner'].includes(mealType)) {
         chosen = pickRequiredProteinFallback(
           candidates,
-          { ...userProfile, currentMealType: mealType },
+          { ...userProfile, currentMealType: mealType, workoutNutritionContext: workoutContext },
           selectionSeed
         );
         if (chosen) {
@@ -919,6 +1045,166 @@ function adjustMacros(meals, dailyCalTarget, dailyProteinTarget, dailyCarbTarget
     }
 
     recomputeMealTotals(meal);
+  }
+
+  return meals;
+}
+
+function rangeMidpoint(range, fallback = 0) {
+  if (!range || typeof range !== 'object') return fallback;
+  const min = Number(range.min);
+  const max = Number(range.max);
+  if (Number.isFinite(min) && Number.isFinite(max)) return Math.round((min + max) / 2);
+  if (Number.isFinite(min)) return min;
+  if (Number.isFinite(max)) return max;
+  return fallback;
+}
+
+function adjustedWorkoutRange(range, multiplier = 1) {
+  if (!range || typeof range !== 'object') return null;
+  const min = Number(range.min);
+  const max = Number(range.max);
+  return {
+    min: Number.isFinite(min) ? Math.round(min * multiplier) : null,
+    max: Number.isFinite(max) ? Math.round(max * multiplier) : null,
+    todoNutritionistValidation: Boolean(range.todoNutritionistValidation),
+  };
+}
+
+function macroValue(meal, macro) {
+  if (macro === 'calories') return Number(meal.totalCalories || 0);
+  return Number(meal.totalMacros?.[macro] || 0);
+}
+
+function macroItems(meal, macro, preferredPredicate = null) {
+  const densityKey = macro === 'carbs' ? 'carbs_g' : macro === 'fat' ? 'fat_g' : 'protein_g';
+  const items = (meal.ingredients || [])
+    .filter((item) => Number(item[densityKey] || 0) > 0)
+    .filter((item) => !preferredPredicate || preferredPredicate(item))
+    .sort((a, b) => Number(b[densityKey] || 0) - Number(a[densityKey] || 0));
+  return items;
+}
+
+function capMealMacro(meal, macro, maxValue, preferredPredicate = null) {
+  const cap = Number(maxValue || 0);
+  if (!Number.isFinite(cap) || cap <= 0 || macroValue(meal, macro) <= cap) return;
+  let items = macroItems(meal, macro, preferredPredicate);
+  if (items.length === 0) items = macroItems(meal, macro);
+  if (items.length === 0) return;
+
+  const ratio = cap / Math.max(macroValue(meal, macro), 1);
+  for (const item of items) {
+    adjustItemPortion(item, ratio, { allowBelowMin: true });
+  }
+  recomputeMealTotals(meal);
+}
+
+function boostMealMacro(meal, macro, minValue, preferredPredicate = null) {
+  const target = Number(minValue || 0);
+  if (!Number.isFinite(target) || target <= 0 || macroValue(meal, macro) >= target) return;
+  let items = macroItems(meal, macro, preferredPredicate);
+  if (items.length === 0) items = macroItems(meal, macro);
+  if (items.length === 0) return;
+
+  let missing = target - macroValue(meal, macro);
+  for (const item of items) {
+    if (missing <= 0) break;
+    const density = Number(
+      macro === 'carbs' ? item.carbs_g : macro === 'fat' ? item.fat_g : item.protein_g
+    ) / 100;
+    const capacity = remainingPortionCapacity(item);
+    if (density <= 0 || capacity <= 0) continue;
+
+    const gramsToAdd = Math.min(capacity, Math.ceil(missing / density));
+    setItemPortion(item, Number(item.portionG || 0) + gramsToAdd);
+    recomputeMealTotals(meal);
+    missing = target - macroValue(meal, macro);
+  }
+}
+
+function getWorkoutBlockTargets(mealType, workoutContext, userProfile = {}) {
+  if (!workoutContext?.active) return null;
+  const modifier = workoutContext.sportModifier || WORKOUT_NUTRITION.sportModifiers.none;
+  const weightKg = Number(userProfile.weightKg || userProfile.weight || userProfile.currentWeight || 0);
+
+  if (mealType === 'pre_workout') {
+    const pre = workoutContext.config?.preWorkout || {};
+    return {
+      role: pre.role || 'rapid_carb_snack',
+      timing: pre.timing || null,
+      timingWindowMin: pre.timingWindowMin || null,
+      targetCarbsG: adjustedWorkoutRange(pre.targetCarbsG, modifier.carbMultiplier || 1),
+      targetProteinG: adjustedWorkoutRange(pre.targetProteinG, modifier.proteinMultiplier || 1),
+      maxFatG: pre.maxFatG || WORKOUT_NUTRITION.giRules.lowFatNearWorkoutMaxG,
+      preferRapidCarbs: Boolean(pre.preferRapidCarbs),
+      preferLowFat: Boolean(pre.preferLowFat),
+    };
+  }
+
+  if (mealType === 'post_workout') {
+    const post = workoutContext.config?.postWorkout || {};
+    const carbsPerKg = Number(post.targetCarbsGPerKg || 0);
+    const targetCarbs = carbsPerKg > 0 && weightKg > 0
+      ? Math.round(carbsPerKg * weightKg * (modifier.carbMultiplier || 1))
+      : null;
+    return {
+      role: post.role || 'recovery',
+      timing: post.timing || null,
+      targetCarbsG: targetCarbs ? { min: Math.round(targetCarbs * 0.8), max: Math.round(targetCarbs * 1.15), todoNutritionistValidation: true } : null,
+      targetProteinG: adjustedWorkoutRange(post.targetProteinG, modifier.proteinMultiplier || 1),
+      maxFatG: WORKOUT_NUTRITION.giRules.moderateFatNearWorkoutMaxG,
+      preferCarbProtein: Boolean(post.preferCarbProtein),
+      preferLowModerateFat: Boolean(post.preferLowModerateFat),
+    };
+  }
+
+  if (isCompleteWorkoutPreMeal(mealType, workoutContext)) {
+    const main = workoutContext.config?.mainPreMealTargets || {};
+    return {
+      role: 'main_pre_workout_meal',
+      timing: 'about_3h_pre',
+      targetCarbsG: main.targetCarbsG ? { min: Math.round(main.targetCarbsG * 0.85), max: Math.round(main.targetCarbsG * 1.15) } : null,
+      targetProteinG: main.targetProteinG || null,
+      maxFatG: main.targetFatG ? Math.round(Number(main.targetFatG) * 1.5) : WORKOUT_NUTRITION.giRules.moderateFatNearWorkoutMaxG,
+      preferMediumLowGiCarbs: true,
+    };
+  }
+
+  return null;
+}
+
+function enforceWorkoutNutritionBlocks(meals, userProfile = {}) {
+  const workoutContext = userProfile.workoutNutritionContext || resolveWorkoutNutritionContext(userProfile);
+  if (!workoutContext.active) return meals;
+
+  for (const meal of meals) {
+    const targets = getWorkoutBlockTargets(meal.mealType, workoutContext, userProfile);
+    if (!targets) continue;
+
+    if (targets.maxFatG) {
+      capMealMacro(meal, 'fat', targets.maxFatG, (item) => isFatHeavyIngredient(item, targets.maxFatG));
+    }
+
+    if (meal.mealType === 'pre_workout') {
+      const carbMin = targets.targetCarbsG?.min;
+      const carbMax = targets.targetCarbsG?.max;
+      const proteinMax = targets.targetProteinG?.max;
+      boostMealMacro(meal, 'carbs', carbMin, isRapidCarbIngredient);
+      capMealMacro(meal, 'carbs', carbMax, (item) => isCarbSlot(item.slot, item));
+      capMealMacro(meal, 'protein', proteinMax, isProteinFloorItem);
+    }
+
+    if (meal.mealType === 'post_workout') {
+      boostMealMacro(meal, 'protein', targets.targetProteinG?.min, isProteinFloorItem);
+      boostMealMacro(meal, 'carbs', targets.targetCarbsG?.min, isRapidCarbIngredient);
+      capMealMacro(meal, 'fat', targets.maxFatG, (item) => isFatHeavyIngredient(item, targets.maxFatG));
+    }
+
+    if (targets.role === 'main_pre_workout_meal') {
+      boostMealMacro(meal, 'protein', targets.targetProteinG?.min, isProteinFloorItem);
+      boostMealMacro(meal, 'carbs', targets.targetCarbsG?.min, (item) => !isRapidCarbIngredient(item));
+      capMealMacro(meal, 'fat', targets.maxFatG, (item) => isFatHeavyIngredient(item, targets.maxFatG));
+    }
   }
 
   return meals;
@@ -1346,6 +1632,88 @@ function buildDaySummary(meals) {
   };
 }
 
+function publicWorkoutTargets(targets = null) {
+  if (!targets) return null;
+  return {
+    carbs_g: targets.targetCarbsG || null,
+    protein_g: targets.targetProteinG || null,
+    fat_g_max: targets.maxFatG || null,
+  };
+}
+
+function buildWorkoutBlockPayload(mealType, workoutContext, userProfile = {}) {
+  const targets = getWorkoutBlockTargets(mealType, workoutContext, userProfile);
+  if (!targets) return null;
+
+  return {
+    meal_type: mealType,
+    role: targets.role,
+    time_slot: workoutContext.timeSlot,
+    raw_time_slot: workoutContext.rawTimeSlot,
+    sport: workoutContext.sport || null,
+    sport_group: workoutContext.sportGroup,
+    sport_modifier: workoutContext.sportModifier?.label || 'balanced',
+    resolved: workoutContext.resolved,
+    defaulted: workoutContext.defaulted,
+    timing: targets.timing || null,
+    timing_window_min: targets.timingWindowMin || null,
+    targets: publicWorkoutTargets(targets),
+    source: WORKOUT_NUTRITION.source,
+    version: WORKOUT_NUTRITION.version,
+    status: WORKOUT_NUTRITION.validationStatus,
+  };
+}
+
+function annotateWorkoutBlocks(meals, workoutContext, userProfile = {}) {
+  if (!workoutContext?.active) return meals;
+
+  for (const meal of meals) {
+    const payload = buildWorkoutBlockPayload(meal.mealType, workoutContext, userProfile);
+    if (!payload) continue;
+    meal.workout_block = payload;
+    meal.workoutBlock = payload;
+  }
+
+  return meals;
+}
+
+function buildWorkoutNutritionMetadata(meals, workoutContext, userProfile = {}) {
+  if (!workoutContext?.active) {
+    return {
+      active: false,
+      version: WORKOUT_NUTRITION.version,
+      source: WORKOUT_NUTRITION.source,
+    };
+  }
+
+  const blocks = {};
+  for (const meal of meals) {
+    if (meal.workout_block) blocks[meal.mealType] = meal.workout_block;
+  }
+
+  return {
+    active: true,
+    version: WORKOUT_NUTRITION.version,
+    source: WORKOUT_NUTRITION.source,
+    status: WORKOUT_NUTRITION.validationStatus,
+    time_slot: workoutContext.timeSlot,
+    raw_time_slot: workoutContext.rawTimeSlot,
+    resolved: workoutContext.resolved,
+    defaulted: workoutContext.defaulted,
+    sport: workoutContext.sport || null,
+    sport_group: workoutContext.sportGroup,
+    sport_modifier: workoutContext.sportModifier?.label || 'balanced',
+    structure: meals.map((meal) => meal.mealType),
+    main_pre_meal: workoutContext.config?.mainPreMeal || null,
+    blocks,
+    science_note: WORKOUT_NUTRITION.scienceNotes.antiMyth,
+    config: {
+      time_slot_label: workoutContext.config?.label || null,
+      defaulted_from: workoutContext.config?.defaultedFrom || null,
+    },
+  };
+}
+
 async function generateDayPlan(pool, userProfile, targetDate) {
   const date = targetDate || new Date().toISOString().split('T')[0];
   const { allergenCols, pathologyCols } = parseRestrictions(userProfile.allergiesText);
@@ -1358,11 +1726,13 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   const breakfastChoice = getBreakfastChoice(userProfile);
   const skipBreakfast = shouldSkipBreakfast(userProfile);
   const breakfastStyle = effectiveBreakfastStyle(userProfile);
-  const rng = createRng(`${userProfile.userId || 'anonymous'}:${date}:${userProfile.trainingTime || 'rest'}:${breakfastChoice || breakfastPref}`);
+  const workoutContext = resolveWorkoutNutritionContext(userProfile);
+  const rng = createRng(`${userProfile.userId || 'anonymous'}:${date}:${workoutContext.timeSlot || userProfile.trainingTime || 'rest'}:${workoutContext.sportGroup}:${breakfastChoice || breakfastPref}`);
   const userPathologies = normalizeUserPathologies(userProfile.pathologies || []);
   const engineProfile = {
     ...userProfile,
     hasDiabeticNeed: pathologyCols.includes('ok_diabetic') || userPathologies.includes('diabetic'),
+    workoutNutritionContext: workoutContext,
   };
 
   const eligibleIngredients = await loadEligibleIngredients(pool, dietCol, allergenCols);
@@ -1370,14 +1740,14 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   const pathologyFilter = calcPathologyExclusions(eligibleIngredients, userPathologies);
   const trainingToday = isTrainingDay(userProfile, date);
   const mealTypes = trainingToday
-    ? buildDayStructure(userProfile.trainingTime, { skipBreakfast })
+    ? buildDayStructure(workoutContext.timeSlot || userProfile.trainingTime, { skipBreakfast, workoutContext })
     : buildDayStructure(null, { skipBreakfast });
-  const totalFraction = mealTypes.reduce((sum, mealType) => sum + (CALORIE_FRACTIONS[mealType] || 0.1), 0);
+  const totalFraction = mealTypes.reduce((sum, mealType) => sum + getMealFraction(mealType, workoutContext), 0);
   const dayTracker = buildVarietyTracker();
   const meals = [];
 
   for (const mealType of mealTypes) {
-    const fraction = (CALORIE_FRACTIONS[mealType] || 0.1) / totalFraction;
+    const fraction = getMealFraction(mealType, workoutContext) / totalFraction;
     const mealCalories = Math.round(dailyCal * fraction);
     const meal = await composeMeal(
       pool,
@@ -1397,7 +1767,10 @@ async function generateDayPlan(pool, userProfile, targetDate) {
   const adjustedMeals = enforceMealCeilings(
     enforceMainMealDistributionFloors(
       enforceProteinFloors(
-        adjustMacros(meals, dailyCal, dailyProtein, dailyCarbs, dailyFat),
+        enforceWorkoutNutritionBlocks(
+          adjustMacros(meals, dailyCal, dailyProtein, dailyCarbs, dailyFat),
+          engineProfile
+        ),
         engineProfile
       ),
       engineProfile
@@ -1406,6 +1779,7 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     dailyCal,
     dailyProtein
   );
+  annotateWorkoutBlocks(adjustedMeals, workoutContext, engineProfile);
   const generatedBreakfastStyle = adjustedMeals
     .find((meal) => meal.mealType === 'breakfast')
     ?.breakfast_style || null;
@@ -1426,6 +1800,7 @@ async function generateDayPlan(pool, userProfile, targetDate) {
       generated_style: generatedBreakfastStyle,
       reason: breakfastChoice ? (userProfile.breakfastChoiceReason || 'breakfast_choice') : null,
     },
+    workoutNutrition: buildWorkoutNutritionMetadata(adjustedMeals, workoutContext, engineProfile),
     proteinFloor: {
       lunchDinnerG: proteinFloorForMeal(engineProfile),
       source: 'config/meal-floors.js',

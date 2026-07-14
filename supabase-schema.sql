@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS training_confirmations (
     'unconfirmed'
   )),
   training_time_slot TEXT,
+  training_sport TEXT,
   answered_at TIMESTAMPTZ,
   detected_strain NUMERIC,
   detected_duration_min INTEGER,

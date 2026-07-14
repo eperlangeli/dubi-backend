@@ -420,6 +420,24 @@ module.exports = (pool) => {
         tdee
       });
       const adaptedMacros = dailyAdaptation.adjustedTargets || freshMacros;
+      const trainingSignal = dailyAdaptation.signals?.training || {};
+      const hasResolvedTrainingToday = trainingSignal.performedTraining === true
+        || trainingSignal.planned === true;
+      const plannedTrainingWithoutResolvedSlot = trainingSignal.planned === true
+        && !trainingSignal.trainingTimeSlot
+        && trainingSignal.status === 'unconfirmed';
+      const workoutTimeSlot = plannedTrainingWithoutResolvedSlot
+        ? 'unset'
+        : (
+            hasResolvedTrainingToday
+              ? (trainingSignal.trainingTimeSlot || row.training_time || null)
+              : (trainingSignal.hasWeekPlan ? null : (row.training_time || null))
+          );
+      const workoutSport = trainingSignal.trainingSport || sports[0] || row.sport || null;
+      const workoutSportGroup = getSportGroup(workoutSport)
+        || sportProfile?.groups?.[0]
+        || sportGroups[0]
+        || 'none';
 
       // Sincronizza meal_plans in background (non bloccante)
       pool.query(
@@ -434,7 +452,14 @@ module.exports = (pool) => {
         allergiesText:      row.allergies || '',
         pathologies:        parsePathologiesFromAllergies(row.allergies),
         workoutDays:        Number(row.workout_days) || 0,
-        trainingTime:       row.training_time || null,
+        trainingTime:       workoutTimeSlot,
+        trainingTimeSlot:   workoutTimeSlot,
+        trainingStatus:     trainingSignal.status || null,
+        trainingPlanned:    trainingSignal.planned === true,
+        trainingPerformed:  trainingSignal.performedTraining === true,
+        trainingMissed:     trainingSignal.missedTraining === true,
+        trainingSport:      workoutSport,
+        trainingSportGroup: workoutSportGroup,
         sportGroup:         sportProfile?.groups?.[0] ?? sportGroups[0] ?? 'none',
         sportGroups,
         dailyCalorieTarget: adaptedMacros.calories,

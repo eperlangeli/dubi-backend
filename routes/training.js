@@ -1,4 +1,5 @@
 const express = require('express');
+const { WORKOUT_NUTRITION } = require('../config/workout-nutrition');
 
 const WEEKDAY_ALIASES = new Map([
   ['monday', 1], ['mon', 1], ['lunedi', 1], ['lun', 1],
@@ -125,10 +126,77 @@ const statusForAnswer = (answer) => {
 
 const safeTimeSlot = (value) => {
   if (value === undefined || value === null || value === '') return null;
-  const slot = String(value).trim();
-  if (!slot || slot.length > 80) return null;
-  return slot;
+  const slot = normalizeTextKey(value).replace(/[\s-]+/g, '_');
+  const normalized = WORKOUT_NUTRITION.timeSlotAliases[slot]
+    || (WORKOUT_NUTRITION.allowedTimeSlots.includes(slot) ? slot : null);
+  if (!normalized) return null;
+  return normalized;
 };
+
+const safeTrainingSport = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  const sport = String(value).trim();
+  if (!sport || sport.length > 80) return null;
+  if (!/^[\p{L}\p{N}\s._-]+$/u.test(sport)) return null;
+  return sport;
+};
+
+const isMissingColumnError = (error) => error?.code === '42703'
+  || /column .*training_sport.* does not exist/i.test(error?.message || '');
+
+const insertTrainingConfirmation = async (pool, {
+  userId,
+  day,
+  planned,
+  status,
+  timeSlot,
+  trainingSport,
+  answeredAtSql
+}) => {
+  if (trainingSport) {
+    try {
+      return await pool.query(
+        `INSERT INTO training_confirmations (
+           user_id, day, planned, status, training_time_slot, training_sport, answered_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, ${answeredAtSql})
+         ON CONFLICT (user_id, day) DO UPDATE SET
+           planned = EXCLUDED.planned,
+           status = EXCLUDED.status,
+           training_time_slot = EXCLUDED.training_time_slot,
+           training_sport = EXCLUDED.training_sport,
+           answered_at = EXCLUDED.answered_at
+         RETURNING *`,
+        [userId, day, planned, status, timeSlot, trainingSport]
+      );
+    } catch (error) {
+      if (!isMissingColumnError(error)) throw error;
+      console.warn('[training] training_sport column unavailable; saving confirmation without sport');
+    }
+  }
+
+  return pool.query(
+    `INSERT INTO training_confirmations (
+       user_id, day, planned, status, training_time_slot, answered_at
+     )
+     VALUES ($1, $2, $3, $4, $5, ${answeredAtSql})
+     ON CONFLICT (user_id, day) DO UPDATE SET
+       planned = EXCLUDED.planned,
+       status = EXCLUDED.status,
+       training_time_slot = EXCLUDED.training_time_slot,
+       answered_at = EXCLUDED.answered_at
+     RETURNING *`,
+    [userId, day, planned, status, timeSlot]
+  );
+};
+
+const selectTrainingConfirmationSql = `
+  SELECT training_confirmations.*,
+         row_to_json(training_confirmations)->>'training_sport' AS training_sport
+    FROM training_confirmations
+   WHERE user_id = $1 AND day = $2
+   LIMIT 1
+`;
 
 const toPlanPayload = (row) => row ? {
   id: row.id,
@@ -146,6 +214,7 @@ const toConfirmationPayload = (row) => row ? {
   planned: row.planned,
   status: row.status,
   training_time_slot: row.training_time_slot,
+  training_sport: row.training_sport || null,
   answered_at: row.answered_at,
   detected_strain: row.detected_strain,
   detected_duration_min: row.detected_duration_min,
@@ -228,25 +297,26 @@ module.exports = (pool) => {
     if (rawTimeSlot !== undefined && rawTimeSlot !== null && rawTimeSlot !== '' && timeSlot === null) {
       return res.status(400).json({ error: 'invalid_time_slot' });
     }
+    const rawSport = req.body?.sport;
+    const trainingSport = safeTrainingSport(rawSport);
+    if (rawSport !== undefined && rawSport !== null && rawSport !== '' && trainingSport === null) {
+      return res.status(400).json({ error: 'invalid_sport' });
+    }
 
     try {
       const plan = await getWeekPlan(req.userId, weekStart);
       const planned = plannedForDay(plan?.planned_days, day);
       const answeredAtSql = status === 'unconfirmed' ? 'NULL' : 'NOW()';
 
-      const { rows } = await pool.query(
-        `INSERT INTO training_confirmations (
-           user_id, day, planned, status, training_time_slot, answered_at
-         )
-         VALUES ($1, $2, $3, $4, $5, ${answeredAtSql})
-         ON CONFLICT (user_id, day) DO UPDATE SET
-           planned = EXCLUDED.planned,
-           status = EXCLUDED.status,
-           training_time_slot = EXCLUDED.training_time_slot,
-           answered_at = EXCLUDED.answered_at
-         RETURNING *`,
-        [req.userId, day, planned, status, timeSlot]
-      );
+      const { rows } = await insertTrainingConfirmation(pool, {
+        userId: req.userId,
+        day,
+        planned,
+        status,
+        timeSlot,
+        trainingSport,
+        answeredAtSql
+      });
 
       return res.json({
         day,
@@ -267,10 +337,7 @@ module.exports = (pool) => {
       const plan = await getWeekPlan(req.userId, weekStart);
       const planned = plannedForDay(plan?.planned_days, today);
       const confirmationResult = await pool.query(
-        `SELECT *
-         FROM training_confirmations
-         WHERE user_id = $1 AND day = $2
-         LIMIT 1`,
+        selectTrainingConfirmationSql,
         [req.userId, today]
       );
       const confirmation = confirmationResult.rows[0] || null;
@@ -282,6 +349,7 @@ module.exports = (pool) => {
         planned,
         status: confirmation?.status || 'unconfirmed',
         training_time_slot: confirmation?.training_time_slot || null,
+        training_sport: confirmation?.training_sport || null,
         confirmation: toConfirmationPayload(confirmation)
       });
     } catch (error) {
@@ -297,5 +365,6 @@ module.exports._test = {
   getWeekStart,
   normalizePlannedDays,
   plannedForDay,
-  statusForAnswer
+  statusForAnswer,
+  safeTimeSlot
 };
