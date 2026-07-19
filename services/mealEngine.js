@@ -8,6 +8,7 @@
 
 const { MEAL_FLOORS } = require('../config/meal-floors');
 const { WORKOUT_NUTRITION } = require('../config/workout-nutrition');
+const { PLATE_STRUCTURE } = require('../config/plate-structure');
 
 const DIET_COL = {
   omnivore: 'compatible_omnivore',
@@ -661,7 +662,460 @@ function normalizeDietaryPattern(userProfile = {}) {
 }
 
 function isMainMeal(mealType) {
-  return ['lunch', 'dinner'].includes(mealType);
+  return PLATE_STRUCTURE.mainMeals.includes(mealType);
+}
+
+function matchesAnyPattern(item = {}, patterns = []) {
+  const text = ingredientText(item);
+  return patterns.some((pattern) => text.includes(normalizeToken(pattern)));
+}
+
+function itemTimings(item = {}) {
+  return normalizeDbArray(item.meal_timing || item.mealTiming);
+}
+
+function itemSlots(item = {}) {
+  return [...new Set([
+    item.slot,
+    ...normalizeDbArray(item.template_slots || item.templateSlots)
+  ].filter(Boolean).map(normalizeToken))];
+}
+
+function hasSlot(item = {}, slot) {
+  return itemSlots(item).includes(normalizeToken(slot));
+}
+
+function isBreakfastOnlyItem(item = {}) {
+  if (matchesAnyPattern(item, PLATE_STRUCTURE.breakfastOnlyPatterns)) return true;
+
+  const timings = itemTimings(item).map(normalizeToken);
+  if (timings.length === 0) return false;
+  const mainMealTimings = PLATE_STRUCTURE.mainMeals.map(normalizeToken);
+  return timings.includes('breakfast') && !timings.some((timing) => mainMealTimings.includes(timing));
+}
+
+function isBreakfastHeavyMainMealItem(item = {}) {
+  return matchesAnyPattern(item, PLATE_STRUCTURE.breakfastHeavyMainMealPatterns);
+}
+
+function isSweetFruitItem(item = {}) {
+  return item.category === 'fruit' && matchesAnyPattern(item, PLATE_STRUCTURE.sweetFruitPatterns);
+}
+
+function isDairyIngredient(item = {}) {
+  return item.category === 'dairy' || matchesAnyPattern(item, PLATE_STRUCTURE.dairyPatterns);
+}
+
+function isFishProteinItem(item = {}) {
+  return isFishIngredient(item) || matchesAnyPattern(item, PLATE_STRUCTURE.fishPatterns);
+}
+
+function isPlateProteinCategory(item = {}) {
+  return PLATE_STRUCTURE.proteinCategories.includes(item.category);
+}
+
+function isPlateMainProteinItem(item = {}, mealType = item.mealType) {
+  return isMainMeal(mealType)
+    && hasSlot(item, 'protein')
+    && (isPlateProteinCategory(item) || Number(item.protein_g || 0) >= 8);
+}
+
+function isPlateMainCarbItem(item = {}, mealType = item.mealType) {
+  if (!isMainMeal(mealType)) return false;
+  if (!hasSlot(item, 'carb')) return false;
+  if (isSweetFruitItem(item) || isBreakfastOnlyItem(item)) return false;
+  return PLATE_STRUCTURE.carbCategories.includes(item.category) || Boolean(starchFamily(item));
+}
+
+function isPlateVegetableItem(item = {}, mealType = item.mealType) {
+  return isMainMeal(mealType)
+    && (PLATE_STRUCTURE.vegetableCategories.includes(item.category) || hasSlot(item, 'vegetable'));
+}
+
+function isPlateFatItem(item = {}, mealType = item.mealType) {
+  return isMainMeal(mealType)
+    && (
+      PLATE_STRUCTURE.fatCategories.includes(item.category)
+      || hasSlot(item, 'fat')
+      || (Number(item.fat_g || 0) >= 10 && !isPlateMainProteinItem(item, mealType))
+    );
+}
+
+function starchFamily(item = {}) {
+  if (item.category === 'legume') return 'legume';
+  const text = ingredientText(item);
+  for (const [family, patterns] of Object.entries(PLATE_STRUCTURE.starchFamilies)) {
+    if (patterns.some((pattern) => text.includes(normalizeToken(pattern)))) return family;
+  }
+  return item.category === 'grain' ? 'grain' : null;
+}
+
+function cuisineFamiliesForItem(item = {}) {
+  const text = ingredientText(item);
+  return Object.entries(PLATE_STRUCTURE.cuisineFamilies)
+    .filter(([, patterns]) => patterns.some((pattern) => text.includes(normalizeToken(pattern))))
+    .map(([family]) => family);
+}
+
+function cuisineFamiliesForMeal(meal = {}) {
+  return [...new Set((meal.ingredients || []).flatMap(cuisineFamiliesForItem))];
+}
+
+function roleCount(meal, predicate) {
+  return (meal.ingredients || []).filter((item) => predicate(item, meal.mealType)).length;
+}
+
+function plateRoleCounts(meal = {}) {
+  return {
+    mainProtein: roleCount(meal, isPlateMainProteinItem),
+    mainCarb: roleCount(meal, isPlateMainCarbItem),
+    vegetables: roleCount(meal, isPlateVegetableItem),
+    fat: roleCount(meal, isPlateFatItem)
+  };
+}
+
+function animalMainProteins(meal = {}) {
+  return (meal.ingredients || []).filter((item) =>
+    isPlateMainProteinItem(item, meal.mealType) && isAnimalProteinSource(item)
+  );
+}
+
+function plateComponentScore(item = {}, role, userProfile = {}, mealType = item.mealType) {
+  const validatedBonus = item.nutritionist_validated ? 5 : 0;
+  if (role === 'mainProtein') {
+    return proteinSourcePriorityWeight(item, {
+      ...userProfile,
+      currentMealType: mealType,
+      currentSlot: 'protein'
+    }) * 100 + proteinDensity(item) + validatedBonus;
+  }
+  if (role === 'mainCarb') {
+    const familyBonus = starchFamily(item) ? 20 : 0;
+    return familyBonus + Number(item.carbs_g || item.carbs || 0) + validatedBonus;
+  }
+  if (role === 'vegetables') {
+    return Number(item.fiber_g || item.fiber || 0) * 10 + Number(item.portionG || 0) / 10 + validatedBonus;
+  }
+  if (role === 'fat') {
+    return Number(item.fat_g || item.fat || 0) + validatedBonus;
+  }
+  return validatedBonus;
+}
+
+function keepBestPlateItems(meal, predicate, role, max, userProfile = {}) {
+  const matches = (meal.ingredients || [])
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => predicate(item, meal.mealType));
+  if (matches.length <= max) return false;
+
+  const keepIndexes = new Set(matches
+    .sort((a, b) =>
+      plateComponentScore(b.item, role, userProfile, meal.mealType)
+      - plateComponentScore(a.item, role, userProfile, meal.mealType)
+      || Number(b.item.portionG || 0) - Number(a.item.portionG || 0)
+    )
+    .slice(0, max)
+    .map(({ index }) => index));
+  const removeIndexes = new Set(matches
+    .filter(({ index }) => !keepIndexes.has(index))
+    .map(({ index }) => index));
+
+  meal.ingredients = meal.ingredients.filter((_, index) => !removeIndexes.has(index));
+  return true;
+}
+
+function removePlateItems(meal, predicate) {
+  const before = meal.ingredients.length;
+  meal.ingredients = meal.ingredients.filter((item) => !predicate(item));
+  return meal.ingredients.length !== before;
+}
+
+function candidatePlateItem(candidate = {}, slot) {
+  return {
+    ...candidate,
+    slot,
+    template_slots: candidate.template_slots || [slot]
+  };
+}
+
+function candidateFitsCurrentPlate(candidate = {}, meal = {}, mealType, slot) {
+  const candidateItem = candidatePlateItem(candidate, slot);
+
+  if (isMainMeal(mealType)) {
+    if (isBreakfastOnlyItem(candidateItem)) return false;
+    if (isSweetFruitItem(candidateItem)) return false;
+    if (isPlateMainProteinItem(candidateItem, mealType) && roleCount(meal, isPlateMainProteinItem) >= 1) return false;
+    if (isPlateMainCarbItem(candidateItem, mealType) && roleCount(meal, isPlateMainCarbItem) >= 1) return false;
+    if (isPlateVegetableItem(candidateItem, mealType) && roleCount(meal, isPlateVegetableItem) >= PLATE_STRUCTURE.required.vegetables.max) return false;
+    if (isPlateFatItem(candidateItem, mealType) && roleCount(meal, isPlateFatItem) >= 1) return false;
+
+    const existing = meal.ingredients || [];
+    if (isFishProteinItem(candidateItem) && existing.some(isDairyIngredient)) return false;
+    if (isDairyIngredient(candidateItem) && existing.some(isFishProteinItem)) return false;
+    if (isAnimalProteinSource(candidateItem) && existing.some(isSweetFruitItem)) return false;
+  }
+
+  if (mealType === 'breakfast' && isBreakfastHeavyMainMealItem(candidateItem)) {
+    return false;
+  }
+
+  return true;
+}
+
+function applyPlateCandidateRules(candidates, meal, mealType, slot) {
+  if (!Array.isArray(candidates) || candidates.length === 0) return candidates;
+  const filtered = candidates.filter((candidate) => candidateFitsCurrentPlate(candidate, meal, mealType, slot));
+  return filtered.length > 0 ? filtered : candidates;
+}
+
+function plateFallbackCandidates(ingredients, meal, mealType, slot, predicate, userProfile = {}) {
+  let candidates = filterBySlotAndTiming(ingredients, slot, mealType);
+  if (candidates.length === 0) {
+    candidates = ingredients.filter((ingredient) => normalizeDbArray(ingredient.template_slots).includes(slot));
+  }
+
+  candidates = candidates.filter((ingredient) => predicate(candidatePlateItem(ingredient, slot), mealType));
+  candidates = applyPlateCandidateRules(candidates, meal, mealType, slot);
+
+  if (slot === 'protein') {
+    candidates = prioritizeProteinCandidatesForDiet(candidates, mealType, slot, {
+      ...userProfile,
+      currentMealType: mealType,
+      currentSlot: slot
+    });
+  }
+
+  return candidates;
+}
+
+function choosePlateFallback(ingredients, meal, slot, predicate, dayTracker, mealTracker, rng, userProfile, date, role) {
+  const mealType = meal.mealType;
+  const candidates = plateFallbackCandidates(ingredients, meal, mealType, slot, predicate, userProfile);
+  if (candidates.length === 0) return null;
+
+  const selectionProfile = {
+    ...userProfile,
+    currentMealType: mealType,
+    currentSlot: slot
+  };
+  const seed = `${userProfile.userId || 'anonymous'}:${date}:${mealType}:${slot}:plate-structure`;
+  return pickIngredient(candidates, dayTracker, mealTracker, rng, selectionProfile, seed)
+    || [...candidates]
+      .sort((a, b) =>
+        plateComponentScore(candidatePlateItem(b, slot), role, selectionProfile, mealType)
+        - plateComponentScore(candidatePlateItem(a, slot), role, selectionProfile, mealType)
+        || String(a.name || '').localeCompare(String(b.name || ''))
+      )[0]
+    || null;
+}
+
+function addPlateFallbackItem(meal, ingredient, slot, mealCalorieTarget) {
+  if (!ingredient) return false;
+  const targetCalories = {
+    protein: Math.round(Number(mealCalorieTarget || meal.totalCalories || 600) * 0.38),
+    carb: Math.round(Number(mealCalorieTarget || meal.totalCalories || 600) * 0.32),
+    vegetable: Math.max(60, Math.round(Number(mealCalorieTarget || meal.totalCalories || 600) * 0.08)),
+    fat: Math.max(60, Math.round(Number(mealCalorieTarget || meal.totalCalories || 600) * 0.08))
+  }[slot] || 120;
+
+  meal.ingredients.push(buildPlanItem(ingredient, slot, calcPortion(ingredient, targetCalories)));
+  recomputeMealTotals(meal);
+  return true;
+}
+
+function removeForbiddenMainMealPairs(meal) {
+  if (!isMainMeal(meal.mealType)) return false;
+  let changed = false;
+
+  changed = removePlateItems(meal, isBreakfastOnlyItem) || changed;
+
+  if ((meal.ingredients || []).some(isAnimalProteinSource)) {
+    changed = removePlateItems(meal, isSweetFruitItem) || changed;
+  }
+
+  if ((meal.ingredients || []).some(isFishProteinItem)) {
+    changed = removePlateItems(meal, (item) => isDairyIngredient(item) && !isPlateMainProteinItem(item, meal.mealType)) || changed;
+  }
+
+  return changed;
+}
+
+function ensurePlateStructure(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget) {
+  if (!isMainMeal(meal.mealType)) return meal;
+
+  for (let guard = 0; guard < 3; guard += 1) {
+    let changed = false;
+    changed = removeForbiddenMainMealPairs(meal) || changed;
+    changed = keepBestPlateItems(meal, isPlateMainProteinItem, 'mainProtein', PLATE_STRUCTURE.required.mainProtein.max, userProfile) || changed;
+    changed = keepBestPlateItems(meal, isPlateMainCarbItem, 'mainCarb', PLATE_STRUCTURE.required.mainCarb.max, userProfile) || changed;
+    changed = keepBestPlateItems(meal, isPlateVegetableItem, 'vegetables', PLATE_STRUCTURE.required.vegetables.max, userProfile) || changed;
+    changed = keepBestPlateItems(meal, isPlateFatItem, 'fat', PLATE_STRUCTURE.required.fat.max, userProfile) || changed;
+
+    recomputeMealTotals(meal);
+
+    if (roleCount(meal, isPlateMainProteinItem) < PLATE_STRUCTURE.required.mainProtein.min) {
+      const protein = choosePlateFallback(
+        eligibleIngredients,
+        meal,
+        'protein',
+        isPlateMainProteinItem,
+        dayTracker,
+        mealTracker,
+        rng,
+        userProfile,
+        date,
+        'mainProtein'
+      );
+      if (addPlateFallbackItem(meal, protein, 'protein', mealCalorieTarget)) {
+        recordVariety(protein, dayTracker, mealTracker);
+        changed = true;
+      }
+    }
+
+    if (roleCount(meal, isPlateMainCarbItem) < PLATE_STRUCTURE.required.mainCarb.min) {
+      const carb = choosePlateFallback(
+        eligibleIngredients,
+        meal,
+        'carb',
+        isPlateMainCarbItem,
+        dayTracker,
+        mealTracker,
+        rng,
+        userProfile,
+        date,
+        'mainCarb'
+      );
+      if (addPlateFallbackItem(meal, carb, 'carb', mealCalorieTarget)) {
+        recordVariety(carb, dayTracker, mealTracker);
+        changed = true;
+      }
+    }
+
+    if (roleCount(meal, isPlateVegetableItem) < PLATE_STRUCTURE.required.vegetables.min) {
+      const vegetable = choosePlateFallback(
+        eligibleIngredients,
+        meal,
+        'vegetable',
+        isPlateVegetableItem,
+        dayTracker,
+        mealTracker,
+        rng,
+        userProfile,
+        date,
+        'vegetables'
+      );
+      if (addPlateFallbackItem(meal, vegetable, 'vegetable', mealCalorieTarget)) {
+        recordVariety(vegetable, dayTracker, mealTracker);
+        changed = true;
+      }
+    }
+
+    if (roleCount(meal, isPlateFatItem) < PLATE_STRUCTURE.required.fat.min) {
+      const fat = choosePlateFallback(
+        eligibleIngredients,
+        meal,
+        'fat',
+        isPlateFatItem,
+        dayTracker,
+        mealTracker,
+        rng,
+        userProfile,
+        date,
+        'fat'
+      );
+      if (addPlateFallbackItem(meal, fat, 'fat', mealCalorieTarget)) {
+        recordVariety(fat, dayTracker, mealTracker);
+        changed = true;
+      }
+    }
+
+    if (!changed) break;
+  }
+
+  recomputeMealTotals(meal);
+  meal.plateStructure = validatePlateStructureForMeal(meal, userProfile);
+  meal.plate_structure = meal.plateStructure;
+  return meal;
+}
+
+function validatePlateStructureForMeal(meal = {}, userProfile = {}) {
+  const mealType = meal.mealType;
+  const counts = plateRoleCounts(meal);
+  const required = PLATE_STRUCTURE.required;
+  const issues = [];
+  const ingredients = meal.ingredients || [];
+  const starchFamilies = [...new Set(ingredients
+    .filter((item) => isPlateMainCarbItem(item, mealType))
+    .map(starchFamily)
+    .filter(Boolean))];
+  const hasFish = ingredients.some(isFishProteinItem);
+  const hasDairy = ingredients.some(isDairyIngredient);
+  const hasAnimalProtein = ingredients.some(isAnimalProteinSource);
+  const hasSweetFruit = ingredients.some(isSweetFruitItem);
+  const breakfastOnlyItems = ingredients.filter(isBreakfastOnlyItem);
+  const animalMainProteinCount = animalMainProteins(meal).length;
+
+  if (isMainMeal(mealType)) {
+    if (counts.mainProtein !== required.mainProtein.max) {
+      issues.push({ code: 'main_protein_count', expected: 1, actual: counts.mainProtein });
+    }
+    if (counts.mainCarb !== required.mainCarb.max) {
+      issues.push({ code: 'main_carb_count', expected: 1, actual: counts.mainCarb });
+    }
+    if (counts.vegetables < required.vegetables.min || counts.vegetables > required.vegetables.max) {
+      issues.push({
+        code: 'vegetable_count',
+        expected: `${required.vegetables.min}-${required.vegetables.max}`,
+        actual: counts.vegetables
+      });
+    }
+    if (counts.fat !== required.fat.max) {
+      issues.push({ code: 'fat_count', expected: 1, actual: counts.fat });
+    }
+    if (starchFamilies.length > 1) {
+      issues.push({ code: 'multiple_starches', families: starchFamilies });
+    }
+    if (hasFish && hasDairy) {
+      issues.push({ code: 'fish_dairy_pair' });
+    }
+    if (hasAnimalProtein && hasSweetFruit) {
+      issues.push({ code: 'animal_protein_sweet_fruit_pair' });
+    }
+    if (breakfastOnlyItems.length > 0) {
+      issues.push({
+        code: 'breakfast_item_in_main_meal',
+        items: breakfastOnlyItems.map((item) => item.name).filter(Boolean)
+      });
+    }
+    if (animalMainProteinCount > 1) {
+      issues.push({ code: 'multiple_animal_main_proteins', actual: animalMainProteinCount });
+    }
+
+    const diet = normalizeDietaryPattern(userProfile);
+    if (['omnivore', 'pescatarian'].includes(diet)) {
+      const hasAnimalMainProtein = ingredients.some((item) =>
+        isPlateMainProteinItem(item, mealType) && isAnimalProteinSource(item)
+      );
+      if (!hasAnimalMainProtein) {
+        issues.push({ code: 'omnivore_main_protein_not_animal' });
+      }
+    }
+  }
+
+  const cuisineFamilies = cuisineFamiliesForMeal(meal);
+  const audit = {
+    mealType,
+    valid: issues.length === 0,
+    passed: issues.length === 0,
+    counts,
+    required,
+    starchFamilies,
+    cuisineFamilies,
+    cuisineCoherent: cuisineFamilies.length <= 1,
+    issues
+  };
+
+  return audit;
 }
 
 function isAnimalProteinSource(ingredient = {}) {
@@ -1108,6 +1562,7 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
       ...userProfile,
       workoutNutritionContext: workoutContext,
     });
+    candidates = applyPlateCandidateRules(candidates, meal, mealType, slot);
 
     if (candidates.length === 0) {
       if (config && config.required) {
@@ -1150,6 +1605,7 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
   ensureMainMealVegetable(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date);
   ensureDinnerFat(meal, eligibleIngredients);
   enforceDietProteinSourceHierarchy(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date);
+  ensurePlateStructure(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget);
   recomputeMealTotals(meal);
   annotateBreakfastStyle(meal, userProfile);
   return meal;
@@ -1740,6 +2196,20 @@ function enforceMealCeilings(meals, userProfile = {}, dailyCalTarget = null, dai
   return meals;
 }
 
+function buildPlateStructureAudit(meals, userProfile = {}) {
+  const mealAudits = (meals || [])
+    .filter((meal) => isMainMeal(meal.mealType))
+    .map((meal) => meal.plateStructure || validatePlateStructureForMeal(meal, userProfile));
+
+  return {
+    version: PLATE_STRUCTURE.version,
+    source: PLATE_STRUCTURE.source,
+    status: PLATE_STRUCTURE.status,
+    passed: mealAudits.every((audit) => audit.passed),
+    meals: mealAudits
+  };
+}
+
 function buildMealFloorAudit(meals, userProfile = {}, dailyCalTarget = null) {
   const proteinFloorG = proteinFloorForMeal(userProfile);
   const proteinCeilingG = proteinCeilingForMeal(userProfile);
@@ -2040,6 +2510,7 @@ async function generateDayPlan(pool, userProfile, targetDate) {
       status: 'provisional_da_validare_col_nutrizionista',
     },
     mealFloorAudit: buildMealFloorAudit(adjustedMeals, engineProfile, dailyCal),
+    plateStructureAudit: buildPlateStructureAudit(adjustedMeals, engineProfile),
     meals: adjustedMeals,
     daySummary: buildDaySummary(adjustedMeals),
     gi_summary: calcDailyGiSummary(adjustedMeals),
