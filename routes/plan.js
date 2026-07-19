@@ -1,13 +1,76 @@
 const express = require('express');
 const { generateDayPlan, generateBreakfastOptions, calcDailyGiSummary } = require('../services/mealEngine');
 const { buildDailyBiometricAdaptation } = require('../services/daily-adaptation');
+const { WORKOUT_NUTRITION } = require('../config/workout-nutrition');
 
 const ALLOWED_BREAKFAST_CHOICES = new Set(['dolce', 'salata', 'skip']);
+const DEFAULT_TRAINING_TIME_SLOT = 'afternoon';
 
 function normalizeBreakfastChoiceInput(value) {
   if (value === undefined || value === null) return null;
   const choice = String(value).trim().toLowerCase();
   return ALLOWED_BREAKFAST_CHOICES.has(choice) ? choice : undefined;
+}
+
+function normalizeWorkoutTimeSlotInput(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const token = String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[\s-]+/g, '_');
+
+  if (!token || ['varies', 'variable', 'varia', 'varie', 'unknown', 'unset', 'unconfirmed'].includes(token)) {
+    return null;
+  }
+
+  return WORKOUT_NUTRITION.timeSlotAliases[token]
+    || (WORKOUT_NUTRITION.allowedTimeSlots.includes(token) && token !== 'unset' ? token : null);
+}
+
+function planMealTypes(plan = {}) {
+  return Array.isArray(plan.meals)
+    ? plan.meals.map((meal) => meal?.mealType).filter(Boolean)
+    : [];
+}
+
+function planHasWorkoutBlocks(plan = {}) {
+  const mealTypes = planMealTypes(plan);
+  return mealTypes.includes('pre_workout') && mealTypes.includes('post_workout');
+}
+
+function trainingStateFromPlan(plan = {}) {
+  const workoutNutrition = plan.workoutNutrition || {};
+  const active = workoutNutrition.active === true;
+  return {
+    hasTraining: plan.has_training ?? plan.isTrainingDay ?? active,
+    resolved: plan.training_resolved ?? workoutNutrition.resolved ?? null,
+    defaulted: plan.training_defaulted ?? workoutNutrition.defaulted ?? null,
+    timeSlot: plan.training_time_slot ?? workoutNutrition.time_slot ?? null
+  };
+}
+
+function trainingStateFromContext(context = {}) {
+  const userProfile = context.userProfile || {};
+  return {
+    hasTraining: userProfile.trainingPlanned === true || userProfile.trainingPerformed === true,
+    resolved: userProfile.trainingResolved === true,
+    defaulted: userProfile.trainingDefaulted === true,
+    timeSlot: userProfile.trainingTimeSlot || null
+  };
+}
+
+function savedPlanNeedsTrainingRefresh(plan = {}, context = {}) {
+  const saved = trainingStateFromPlan(plan);
+  const current = trainingStateFromContext(context);
+
+  if (saved.hasTraining !== current.hasTraining) return true;
+  if (!current.hasTraining) return false;
+  if (!planHasWorkoutBlocks(plan)) return true;
+  return saved.resolved !== current.resolved
+    || saved.defaulted !== current.defaulted
+    || saved.timeSlot !== current.timeSlot;
 }
 
 // ─── Formule scientifiche DUBI ────────────────────────────────────────────────
@@ -349,18 +412,18 @@ module.exports = (pool) => {
     });
     const adaptedMacros = dailyAdaptation.adjustedTargets || freshMacros;
     const trainingSignal = dailyAdaptation.signals?.training || {};
-    const hasResolvedTrainingToday = trainingSignal.performedTraining === true
-      || trainingSignal.planned === true;
-    const plannedTrainingWithoutResolvedSlot = trainingSignal.planned === true
-      && !trainingSignal.trainingTimeSlot
-      && trainingSignal.status === 'unconfirmed';
-    const workoutTimeSlot = plannedTrainingWithoutResolvedSlot
-      ? 'unset'
-      : (
-          hasResolvedTrainingToday
-            ? (trainingSignal.trainingTimeSlot || row.training_time || null)
-            : (trainingSignal.hasWeekPlan ? null : (row.training_time || null))
-        );
+    const confirmedTimeSlot = normalizeWorkoutTimeSlotInput(trainingSignal.trainingTimeSlot);
+    const habitualTimeSlot = normalizeWorkoutTimeSlotInput(row.training_time);
+    const trainingMissed = trainingSignal.missedTraining === true || trainingSignal.status === 'confirmed_no';
+    const hasTraining = !trainingMissed && (
+      trainingSignal.planned === true
+      || trainingSignal.performedTraining === true
+    );
+    const workoutTimeSlot = hasTraining
+      ? (confirmedTimeSlot || habitualTimeSlot || DEFAULT_TRAINING_TIME_SLOT)
+      : null;
+    const trainingResolved = hasTraining && Boolean(confirmedTimeSlot);
+    const trainingDefaulted = hasTraining && !confirmedTimeSlot;
     const workoutSport = trainingSignal.trainingSport || sports[0] || row.sport || null;
     const workoutSportGroup = getSportGroup(workoutSport)
       || sportProfile?.groups?.[0]
@@ -377,9 +440,13 @@ module.exports = (pool) => {
       trainingTime:       workoutTimeSlot,
       trainingTimeSlot:   workoutTimeSlot,
       trainingStatus:     trainingSignal.status || null,
-      trainingPlanned:    trainingSignal.planned === true,
+      trainingPlanned:    hasTraining,
       trainingPerformed:  trainingSignal.performedTraining === true,
-      trainingMissed:     trainingSignal.missedTraining === true,
+      trainingMissed,
+      trainingResolved,
+      trainingDefaulted,
+      trainingHabitualTimeSlot: habitualTimeSlot,
+      trainingConfirmedTimeSlot: confirmedTimeSlot,
       trainingSport:      workoutSport,
       trainingSportGroup: workoutSportGroup,
       sportGroup:         sportProfile?.groups?.[0] ?? sportGroups[0] ?? 'none',
@@ -428,7 +495,7 @@ module.exports = (pool) => {
   };
 
   const generateAndSaveIngredientPlan = async (userId, targetDate, breakfastChoice = null, options = {}) => {
-    const context = await buildIngredientPlanContext(userId, targetDate, breakfastChoice);
+    const context = options.context || await buildIngredientPlanContext(userId, targetDate, breakfastChoice);
 
     if (options.syncMealPlans !== false) {
       pool.query(
@@ -580,6 +647,13 @@ module.exports = (pool) => {
       }
 
       const plan = result.rows[0].plan_data || {};
+      if (shouldGenerateIfMissing) {
+        const context = await buildIngredientPlanContext(req.userId, targetDate, null);
+        if (savedPlanNeedsTrainingRefresh(plan, context)) {
+          return res.json(await generateAndSaveIngredientPlan(req.userId, targetDate, null, { context }));
+        }
+      }
+
       if (!plan.gi_summary && Array.isArray(plan.meals)) {
         plan.gi_summary = calcDailyGiSummary(plan.meals);
       }

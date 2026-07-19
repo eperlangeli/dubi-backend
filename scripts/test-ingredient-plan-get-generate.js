@@ -58,7 +58,7 @@ const templates = {
 const normalizeSql = (sql) => String(sql).replace(/\s+/g, ' ').trim();
 const toKey = (userId, date) => `${userId}:${date}`;
 
-const makePool = (targetDate) => {
+const makePool = (targetDate, options = {}) => {
   const state = {
     dailyPlans: new Map(),
     dailyPlanWrites: 0,
@@ -85,11 +85,11 @@ const makePool = (targetDate) => {
             gender: 'M',
             diet: 'omnivore',
             allergies: '',
-            workout_days: 4,
+            workout_days: options.workoutDays ?? 4,
             workout_intensity: 'moderate',
             sport: 'running',
             sports: ['running'],
-            training_time: null,
+            training_time: options.trainingTime ?? null,
             breakfast_pref: 'both',
             health_data_consent: true,
             is_minor: false,
@@ -121,6 +121,7 @@ const makePool = (targetDate) => {
       }
 
       if (normalized.includes('FROM training_week_plans')) {
+        if (options.noWeekPlan) return { rows: [] };
         return {
           rows: [{
             planned_days: [targetDate],
@@ -131,7 +132,7 @@ const makePool = (targetDate) => {
       }
 
       if (normalized.includes('FROM training_confirmations')) {
-        return { rows: [] };
+        return { rows: options.confirmation ? [options.confirmation] : [] };
       }
 
       if (normalized.includes('FROM ingredients')) {
@@ -173,7 +174,7 @@ const planSignature = (plan) => JSON.stringify({
 
 const main = async () => {
   const targetDate = '2026-07-16';
-  const pool = makePool(targetDate);
+  const pool = makePool(targetDate, { trainingTime: 'pomeriggio' });
   const app = express();
   app.use(express.json());
   app.use('/plan', planRoutes(pool));
@@ -198,9 +199,14 @@ const main = async () => {
     const mealTypes = first.json.meals.map((meal) => meal.mealType);
     assert(mealTypes.includes('pre_workout'), 'future planned training day should include pre_workout');
     assert(mealTypes.includes('post_workout'), 'future planned training day should include post_workout');
+    assert.strictEqual(first.json.has_training, true);
+    assert.strictEqual(first.json.training_resolved, false);
+    assert.strictEqual(first.json.training_defaulted, true);
+    assert.strictEqual(first.json.training_time_slot, 'afternoon');
     assert.strictEqual(first.json.workoutNutrition?.active, true);
-    assert.strictEqual(first.json.workoutNutrition?.time_slot, 'unset');
+    assert.strictEqual(first.json.workoutNutrition?.time_slot, 'afternoon');
     assert.strictEqual(first.json.workoutNutrition?.resolved, false);
+    assert.strictEqual(first.json.workoutNutrition?.defaulted, true);
 
     const second = await requestJson(baseUrl, `/plan/ingredient-plan/${targetDate}`, token);
     assert.strictEqual(second.status, 200);
@@ -210,6 +216,75 @@ const main = async () => {
     console.log('ingredient-plan GET generate-if-missing tests passed');
   } finally {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+
+  const confirmedPool = makePool(targetDate, {
+    trainingTime: 'afternoon',
+    confirmation: {
+      planned: true,
+      status: 'confirmed_yes',
+      training_time_slot: 'evening',
+      training_sport: 'running',
+      answered_at: new Date().toISOString(),
+      detected_strain: null,
+      detected_duration_min: null,
+      detected_active_kcal: null
+    }
+  });
+  const confirmedApp = express();
+  confirmedApp.use(express.json());
+  confirmedApp.use('/plan', planRoutes(confirmedPool));
+
+  const confirmedServer = await new Promise((resolve) => {
+    const instance = confirmedApp.listen(0, () => resolve(instance));
+  });
+
+  try {
+    const baseUrl = `http://127.0.0.1:${confirmedServer.address().port}`;
+    const token = jwt.sign({ userId: 42 }, process.env.JWT_SECRET);
+    const confirmed = await requestJson(baseUrl, `/plan/ingredient-plan/${targetDate}`, token);
+
+    assert.strictEqual(confirmed.status, 200);
+    assert.strictEqual(confirmed.json.has_training, true);
+    assert.strictEqual(confirmed.json.training_resolved, true);
+    assert.strictEqual(confirmed.json.training_defaulted, false);
+    assert.strictEqual(confirmed.json.training_time_slot, 'evening');
+    assert.strictEqual(confirmed.json.workoutNutrition?.time_slot, 'evening');
+    assert.strictEqual(confirmed.json.workoutNutrition?.resolved, true);
+    assert.strictEqual(confirmed.json.workoutNutrition?.defaulted, false);
+  } finally {
+    await new Promise((resolve, reject) => confirmedServer.close((error) => (error ? reject(error) : resolve())));
+  }
+
+  const inferredPool = makePool(targetDate, {
+    noWeekPlan: true,
+    workoutDays: 4,
+    trainingTime: 'pomeriggio'
+  });
+  const inferredApp = express();
+  inferredApp.use(express.json());
+  inferredApp.use('/plan', planRoutes(inferredPool));
+
+  const inferredServer = await new Promise((resolve) => {
+    const instance = inferredApp.listen(0, () => resolve(instance));
+  });
+
+  try {
+    const baseUrl = `http://127.0.0.1:${inferredServer.address().port}`;
+    const token = jwt.sign({ userId: 42 }, process.env.JWT_SECRET);
+    const inferred = await requestJson(baseUrl, `/plan/ingredient-plan/${targetDate}`, token);
+    const inferredMealTypes = inferred.json.meals.map((meal) => meal.mealType);
+
+    assert.strictEqual(inferred.status, 200);
+    assert(inferredMealTypes.includes('pre_workout'), 'inferred training day should include pre_workout');
+    assert(inferredMealTypes.includes('post_workout'), 'inferred training day should include post_workout');
+    assert.strictEqual(inferred.json.has_training, true);
+    assert.strictEqual(inferred.json.training_resolved, false);
+    assert.strictEqual(inferred.json.training_defaulted, true);
+    assert.strictEqual(inferred.json.training_time_slot, 'afternoon');
+    assert.strictEqual(inferred.json.dailyAdaptation?.signals?.training?.inferredFromWorkoutDays, true);
+  } finally {
+    await new Promise((resolve, reject) => inferredServer.close((error) => (error ? reject(error) : resolve())));
   }
 };
 

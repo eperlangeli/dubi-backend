@@ -64,6 +64,44 @@ const getWeekStart = (dateValue = new Date()) => {
   return toIsoDate(date);
 };
 
+const TRAINING_WEEKDAY_PATTERNS = Object.freeze({
+  1: Object.freeze([3]),
+  2: Object.freeze([2, 5]),
+  3: Object.freeze([1, 3, 5]),
+  4: Object.freeze([1, 2, 4, 6]),
+  5: Object.freeze([1, 2, 3, 5, 6]),
+  6: Object.freeze([1, 2, 3, 4, 5, 6]),
+  7: Object.freeze([1, 2, 3, 4, 5, 6, 7])
+});
+
+const weekdayNumber = (targetDate) => {
+  const date = parseIsoDate(targetDate);
+  if (!date) return null;
+  const day = date.getUTCDay();
+  return day === 0 ? 7 : day;
+};
+
+const normalizeWorkoutDays = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return clamp(Math.round(numeric), 0, 7);
+};
+
+const inferPlannedTrainingFromWorkoutDays = (profile = {}, targetDate) => {
+  const workoutDays = normalizeWorkoutDays(profile?.workout_days ?? profile?.workoutDays);
+  if (workoutDays <= 0) {
+    return { planned: false, weekdays: [], workoutDays };
+  }
+
+  const weekday = weekdayNumber(targetDate);
+  const weekdays = TRAINING_WEEKDAY_PATTERNS[workoutDays] || TRAINING_WEEKDAY_PATTERNS[7];
+  return {
+    planned: weekday !== null ? weekdays.includes(weekday) : false,
+    weekdays: [...weekdays],
+    workoutDays
+  };
+};
+
 const normalizeGoal = (goal) => {
   const value = String(goal || 'maintain').toLowerCase().trim();
   if (['fatloss', 'fat_loss', 'dimagrimento', 'weight_loss', 'lose_weight'].includes(value)) return 'fat_loss';
@@ -421,6 +459,23 @@ const calculateAdaptation = ({ baseTargets, profile, bmr, tdee, wearable, traini
   const trainingFuelKcal = midpoint(TRAINING_ADAPTATION.calories.trainingDayIncreaseKcal);
   const plannedTrainingCarbs = midpoint(TRAINING_ADAPTATION.carbohydrates.plannedTrainingIncreaseG);
   const detectedTrainingCarbs = midpoint(TRAINING_ADAPTATION.carbohydrates.detectedTrainingIncreaseG);
+  const inferredTraining = inferPlannedTrainingFromWorkoutDays(profile, targetDate);
+
+  if (
+    training
+    && training.planned !== true
+    && training.planned !== false
+    && !training.hasWeekPlan
+  ) {
+    training.planned = inferredTraining.planned;
+    training.inferredFromWorkoutDays = true;
+    training.inferredWeekdayPattern = inferredTraining.weekdays;
+    training.inferredWorkoutDays = inferredTraining.workoutDays;
+  } else if (training) {
+    training.inferredFromWorkoutDays = false;
+    training.inferredWeekdayPattern = [];
+    training.inferredWorkoutDays = inferredTraining.workoutDays;
+  }
 
   if (training.performedTraining) {
     const kcal = applyGoalDamping(trainingFuelKcal, goal);

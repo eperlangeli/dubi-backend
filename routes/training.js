@@ -318,6 +318,13 @@ module.exports = (pool) => {
         answeredAtSql
       });
 
+      pool.query(
+        'DELETE FROM daily_plans WHERE user_id = $1 AND plan_date = $2',
+        [req.userId, day]
+      ).catch((error) => {
+        console.warn('Training day plan invalidation failed:', error.message);
+      });
+
       return res.json({
         day,
         week_start: weekStart,

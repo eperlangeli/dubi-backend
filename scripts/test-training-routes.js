@@ -10,6 +10,7 @@ const makePool = () => {
   const state = {
     weekPlans: new Map(),
     confirmations: new Map(),
+    dailyPlanInvalidations: [],
     nextPlanId: 1,
     nextConfirmationId: 1
   };
@@ -67,6 +68,12 @@ const makePool = () => {
         const [userId, day] = params;
         const row = state.confirmations.get(key(userId, day));
         return { rows: row ? [row] : [] };
+      }
+
+      if (normalized.startsWith('DELETE FROM daily_plans')) {
+        const [userId, day] = params;
+        state.dailyPlanInvalidations.push(key(userId, day));
+        return { rows: [] };
       }
 
       throw new Error(`Unexpected query in training route test: ${normalized}`);
@@ -127,6 +134,7 @@ const main = async () => {
     assert.strictEqual(confirm.json.confirmation.planned, true);
     assert.strictEqual(confirm.json.confirmation.training_time_slot, 'morning_fasted');
     assert.strictEqual(confirm.json.confirmation.training_sport, 'running');
+    assert(pool.state.dailyPlanInvalidations.includes(`42:${today}`));
 
     const invalidSlot = await requestJson(baseUrl, '/api/training/day/confirm', {
       method: 'POST',

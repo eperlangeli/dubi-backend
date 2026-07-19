@@ -179,13 +179,17 @@ function resolveWorkoutNutritionContext(userProfile = {}) {
     : null;
   const sportGroup = normalizeWorkoutSportGroup(userProfile);
   const sportModifier = getWorkoutSportModifier(userProfile);
+  const hasResolvedOverride = typeof userProfile.trainingResolved === 'boolean';
+  const defaultedOverride = userProfile.trainingDefaulted === true
+    || userProfile.training_time_defaulted === true
+    || userProfile.trainingDefaultedFromOnboarding === true;
 
   return {
     active: Boolean(timeSlot && config),
     timeSlot,
     rawTimeSlot: explicitSlot,
-    resolved: Boolean(config?.resolved),
-    defaulted: timeSlot === 'unset',
+    resolved: hasResolvedOverride ? userProfile.trainingResolved : Boolean(config?.resolved),
+    defaulted: defaultedOverride || timeSlot === 'unset',
     config,
     sport: userProfile.trainingSport || userProfile.sport || sportsList[0] || null,
     sportGroup,
@@ -2002,6 +2006,10 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     userId: userProfile.userId,
     date,
     isTrainingDay: trainingToday,
+    has_training: trainingToday,
+    training_resolved: trainingToday ? workoutContext.resolved : false,
+    training_defaulted: trainingToday ? workoutContext.defaulted : false,
+    training_time_slot: trainingToday ? workoutContext.timeSlot : null,
     targetCalories: dailyCal,
     targetProtein: dailyProtein,
     targetCarbs: dailyCarbs,
