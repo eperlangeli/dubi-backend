@@ -927,6 +927,13 @@ function isAgedCheeseStandardExcludedItem(item = {}) {
   return itemHasAnyPattern(item, MEAL_GRAMMAR.dairy.agedCheeseExcludedPatterns);
 }
 
+function isMainMealDairyProteinExcludedItem(item = {}) {
+  if (!['dairy', 'dairy_alt'].includes(item.category)) return false;
+  if (itemHasAnyPattern(item, MEAL_GRAMMAR.dairy.mainMealProteinAllowedPatterns)) return false;
+  return itemHasAnyPattern(item, MEAL_GRAMMAR.dairy.mainMealProteinExcludedPatterns)
+    || item.category === 'dairy_alt';
+}
+
 function isProcessedMeatExcludedItem(item = {}, mealType = null) {
   if (!isProcessedMeat(item) && !itemHasAnyPattern(item, MEAL_GRAMMAR.meat.excludedPatterns)) return false;
   if (!isBresaolaItem(item)) return true;
@@ -999,6 +1006,8 @@ function isRedMeatIncludingPorkItem(item = {}) {
     'beef',
     'vitello',
     'veal',
+    'agnello',
+    'lamb',
     'maiale',
     'pork',
     'lonza',
@@ -1055,6 +1064,10 @@ function weeklyContextCounts(userProfile = {}) {
   return (userProfile.runtimeWeeklyPlanContext || userProfile.weeklyPlanContext)?.counts || {};
 }
 
+function activeWeeklyPlanContext(userProfile = {}) {
+  return userProfile.runtimeWeeklyPlanContext || userProfile.weeklyPlanContext || null;
+}
+
 function weeklyProteinCounts(userProfile = {}) {
   return weeklyContextCounts(userProfile).proteinGroups || {};
 }
@@ -1086,6 +1099,139 @@ function weeklyLimitForCarbGroup(group, userProfile = {}) {
   return Number(source.indicativeMealsPerWeek[1]);
 }
 
+function weeklyRemainingMainMealSlots(userProfile = {}) {
+  const counts = weeklyContextCounts(userProfile);
+  return Math.max(1, 14 - Number(counts.mainMeals || 0));
+}
+
+function weeklyMinimumUrgent(current, minimum, userProfile = {}, buffer = 2) {
+  const missing = Math.max(0, Number(minimum || 0) - Number(current || 0));
+  if (missing <= 0) return false;
+  return weeklyRemainingMainMealSlots(userProfile) <= missing + buffer;
+}
+
+function weeklyProteinMinimumTargets(userProfile = {}) {
+  const diet = normalizeDietaryPattern(userProfile);
+  if (diet === 'vegan') {
+    return [
+      { group: 'legumesMain', min: MEAL_GRAMMAR.proteinRotation.vegan.legumesSoyEdamame.min, priority: 8 },
+      { group: 'plantProtein', min: MEAL_GRAMMAR.proteinRotation.vegan.tofuTempehSeitan.min, priority: 5 },
+    ];
+  }
+
+  if (diet === 'vegetarian') {
+    return [
+      { group: 'legumesMain', min: MEAL_GRAMMAR.proteinRotation.vegetarian.legumesMain.min, priority: 8 },
+    ];
+  }
+
+  return [
+    { group: 'fattyFish', min: MEAL_GRAMMAR.fish.fattyFishMealsPerWeek.min, priority: 9 },
+    { group: 'fish', min: MEAL_GRAMMAR.fish.totalMealsPerWeek.min, priority: 7 },
+    { group: 'legumesMain', min: MEAL_GRAMMAR.proteinRotation.omnivore.legumesMain.min, priority: 8 },
+  ];
+}
+
+function candidateMatchesProteinWeeklyGroup(item = {}, group) {
+  if (group === 'fattyFish') return isFattyFishItem(item);
+  if (group === 'fish') return isFishIngredient(item);
+  if (group === 'legumesMain') return isLegumeMainProteinItem(item);
+  if (group === 'plantProtein') return isPlantProteinSource(item) && !isLegumeMainProteinItem(item);
+  return mainProteinWeeklyGroup(item) === group;
+}
+
+function weeklyProteinMinimumWeight(item = {}, userProfile = {}) {
+  const counts = weeklyProteinCounts(userProfile);
+  const target = weeklyProteinMinimumTargets(userProfile)
+    .find((entry) =>
+      Number(counts[entry.group] || 0) < Number(entry.min || 0)
+      && candidateMatchesProteinWeeklyGroup(item, entry.group)
+    );
+
+  if (!target) return 1;
+  const current = Number(counts[target.group] || 0);
+  const urgent = weeklyMinimumUrgent(current, target.min, userProfile);
+  return urgent ? target.priority * 1.75 : target.priority;
+}
+
+function applyWeeklyProteinMinimumPreference(candidates, mealType, userProfile = {}) {
+  if (!isMainMeal(mealType) || !Array.isArray(candidates) || candidates.length === 0) return candidates;
+
+  const counts = weeklyProteinCounts(userProfile);
+  const targets = weeklyProteinMinimumTargets(userProfile);
+  for (const target of targets) {
+    const current = Number(counts[target.group] || 0);
+    if (current >= Number(target.min || 0)) continue;
+
+    // For omnivores, legumes are excellent but should not silently turn every dinner
+    // into a plant-only main dish. Prefer filling this minimum at lunch unless the
+    // week is running out.
+    if (
+      target.group === 'legumesMain'
+      && mealType === 'dinner'
+      && ['omnivore', 'pescatarian'].includes(normalizeDietaryPattern(userProfile))
+      && !weeklyMinimumUrgent(current, target.min, userProfile)
+    ) {
+      continue;
+    }
+
+    const preferred = candidates.filter((ingredient) => candidateMatchesProteinWeeklyGroup(ingredient, target.group));
+    if (preferred.length > 0) return preferred;
+  }
+
+  return candidates;
+}
+
+function carbWeeklyGroupsSeen(userProfile = {}) {
+  const counts = weeklyCarbCounts(userProfile);
+  return new Set(Object.entries(counts)
+    .filter(([, count]) => Number(count || 0) > 0)
+    .map(([group]) => group));
+}
+
+function weeklyCarbMinimumWeight(item = {}, userProfile = {}) {
+  const group = carbWeeklyGroup(item);
+  const counts = weeklyCarbCounts(userProfile);
+  const seen = carbWeeklyGroupsSeen(userProfile);
+  let score = 1;
+
+  if (
+    seen.size < MEAL_GRAMMAR.carbohydrateStrategy.minimumWeeklyVariety
+    && !seen.has(group)
+  ) {
+    score *= 3.5;
+  }
+
+  if (group === 'pasta' && Number(counts.pasta || 0) < MEAL_GRAMMAR.pasta.mealsPerWeek.min) {
+    score *= weeklyMinimumUrgent(counts.pasta || 0, MEAL_GRAMMAR.pasta.mealsPerWeek.min, userProfile, 3)
+      ? 6
+      : 3;
+  }
+
+  return score;
+}
+
+function applyWeeklyCarbMinimumPreference(candidates, mealType, userProfile = {}) {
+  if (!isMainMeal(mealType) || !Array.isArray(candidates) || candidates.length === 0) return candidates;
+
+  const counts = weeklyCarbCounts(userProfile);
+  const seen = carbWeeklyGroupsSeen(userProfile);
+  const pastaMissing = Number(counts.pasta || 0) < MEAL_GRAMMAR.pasta.mealsPerWeek.min;
+  const pastaUrgent = weeklyMinimumUrgent(counts.pasta || 0, MEAL_GRAMMAR.pasta.mealsPerWeek.min, userProfile, 3);
+
+  if (pastaMissing && pastaUrgent) {
+    const pastaCandidates = candidates.filter((ingredient) => carbWeeklyGroup(ingredient) === 'pasta');
+    if (pastaCandidates.length > 0) return pastaCandidates;
+  }
+
+  if (seen.size < MEAL_GRAMMAR.carbohydrateStrategy.minimumWeeklyVariety) {
+    const newSourceCandidates = candidates.filter((ingredient) => !seen.has(carbWeeklyGroup(ingredient)));
+    if (newSourceCandidates.length > 0) return newSourceCandidates;
+  }
+
+  return candidates;
+}
+
 function weeklyCandidateAllowed(item = {}, mealType, slot, userProfile = {}) {
   if (!isMainMeal(mealType)) return true;
   const proteinCounts = weeklyProteinCounts(userProfile);
@@ -1093,6 +1239,12 @@ function weeklyCandidateAllowed(item = {}, mealType, slot, userProfile = {}) {
 
   if (slot === 'protein') {
     const group = mainProteinWeeklyGroup(item);
+    if (
+      isFattyFishItem(item)
+      && Number(proteinCounts.fattyFish || 0) >= MEAL_GRAMMAR.fish.fattyFishMealsPerWeek.max
+    ) {
+      return false;
+    }
     if (isTunaItem(item) && Number(proteinCounts.tuna || 0) >= weeklyLimitForProteinGroup('tuna', userProfile)) return false;
     const limit = weeklyLimitForProteinGroup(group, userProfile);
     if (Number.isFinite(limit) && Number(proteinCounts[group] || 0) >= limit) return false;
@@ -1103,7 +1255,7 @@ function weeklyCandidateAllowed(item = {}, mealType, slot, userProfile = {}) {
     const limit = weeklyLimitForCarbGroup(group, userProfile);
     if (Number.isFinite(limit) && Number(carbCounts[group] || 0) >= limit) return false;
 
-    const lastMainCarbs = userProfile.weeklyPlanContext?.lastMainCarbs || [];
+    const lastMainCarbs = activeWeeklyPlanContext(userProfile)?.lastMainCarbs || [];
     const maxRepeat = MEAL_GRAMMAR.carbohydrateStrategy.maxConsecutiveSameMainCarbMeals;
     if (
       maxRepeat > 0
@@ -1138,6 +1290,7 @@ function recordMealInRuntimeWeeklyContext(userProfile = {}, meal = {}, date = nu
 function isMainMealIngredientAllowed(item = {}, mealType = null) {
   if (isStandardExcludedIngredient(item, mealType)) return false;
   if (isBreakfastOnlyItem(item)) return false;
+  if (isMainMeal(mealType) && (item.slot === 'protein' || hasSlot(item, 'protein')) && isMainMealDairyProteinExcludedItem(item)) return false;
   return true;
 }
 
@@ -1167,6 +1320,11 @@ function applyMealGrammarCandidateRules(candidates, meal, mealType, slot, userPr
     filtered = filterWithFallback(filtered, (ingredient) => weeklyCandidateAllowed(ingredient, mealType, slot, userProfile));
     if (slot === 'protein') {
       filtered = filtered.filter((ingredient) => !isParmesanItem(ingredient));
+      filtered = filterWithFallback(filtered, (ingredient) => !isMainMealDairyProteinExcludedItem(ingredient));
+      filtered = applyWeeklyProteinMinimumPreference(filtered, mealType, userProfile);
+    }
+    if (slot === 'carb') {
+      filtered = applyWeeklyCarbMinimumPreference(filtered, mealType, userProfile);
     }
   }
 
@@ -1378,6 +1536,11 @@ function plateFallbackCandidates(ingredients, meal, mealType, slot, predicate, u
   }
 
   candidates = candidates.filter((ingredient) => predicate(candidatePlateItem(ingredient, slot), mealType));
+  candidates = applyMealGrammarCandidateRules(candidates, meal, mealType, slot, {
+    ...userProfile,
+    currentMealType: mealType,
+    currentSlot: slot
+  });
   candidates = applyPlateCandidateRules(candidates, meal, mealType, slot);
 
   if (slot === 'protein') {
@@ -1409,6 +1572,44 @@ function choosePlateFallback(ingredients, meal, slot, predicate, dayTracker, mea
         - plateComponentScore(candidatePlateItem(a, slot), role, selectionProfile, mealType)
         || String(a.name || '').localeCompare(String(b.name || ''))
       )[0]
+    || null;
+}
+
+function chooseEmergencyMainProteinFallback(ingredients, meal, rng, userProfile, date) {
+  if (!isMainMeal(meal.mealType)) return null;
+  let candidates = filterBySlotAndTiming(ingredients, 'protein', meal.mealType);
+  if (candidates.length === 0) {
+    candidates = ingredients.filter((ingredient) => normalizeDbArray(ingredient.template_slots).includes('protein'));
+  }
+
+  candidates = candidates
+    .filter((ingredient) => isPlateMainProteinItem(candidatePlateItem(ingredient, 'protein'), meal.mealType))
+    .filter((ingredient) => isMainMealIngredientAllowed(candidatePlateItem(ingredient, 'protein'), meal.mealType))
+    .filter((ingredient) => !isParmesanItem(ingredient))
+    .filter((ingredient) => candidateFitsCurrentPlate(ingredient, meal, meal.mealType, 'protein'));
+
+  if (candidates.length === 0) return null;
+
+  const weeklyAllowed = candidates.filter((ingredient) => weeklyCandidateAllowed(ingredient, meal.mealType, 'protein', userProfile));
+  if (weeklyAllowed.length > 0) candidates = weeklyAllowed;
+
+  const selectionProfile = {
+    ...userProfile,
+    currentMealType: meal.mealType,
+    currentSlot: 'protein'
+  };
+  const seed = `${userProfile.userId || 'anonymous'}:${date}:${meal.mealType}:protein:emergency`;
+  const relaxedTracker = buildVarietyTracker();
+  return pickIngredient(candidates, relaxedTracker, { mainMeal: true, grainCount: 0 }, rng, selectionProfile, seed)
+    || candidates
+      .map((candidate) => ({
+        candidate,
+        score: mealGrammarPriorityWeight(candidate, selectionProfile)
+          * proteinSourcePriorityWeight(candidate, selectionProfile)
+          * Math.max(proteinDensity(candidate), 1)
+      }))
+      .sort((a, b) => b.score - a.score || String(a.candidate.name || '').localeCompare(String(b.candidate.name || '')))
+      .map((entry) => entry.candidate)[0]
     || null;
 }
 
@@ -1468,7 +1669,7 @@ function ensurePlateStructure(meal, eligibleIngredients, dayTracker, mealTracker
         userProfile,
         date,
         'mainProtein'
-      );
+      ) || chooseEmergencyMainProteinFallback(eligibleIngredients, meal, rng, userProfile, date);
       if (addPlateFallbackItem(meal, protein, 'protein', mealCalorieTarget)) {
         recordVariety(protein, dayTracker, mealTracker);
         changed = true;
@@ -1877,7 +2078,7 @@ function validatePlateStructureForMeal(meal = {}, userProfile = {}) {
       const hasAnimalMainProtein = ingredients.some((item) =>
         isPlateMainProteinItem(item, mealType) && isAnimalProteinSource(item)
       );
-      if (!hasAnimalMainProtein) {
+      if (!hasAnimalMainProtein && !shouldKeepOmnivorePlantMainProtein(meal, userProfile)) {
         issues.push({ code: 'omnivore_main_protein_not_animal' });
       }
     }
@@ -1972,6 +2173,10 @@ function mealGrammarPriorityWeight(ingredient = {}, userProfile = {}) {
   }
 
   if (isMainMeal(mealType)) {
+    if (slot === 'protein') {
+      score *= weeklyProteinMinimumWeight(ingredient, userProfile);
+    }
+
     if (slot === 'fat') {
       if (textMatchesPatterns(text, ['olio evo', 'olio extravergine', 'extra virgin olive oil'])) score *= 1.8;
       if (text.includes('avocado')) score *= 0.45;
@@ -1983,6 +2188,7 @@ function mealGrammarPriorityWeight(ingredient = {}, userProfile = {}) {
       const carbCounts = weeklyCarbCounts(userProfile);
       const uniqueCarbs = Object.keys(carbCounts).filter((key) => Number(carbCounts[key] || 0) > 0).length;
 
+      score *= weeklyCarbMinimumWeight(ingredient, userProfile);
       if (textMatchesPatterns(text, ['integrale', 'wholegrain', 'whole grain', 'farro', 'orzo', 'avena', 'quinoa', 'basmati', 'venere'])) score *= 1.18;
       if (text.includes('pane')) score *= 0.92;
       if (uniqueCarbs < MEAL_GRAMMAR.carbohydrateStrategy.minimumWeeklyVariety && Number(carbCounts[group] || 0) === 0) score *= 1.35;
@@ -2037,12 +2243,15 @@ function prioritizeProteinCandidatesForDiet(candidates, mealType, slot, userProf
     return lactoOvoAndPlant.length > 0 ? lactoOvoAndPlant : candidates;
   }
 
-  // Omnivore/pescatarian: compatibility decides which animal foods are allowed;
-  // hierarchy decides they should beat tofu/legumes as the main protein source.
-  const animalMain = candidates.filter((ingredient) => ingredient.category === 'protein_animal');
-  if (animalMain.length > 0) return animalMain;
-  const animal = candidates.filter(isAnimalProteinSource);
-  return animal.length > 0 ? animal : candidates;
+  // Omnivore/pescatarian: compatibility decides which foods are allowed; scoring
+  // decides priority. Keep legumes/tofu available so weekly Mediterranean targets
+  // can actually be reached instead of being hidden behind animal-only filtering.
+  const readableProteins = candidates.filter((ingredient) =>
+    isAnimalProteinSource(ingredient)
+    || isLegumeMainProteinItem(ingredient)
+    || isPlantProteinSource(ingredient)
+  );
+  return readableProteins.length > 0 ? readableProteins : candidates;
 }
 
 function proteinSlotCandidatesForMeal(ingredients, mealType, userProfile = {}) {
@@ -2059,7 +2268,9 @@ function chooseAnimalProteinForMeal(ingredients, meal, dayTracker, mealTracker, 
     currentMealType: meal.mealType,
     currentSlot: 'protein',
   });
-  const animalCandidates = allProteinCandidates.filter(isAnimalProteinSource);
+  const animalCandidates = allProteinCandidates
+    .filter(isAnimalProteinSource)
+    .filter((ingredient) => weeklyCandidateAllowed(ingredient, meal.mealType, 'protein', userProfile));
   if (animalCandidates.length === 0) return null;
 
   const selectionProfile = {
@@ -2109,6 +2320,37 @@ function limitOmnivorePlantProteinComplements(meal) {
   recomputeMealTotals(meal);
 }
 
+function shouldKeepOmnivorePlantMainProtein(meal = {}, userProfile = {}) {
+  if (!isMainMeal(meal.mealType)) return false;
+  const mainProtein = mainMealProteinFromMeal(meal);
+  if (!mainProtein || isAnimalProteinSource(mainProtein)) return false;
+
+  const counts = weeklyProteinCounts(userProfile);
+  const legumeTarget = MEAL_GRAMMAR.proteinRotation.omnivore.legumesMain;
+  const legumesCount = Number(counts.legumesMain || 0);
+  const legumesMissing = legumesCount < Number(legumeTarget.min || 0);
+  const legumesWithinWeeklyRange = legumesCount <= Number(legumeTarget.max || Number.POSITIVE_INFINITY);
+  const animalMainCapsSaturated =
+    Number(counts.fish || 0) >= MEAL_GRAMMAR.fish.totalMealsPerWeek.max
+    && Number(counts.poultry || 0) >= MEAL_GRAMMAR.meat.weeklyConstraints.poultry.max
+    && Number(counts.redMeatIncludingPork || 0) >= MEAL_GRAMMAR.meat.weeklyConstraints.totalRedMeatIncludingPork.max;
+
+  if (isLegumeMainProteinItem(mainProtein)) {
+    return (meal.mealType === 'lunch' && legumesWithinWeeklyRange)
+      || animalMainCapsSaturated
+      || legumesMissing
+      || weeklyMinimumUrgent(counts.legumesMain || 0, legumeTarget.min, userProfile, 3);
+  }
+
+  if (isPlantProteinSource(mainProtein)) {
+    return animalMainCapsSaturated
+      || meal.mealType === 'lunch'
+      || weeklyMinimumUrgent(counts.legumesMain || 0, legumeTarget.min, userProfile, 3);
+  }
+
+  return false;
+}
+
 function enforceDietProteinSourceHierarchy(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date) {
   if (!isMainMeal(meal.mealType)) return;
   const diet = normalizeDietaryPattern(userProfile);
@@ -2119,6 +2361,11 @@ function enforceDietProteinSourceHierarchy(meal, eligibleIngredients, dayTracker
     currentMealType: meal.mealType,
     currentSlot: 'protein',
   }).filter(isAnimalProteinSource);
+
+  if (!meal.ingredients.some(isAnimalProteinSource) && shouldKeepOmnivorePlantMainProtein(meal, userProfile)) {
+    limitOmnivorePlantProteinComplements(meal);
+    return;
+  }
 
   if (!meal.ingredients.some(isAnimalProteinSource) && animalCandidates.length > 0) {
     const animal = chooseAnimalProteinForMeal(eligibleIngredients, meal, dayTracker, mealTracker, rng, userProfile, date);
@@ -2474,6 +2721,7 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
   enforceDietProteinSourceHierarchy(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date);
   ensurePlateStructure(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget);
   enforceMealGrammar(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget);
+  ensurePlateStructure(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget);
   if (isMainMeal(meal.mealType)) {
     meal.plateStructure = validatePlateStructureForMeal(meal, userProfile);
     meal.plate_structure = meal.plateStructure;
@@ -3558,6 +3806,7 @@ function buildWeeklyRotationAudit(meals = [], userProfile = {}, date = null) {
     redMeatMax: Number(protein.redMeatIncludingPork || 0) <= MEAL_GRAMMAR.meat.weeklyConstraints.totalRedMeatIncludingPork.max,
     tunaMax: Number(protein.tuna || 0) <= MEAL_GRAMMAR.fish.limitFrequency.tuna.maxPerWeek,
     fishMax: Number(protein.fish || 0) <= fishMax,
+    fattyFishMax: Number(protein.fattyFish || 0) <= MEAL_GRAMMAR.fish.fattyFishMealsPerWeek.max,
     pastaMax: Number(carbs.pasta || 0) <= MEAL_GRAMMAR.pasta.mealsPerWeek.max,
     carbRepeatMax: maxConsecutiveRepeat(context.lastMainCarbs) <= MEAL_GRAMMAR.carbohydrateStrategy.maxConsecutiveSameMainCarbMeals,
     carbVariety: !completeWeek || uniqueCarbSources >= MEAL_GRAMMAR.carbohydrateStrategy.minimumWeeklyVariety,

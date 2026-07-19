@@ -216,6 +216,20 @@ const MEAL_GRAMMAR = Object.freeze({
       allowedAsTopping: true,
       notMainProtein: true
     }),
+    mainMealProteinAllowedPatterns: Object.freeze([
+      'ricotta',
+      'fiocchi di latte',
+      'cottage cheese'
+    ]),
+    mainMealProteinExcludedPatterns: Object.freeze([
+      'skyr',
+      'yogurt',
+      'kefir',
+      'latte',
+      'milk',
+      'bevanda vegetale',
+      'plant drink'
+    ]),
     agedCheeseExcludedPatterns: Object.freeze([
       'pecorino',
       'grana',
@@ -268,7 +282,8 @@ const MEAL_GRAMMAR = Object.freeze({
       'fresh_skinless_turkey',
       'lean_fresh_beef',
       'lean_fresh_veal',
-      'lean_fresh_pork'
+      'lean_fresh_pork',
+      'lean_fresh_lamb'
     ]),
     allowedPatterns: Object.freeze([
       'petto di pollo',
@@ -287,7 +302,9 @@ const MEAL_GRAMMAR = Object.freeze({
       'macinato fresco',
       'filetto di maiale',
       'lonza',
-      'arista'
+      'arista',
+      'agnello magro',
+      'lean lamb'
     ]),
     excluded: Object.freeze([
       'processed_meat',
