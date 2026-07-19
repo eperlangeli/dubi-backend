@@ -771,9 +771,19 @@ function isNaturalFrozenItem(item = {}) {
   return /surgelat|frozen/.test(text) && !/condit|sauce|crema|panna|butter/.test(text);
 }
 
+function isShelfStableTrainingFruit(item = {}) {
+  const freshness = normalizeToken(item.freshness_form || item.freshnessForm);
+  if (['dried', 'essiccato'].includes(freshness)) return true;
+  return itemHasAnyPattern(item, ['datteri', 'dates', 'uvetta', 'raisins']);
+}
+
 function isIngredientInSeason(item = {}, targetDate, location = userSeasonalityLocation()) {
   if (!isSeasonalityProduce(item)) {
     return { eligible: true, reason: 'not_produce' };
+  }
+
+  if (isShelfStableTrainingFruit(item)) {
+    return { eligible: true, reason: 'shelf_stable_training_fuel' };
   }
 
   const month = planMonth(targetDate);
