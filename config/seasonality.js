@@ -46,7 +46,45 @@ const SEASONALITY = Object.freeze({
     corn: Object.freeze({ nutritionRole: 'carbohydrate_source', seasonalityRole: 'produce' }),
     cassava: Object.freeze({ nutritionRole: 'carbohydrate_source', seasonalityRole: 'produce' }),
     polenta: Object.freeze({ nutritionRole: 'carbohydrate_source', seasonalityRole: 'none' })
-  })
+  }),
+  defaultProduceRules: Object.freeze([
+    { patterns: Object.freeze(['frutta fresca di stagione', 'seasonal fruit']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) },
+    { patterns: Object.freeze(['verdure di stagione', 'verdura di stagione', 'seasonal vegetables', 'seasonal vegetable']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) },
+
+    { patterns: Object.freeze(['zucchine', 'zucchina', 'zucchini']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([5, 6, 7, 8, 9]) },
+    { patterns: Object.freeze(['melanzane', 'melanzana', 'eggplant', 'aubergine']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([6, 7, 8, 9, 10]) },
+    { patterns: Object.freeze(['peperone', 'peperoni', 'bell pepper']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([6, 7, 8, 9, 10]) },
+    { patterns: Object.freeze(['pomodoro', 'pomodorini', 'tomato']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([6, 7, 8, 9]) },
+    { patterns: Object.freeze(['cetriolo', 'cetrioli', 'cucumber']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([6, 7, 8, 9]) },
+    { patterns: Object.freeze(['bietola', 'bietole', 'chard']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([4, 5, 6, 7, 8, 9, 10, 11]) },
+    { patterns: Object.freeze(['rucola', 'rocket', 'arugula']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([3, 4, 5, 6, 7, 8, 9, 10, 11]) },
+    { patterns: Object.freeze(['lattuga', 'lettuce']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([3, 4, 5, 6, 7, 8, 9, 10, 11]) },
+    { patterns: Object.freeze(['carota', 'carote', 'carrot']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) },
+    { patterns: Object.freeze(['spinaci', 'spinach']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 5, 9, 10, 11, 12]) },
+    { patterns: Object.freeze(['broccoli', 'broccolo']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 10, 11, 12]) },
+    { patterns: Object.freeze(['cavolfiore', 'cauliflower']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 10, 11, 12]) },
+    { patterns: Object.freeze(['cavolo cappuccio', 'cavolo nero', 'cavoletti', 'cabbage', 'kale', 'brussels sprouts']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 10, 11, 12]) },
+    { patterns: Object.freeze(['finocchio', 'finocchi', 'fennel']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 5, 10, 11, 12]) },
+    { patterns: Object.freeze(['zucca', 'pumpkin']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 9, 10, 11, 12]) },
+    { patterns: Object.freeze(['funghi', 'fungo', 'mushroom']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([9, 10, 11]) },
+    { patterns: Object.freeze(['asparagi', 'asparagus']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([3, 4, 5]) },
+    { patterns: Object.freeze(['piselli freschi', 'fresh peas']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([4, 5, 6]) },
+    { patterns: Object.freeze(['carciofi', 'carciofo', 'artichoke']), category: 'vegetable', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 11, 12]) },
+
+    { patterns: Object.freeze(['arancia', 'arance', 'orange']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 11, 12]) },
+    { patterns: Object.freeze(['mandarino', 'mandarini', 'clementine']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 11, 12]) },
+    { patterns: Object.freeze(['kiwi']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 5, 11, 12]) },
+    { patterns: Object.freeze(['mela', 'mele', 'apple']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 5, 9, 10, 11, 12]) },
+    { patterns: Object.freeze(['pera', 'pere', 'pear']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([1, 2, 3, 4, 8, 9, 10, 11, 12]) },
+    { patterns: Object.freeze(['fragola', 'fragole', 'strawberry']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([4, 5, 6]) },
+    { patterns: Object.freeze(['mirtilli', 'mirtillo', 'frutti di bosco', 'blueberry', 'berries']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([5, 6, 7, 8, 9]) },
+    { patterns: Object.freeze(['pesca', 'pesche', 'peach']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([6, 7, 8, 9]) },
+    { patterns: Object.freeze(['albicocca', 'albicocche', 'apricot']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([6, 7, 8]) },
+    { patterns: Object.freeze(['prugna', 'prugne', 'plum']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([7, 8, 9]) },
+    { patterns: Object.freeze(['uva', 'grapes']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([8, 9, 10]) },
+    { patterns: Object.freeze(['melone', 'melon']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([6, 7, 8, 9]) },
+    { patterns: Object.freeze(['anguria', 'watermelon']), category: 'fruit', country: 'IT', regions: Object.freeze(['all']), months: Object.freeze([6, 7, 8]) }
+  ])
 });
 
 module.exports = {

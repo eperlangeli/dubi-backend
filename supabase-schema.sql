@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS users (
   parental_consent_token TEXT,
   parental_consent_token_expires_at TIMESTAMPTZ,
   parental_consent_verified_at TIMESTAMPTZ,
+  country TEXT DEFAULT 'IT',
+  region TEXT DEFAULT 'all',
+  seasonality_mode TEXT NOT NULL DEFAULT 'strict'
+    CHECK (seasonality_mode IN ('strict', 'seasonal_preferred', 'off')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -36,6 +40,10 @@ ALTER TABLE users ADD CONSTRAINT users_parental_consent_status_check
 ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_token TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_token_expires_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_verified_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'IT';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS region TEXT DEFAULT 'all';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS seasonality_mode TEXT NOT NULL DEFAULT 'strict'
+  CHECK (seasonality_mode IN ('strict', 'seasonal_preferred', 'off'));
 
 CREATE TABLE IF NOT EXISTS user_onboarding (
   id SERIAL PRIMARY KEY,
@@ -630,6 +638,12 @@ CREATE TABLE IF NOT EXISTS ingredients (
   micronutrients          JSONB DEFAULT '{}'::JSONB,
   polyphenols_mg          NUMERIC(8,2),
   bioavailability_pairs   JSONB DEFAULT '[]'::JSONB,
+  seasonal_key            TEXT,
+  seasonality             JSONB DEFAULT '{}'::JSONB,
+  greenhouse_available    BOOLEAN DEFAULT false,
+  frozen_available        BOOLEAN DEFAULT false,
+  freshness_form          TEXT DEFAULT 'fresh'
+    CHECK (freshness_form IN ('fresh', 'frozen_natural', 'canned_natural', 'dried', 'processed')),
   notes                   TEXT,
   created_at              TIMESTAMPTZ DEFAULT NOW(),
   updated_at              TIMESTAMPTZ DEFAULT NOW()
@@ -637,6 +651,27 @@ CREATE TABLE IF NOT EXISTS ingredients (
 
 CREATE INDEX IF NOT EXISTS idx_ingredients_category ON ingredients(category);
 CREATE INDEX IF NOT EXISTS idx_ingredients_active ON ingredients(is_active);
+
+CREATE TABLE IF NOT EXISTS ingredient_seasonality (
+  id              BIGSERIAL PRIMARY KEY,
+  ingredient_id   INTEGER NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+  country         TEXT NOT NULL DEFAULT 'IT',
+  regions         TEXT[] NOT NULL DEFAULT ARRAY['all']::TEXT[],
+  months          INTEGER[] NOT NULL,
+  hemisphere      TEXT DEFAULT 'north',
+  climate_area    TEXT DEFAULT 'mediterranean',
+  notes           TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (ingredient_id, country, regions),
+  CHECK (
+    array_length(months, 1) IS NOT NULL
+    AND months <@ ARRAY[1,2,3,4,5,6,7,8,9,10,11,12]
+  )
+);
+
+CREATE INDEX IF NOT EXISTS idx_ingredient_seasonality_lookup
+  ON ingredient_seasonality(ingredient_id, country);
 
 CREATE TABLE IF NOT EXISTS meal_templates (
   id              SERIAL PRIMARY KEY,
@@ -659,10 +694,12 @@ CREATE TABLE IF NOT EXISTS daily_plans (
 CREATE INDEX IF NOT EXISTS idx_daily_plans_user ON daily_plans(user_id, plan_date DESC);
 
 ALTER TABLE ingredients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ingredient_seasonality ENABLE ROW LEVEL SECURITY;
 ALTER TABLE meal_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_plans ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS ingredients_select ON ingredients;
+DROP POLICY IF EXISTS ingredient_seasonality_select ON ingredient_seasonality;
 DROP POLICY IF EXISTS templates_select ON meal_templates;
 DROP POLICY IF EXISTS daily_plans_select ON daily_plans;
 DROP POLICY IF EXISTS daily_plans_insert ON daily_plans;
@@ -670,6 +707,9 @@ DROP POLICY IF EXISTS daily_plans_update ON daily_plans;
 
 CREATE POLICY ingredients_select ON ingredients
   FOR SELECT USING (is_active = true);
+
+CREATE POLICY ingredient_seasonality_select ON ingredient_seasonality
+  FOR SELECT USING (true);
 
 CREATE POLICY templates_select ON meal_templates
   FOR SELECT USING (true);
@@ -696,3 +736,9 @@ ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS science_note TEXT;
 ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS micronutrients JSONB DEFAULT '{}'::JSONB;
 ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS polyphenols_mg NUMERIC(8,2);
 ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS bioavailability_pairs JSONB DEFAULT '[]'::JSONB;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS seasonal_key TEXT;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS seasonality JSONB DEFAULT '{}'::JSONB;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS greenhouse_available BOOLEAN DEFAULT false;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS frozen_available BOOLEAN DEFAULT false;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS freshness_form TEXT DEFAULT 'fresh'
+  CHECK (freshness_form IN ('fresh', 'frozen_natural', 'canned_natural', 'dried', 'processed'));

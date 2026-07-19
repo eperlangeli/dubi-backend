@@ -11,6 +11,7 @@ const { WORKOUT_NUTRITION } = require('../config/workout-nutrition');
 const { PLATE_STRUCTURE } = require('../config/plate-structure');
 const { MEAL_GRAMMAR } = require('../config/meal-grammar');
 const { MEAL_ASSEMBLY } = require('../config/meal-assembly');
+const { SEASONALITY } = require('../config/seasonality');
 
 const DIET_COL = {
   omnivore: 'compatible_omnivore',
@@ -679,6 +680,189 @@ function textMatchesPatterns(text, patterns = []) {
 
 function itemHasAnyPattern(item = {}, patterns = []) {
   return textMatchesPatterns(ingredientText(item), patterns);
+}
+
+function isSeasonalityProduce(item = {}) {
+  return SEASONALITY.categoriesRequiringSeasonality.includes(item.category);
+}
+
+function normalizeSeasonalityMode(userProfile = {}) {
+  const rawMode = normalizeToken(userProfile.seasonalityMode || userProfile.seasonality_mode || SEASONALITY.defaultMode)
+    .replace(/\s+/g, '_');
+  return SEASONALITY.allowedModes.includes(rawMode) ? rawMode : SEASONALITY.defaultMode;
+}
+
+function userSeasonalityLocation(userProfile = {}) {
+  return {
+    country: String(userProfile.country || userProfile.locationCountry || userProfile.countryCode || SEASONALITY.defaultLocation.country).toUpperCase(),
+    region: String(userProfile.region || userProfile.locationRegion || SEASONALITY.defaultLocation.region),
+    hemisphere: userProfile.hemisphere || SEASONALITY.defaultLocation.hemisphere,
+    climateArea: userProfile.climateArea || userProfile.climate_area || SEASONALITY.defaultLocation.climateArea
+  };
+}
+
+function planMonth(targetDate) {
+  const parsed = new Date(`${targetDate}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return new Date().getUTCMonth() + 1;
+  return parsed.getUTCMonth() + 1;
+}
+
+function monthInRange(month, startMonth, endMonth) {
+  const start = Number(startMonth);
+  const end = Number(endMonth);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
+  if (start <= end) return month >= start && month <= end;
+  return month >= start || month <= end;
+}
+
+function monthAllowedByRule(rule = {}, month) {
+  if (Array.isArray(rule.months)) return rule.months.map(Number).includes(Number(month));
+  if (rule.start_month || rule.end_month) return monthInRange(month, rule.start_month, rule.end_month);
+  if (rule.startMonth || rule.endMonth) return monthInRange(month, rule.startMonth, rule.endMonth);
+  return false;
+}
+
+function regionAllowedByRule(rule = {}, location = {}) {
+  const ruleRegions = rule.regions || rule.region || ['all'];
+  const regions = Array.isArray(ruleRegions) ? ruleRegions : [ruleRegions];
+  const normalizedRegions = regions.map((region) => normalizeToken(region));
+  return normalizedRegions.includes('all') || normalizedRegions.includes(normalizeToken(location.region));
+}
+
+function countryAllowedByRule(rule = {}, location = {}) {
+  const country = String(rule.country || '').toUpperCase();
+  if (country && country !== String(location.country || '').toUpperCase()) return false;
+  return true;
+}
+
+function normalizeSeasonalityRules(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+
+  let parsed = value;
+  if (typeof value === 'string') {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === 'object') {
+    return Object.entries(parsed).map(([country, rules]) => ({
+      country,
+      ...(rules || {})
+    }));
+  }
+
+  return [];
+}
+
+function defaultSeasonalityRulesForIngredient(item = {}) {
+  return SEASONALITY.defaultProduceRules
+    .filter((rule) => rule.category === item.category && itemHasAnyPattern(item, rule.patterns));
+}
+
+function isNaturalFrozenItem(item = {}) {
+  const freshness = normalizeToken(item.freshness_form || item.freshnessForm);
+  if (['frozen', 'frozen_natural', 'surgelato_naturale'].includes(freshness)) return true;
+  const text = ingredientText(item);
+  return /surgelat|frozen/.test(text) && !/condit|sauce|crema|panna|butter/.test(text);
+}
+
+function isIngredientInSeason(item = {}, targetDate, location = userSeasonalityLocation()) {
+  if (!isSeasonalityProduce(item)) {
+    return { eligible: true, reason: 'not_produce' };
+  }
+
+  const month = planMonth(targetDate);
+  const rules = [
+    ...normalizeSeasonalityRules(item.seasonality),
+    ...defaultSeasonalityRulesForIngredient(item)
+  ];
+
+  const matched = rules.find((rule) =>
+    countryAllowedByRule(rule, location)
+    && regionAllowedByRule(rule, location)
+    && monthAllowedByRule(rule, month)
+  );
+
+  if (matched) return { eligible: true, reason: 'fresh_in_season', month };
+  if (isNaturalFrozenItem(item)) return { eligible: true, reason: 'frozen_natural_fallback', month };
+
+  return {
+    eligible: false,
+    reason: rules.length > 0 ? 'out_of_season' : 'unknown_seasonality',
+    month
+  };
+}
+
+function applySeasonalityFilter(ingredients = [], targetDate, userProfile = {}) {
+  const mode = normalizeSeasonalityMode(userProfile);
+  const location = userSeasonalityLocation(userProfile);
+  if (mode === 'off') {
+    return {
+      ingredients,
+      audit: {
+        version: SEASONALITY.version,
+        source: SEASONALITY.source,
+        status: SEASONALITY.status,
+        mode,
+        location,
+        applied: false,
+        totalProduce: ingredients.filter(isSeasonalityProduce).length,
+        excludedProduce: 0,
+        excluded: []
+      }
+    };
+  }
+
+  const included = [];
+  const excluded = [];
+
+  for (const ingredient of ingredients) {
+    if (!isSeasonalityProduce(ingredient)) {
+      included.push(ingredient);
+      continue;
+    }
+
+    const result = isIngredientInSeason(ingredient, targetDate, location);
+    if (result.eligible) {
+      included.push(ingredient);
+      continue;
+    }
+
+    if (mode === 'seasonal_preferred' && result.reason === 'out_of_season') {
+      included.push(ingredient);
+      continue;
+    }
+
+    excluded.push({
+      id: ingredient.id,
+      name: ingredient.name,
+      category: ingredient.category,
+      reason: result.reason,
+      month: result.month
+    });
+  }
+
+  return {
+    ingredients: included,
+    audit: {
+      version: SEASONALITY.version,
+      source: SEASONALITY.source,
+      status: SEASONALITY.status,
+      mode,
+      location,
+      applied: true,
+      totalProduce: ingredients.filter(isSeasonalityProduce).length,
+      excludedProduce: excluded.length,
+      unknownSeasonalityExcluded: excluded.filter((item) => item.reason === 'unknown_seasonality').length,
+      outOfSeasonExcluded: excluded.filter((item) => item.reason === 'out_of_season').length,
+      excluded: excluded.slice(0, 25)
+    }
+  };
 }
 
 function itemNutritionRole(item = {}) {
@@ -3120,6 +3304,7 @@ function validateMealAssembly(meal = {}) {
   for (const [component, rules] of Object.entries(MEAL_ASSEMBLY.orphanComponents)) {
     const present = ingredients.some((item) => itemHasAnyPattern(item, rules.patterns));
     if (!present) continue;
+    if (Array.isArray(rules.standaloneMealTypes) && rules.standaloneMealTypes.includes(meal.mealType)) continue;
 
     const hasRequiredCompanion = rules.requiresAny.some((requirement) => {
       if (requirement === 'milk_base') return ingredients.some((item) => itemHasAnyPattern(item, ['latte', 'milk', 'bevanda di soia', 'soy milk']));
@@ -3314,7 +3499,9 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     workoutNutritionContext: workoutContext,
   };
 
-  const eligibleIngredients = await loadEligibleIngredients(pool, dietCol, allergenCols);
+  const rawEligibleIngredients = await loadEligibleIngredients(pool, dietCol, allergenCols);
+  const seasonalityResult = applySeasonalityFilter(rawEligibleIngredients, date, engineProfile);
+  const eligibleIngredients = seasonalityResult.ingredients;
   const safeIngredients = applyPathologyFilter(eligibleIngredients, userPathologies);
   const pathologyFilter = calcPathologyExclusions(eligibleIngredients, userPathologies);
   const trainingToday = isTrainingDay(userProfile, date);
@@ -3418,7 +3605,9 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     daySummary: buildDaySummary(adjustedMeals),
     gi_summary: calcDailyGiSummary(adjustedMeals),
     pathology_filter: pathologyFilter,
+    seasonality_filter: seasonalityResult.audit,
     eligibleIngredientsCount: eligibleIngredients.length,
+    eligibleIngredientsRawCount: rawEligibleIngredients.length,
     restrictionsApplied: {
       allergenCols,
       pathologyCols,

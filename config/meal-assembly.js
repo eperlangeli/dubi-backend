@@ -34,6 +34,7 @@ const MEAL_ASSEMBLY = Object.freeze({
     riceCakes: Object.freeze({
       patterns: Object.freeze(['gallette', 'rice cakes', 'rice cake']),
       requiresAny: Object.freeze(['honey', 'jam', 'fruit']),
+      standaloneMealTypes: Object.freeze(['pre_workout']),
       preferredAssemblies: Object.freeze(['rice_cakes_with_honey', 'rice_cakes_with_fruit'])
     }),
     puffedRice: Object.freeze({

@@ -145,6 +145,60 @@ WHERE research_consent = TRUE
 COMMIT;
 ```
 
+## 0d. Produce seasonality foundation
+
+Run this before relying on database-level strict seasonality. The backend already has an Italian default fallback list in `config/seasonality.js`, but these columns/table are required to move from name-pattern fallback to precise ingredient-level seasonality by country/region.
+
+```sql
+BEGIN;
+
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'IT',
+  ADD COLUMN IF NOT EXISTS region TEXT DEFAULT 'all',
+  ADD COLUMN IF NOT EXISTS seasonality_mode TEXT NOT NULL DEFAULT 'strict'
+    CHECK (seasonality_mode IN ('strict', 'seasonal_preferred', 'off'));
+
+ALTER TABLE public.ingredients
+  ADD COLUMN IF NOT EXISTS seasonal_key TEXT,
+  ADD COLUMN IF NOT EXISTS seasonality JSONB DEFAULT '{}'::JSONB,
+  ADD COLUMN IF NOT EXISTS greenhouse_available BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS frozen_available BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS freshness_form TEXT DEFAULT 'fresh'
+    CHECK (freshness_form IN ('fresh', 'frozen_natural', 'canned_natural', 'dried', 'processed'));
+
+CREATE TABLE IF NOT EXISTS public.ingredient_seasonality (
+  id BIGSERIAL PRIMARY KEY,
+  ingredient_id INTEGER NOT NULL REFERENCES public.ingredients(id) ON DELETE CASCADE,
+  country TEXT NOT NULL DEFAULT 'IT',
+  regions TEXT[] NOT NULL DEFAULT ARRAY['all']::TEXT[],
+  months INTEGER[] NOT NULL,
+  hemisphere TEXT DEFAULT 'north',
+  climate_area TEXT DEFAULT 'mediterranean',
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (ingredient_id, country, regions),
+  CHECK (
+    array_length(months, 1) IS NOT NULL
+    AND months <@ ARRAY[1,2,3,4,5,6,7,8,9,10,11,12]
+  )
+);
+
+CREATE INDEX IF NOT EXISTS idx_ingredient_seasonality_lookup
+  ON public.ingredient_seasonality(ingredient_id, country);
+
+ALTER TABLE public.ingredient_seasonality ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ingredient_seasonality FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS ingredient_seasonality_select ON public.ingredient_seasonality;
+CREATE POLICY ingredient_seasonality_select ON public.ingredient_seasonality
+  FOR SELECT USING (true);
+
+COMMIT;
+```
+
+After the table is created, seed one row per fruit/vegetable (or set `ingredients.seasonality`) before depending only on DB metadata. In strict mode, unknown fruit/vegetable seasonality is intentionally treated as not eligible.
+
 ## 1. Schema alignment required by this backend
 
 ```sql
@@ -152,6 +206,12 @@ BEGIN;
 
 ALTER TABLE public.users
   ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'IT',
+  ADD COLUMN IF NOT EXISTS region TEXT DEFAULT 'all',
+  ADD COLUMN IF NOT EXISTS seasonality_mode TEXT NOT NULL DEFAULT 'strict'
+    CHECK (seasonality_mode IN ('strict', 'seasonal_preferred', 'off'));
 
 ALTER TABLE public.users
   DROP CONSTRAINT IF EXISTS users_parental_consent_status_check;
