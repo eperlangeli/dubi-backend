@@ -9,6 +9,8 @@
 const { MEAL_FLOORS } = require('../config/meal-floors');
 const { WORKOUT_NUTRITION } = require('../config/workout-nutrition');
 const { PLATE_STRUCTURE } = require('../config/plate-structure');
+const { MEAL_GRAMMAR } = require('../config/meal-grammar');
+const { MEAL_ASSEMBLY } = require('../config/meal-assembly');
 
 const DIET_COL = {
   omnivore: 'compatible_omnivore',
@@ -489,12 +491,12 @@ function buildVarietyTracker() {
 
 function isFishIngredient(ingredient) {
   const text = `${ingredient.category || ''} ${ingredient.subcategory || ''} ${ingredient.name || ''}`.toLowerCase();
-  return /\bfish\b|pesce|salmone|tonno|merluzzo|orata|branzino/.test(text);
+  return /\bfish\b|pesce|salmone|tonno|merluzzo|nasello|orata|branzino|sardine|sardina|sgombro|alici|acciughe|aringa|trota|platessa|sogliola|gamberi|gambero|calamari|calamaro|polpo/.test(text);
 }
 
 function isProcessedMeat(ingredient) {
   const text = `${ingredient.subcategory || ''} ${ingredient.name || ''}`.toLowerCase();
-  return /cured_meat|affettat|bresaola|prosciutto|salame|fesa/.test(text);
+  return /processed_meat|cured_meat|deli_meat|sausage|affettat|bresaola|prosciutto|salame|fesa|speck|mortadella|wurstel|salsiccia|bacon|pancetta|nuggets|hamburger industriale|arrosto confezionato|impanata|precotta|carne in scatola/.test(text);
 }
 
 function checkVariety(ingredient, dayTracker, mealTracker) {
@@ -613,10 +615,10 @@ function breakfastIngredientText(ingredient) {
 function matchesBreakfastStyle(ingredient, style) {
   const text = breakfastIngredientText(ingredient);
   if (style === 'sweet') {
-    return /frutta|fruit|banana|mela|pera|fragol|mirtill|berry|berries|avena|oat|muesli|granola|yogurt|skyr|kefir|latte|milk|cacao|cocoa|miele|honey|marmellata|jam|pane|toast|ricotta/.test(text);
+    return /frutta|fruit|banana|mela|pera|fragol|mirtill|berry|berries|avena|oat|muesli|granola|yogurt|skyr|kefir|latte|milk|cacao|cocoa|miele|honey|marmellata|jam|pane|toast|ricotta|fiocchi di latte|cottage/.test(text);
   }
   if (style === 'savory') {
-    return /uov|egg|album|avocado|salmone|salmon|tonno|tuna|tacchino|turkey|pollo|chicken|bresaola|prosciutto|hummus|tofu|tempeh|formaggio|cheese|fiocchi di latte|cottage|legume|legumi|pane|toast/.test(text);
+    return /uov|egg|album|avocado|bresaola|tofu|ricotta|fiocchi di latte|cottage|pane|toast|verdura|vegetable|pomodor|spinaci|rucola/.test(text);
   }
   return true;
 }
@@ -668,6 +670,148 @@ function isMainMeal(mealType) {
 function matchesAnyPattern(item = {}, patterns = []) {
   const text = ingredientText(item);
   return patterns.some((pattern) => text.includes(normalizeToken(pattern)));
+}
+
+function textMatchesPatterns(text, patterns = []) {
+  const normalizedText = normalizeToken(text);
+  return patterns.some((pattern) => normalizedText.includes(normalizeToken(pattern)));
+}
+
+function itemHasAnyPattern(item = {}, patterns = []) {
+  return textMatchesPatterns(ingredientText(item), patterns);
+}
+
+function itemNutritionRole(item = {}) {
+  const text = ingredientText(item);
+  if (item.category === 'fruit') return 'fruit';
+  if (item.category === 'vegetable' && isDenseVegetableIngredient(item)) return 'starchy_carb';
+  if (item.category === 'vegetable') return 'non_starchy_vegetable';
+  if (item.category === 'legume') return 'legume';
+  if (item.category === 'grain') return 'carbohydrate';
+  if (item.category === 'fat' || item.category === 'nut_seed') return 'fat';
+  if (['protein_animal', 'protein_plant', 'egg', 'dairy', 'dairy_alt', 'supplement'].includes(item.category)) return 'protein';
+  if (textMatchesPatterns(text, MEAL_GRAMMAR.carbohydrateStrategy.starchyFoods)) return 'carbohydrate';
+  return 'other';
+}
+
+function isBresaolaItem(item = {}) {
+  return itemHasAnyPattern(item, ['bresaola']);
+}
+
+function isSmokedFishItem(item = {}) {
+  return isFishIngredient(item) && itemHasAnyPattern(item, MEAL_GRAMMAR.fish.excludePatterns);
+}
+
+function isForbiddenFatItem(item = {}) {
+  return itemHasAnyPattern(item, MEAL_GRAMMAR.fats.excludedPatterns);
+}
+
+function isParmesanItem(item = {}) {
+  return itemHasAnyPattern(item, ['parmigiano', 'parmesan']);
+}
+
+function isAgedCheeseStandardExcludedItem(item = {}) {
+  if (isParmesanItem(item)) return false;
+  return itemHasAnyPattern(item, MEAL_GRAMMAR.dairy.agedCheeseExcludedPatterns);
+}
+
+function isProcessedMeatExcludedItem(item = {}, mealType = null) {
+  if (!isProcessedMeat(item) && !itemHasAnyPattern(item, MEAL_GRAMMAR.meat.excludedPatterns)) return false;
+  if (!isBresaolaItem(item)) return true;
+
+  const exception = MEAL_GRAMMAR.meat.processedException.bresaola;
+  return !exception.allowed || !exception.contexts.includes(mealType);
+}
+
+function isStandardExcludedIngredient(item = {}, mealType = null) {
+  if (isForbiddenFatItem(item)) return true;
+  if (isAgedCheeseStandardExcludedItem(item)) return true;
+  if (isSmokedFishItem(item)) return true;
+  if (isProcessedMeatExcludedItem(item, mealType)) return true;
+  if (itemHasAnyPattern(item, MEAL_GRAMMAR.pasta.forbiddenStandardPatterns)) return true;
+  return false;
+}
+
+function filterWithFallback(candidates, predicate) {
+  if (!Array.isArray(candidates) || candidates.length === 0) return candidates;
+  const filtered = candidates.filter(predicate);
+  return filtered.length > 0 ? filtered : candidates;
+}
+
+function isProteinCandidate(item = {}) {
+  return itemNutritionRole(item) === 'protein'
+    || hasSlot(item, 'protein')
+    || item.slot === 'protein';
+}
+
+function isBreakfastProteinAllowed(item = {}, style = 'sweet') {
+  const breakfastRules = MEAL_GRAMMAR.breakfast[style] || MEAL_GRAMMAR.breakfast.sweet;
+  if (item.category === 'supplement' && !MEAL_GRAMMAR.breakfast.powdersAllowedByDefault) return false;
+  if (itemHasAnyPattern(item, breakfastRules.excludedProteinPatterns)) return false;
+  if (isSmokedFishItem(item)) return false;
+  if (isProcessedMeatExcludedItem(item, 'breakfast')) return false;
+  return itemHasAnyPattern(item, breakfastRules.allowedProteinPatterns);
+}
+
+function isBreakfastIngredientAllowed(item = {}, style = 'sweet', slot = null) {
+  if (isStandardExcludedIngredient(item, 'breakfast') && !isBresaolaItem(item)) return false;
+  if (isProteinCandidate(item) || slot === 'protein') return isBreakfastProteinAllowed(item, style);
+  return matchesBreakfastStyle(item, style);
+}
+
+function isEasyCarbSnackItem(item = {}) {
+  return itemHasAnyPattern(item, MEAL_GRAMMAR.snack.easyCarbPatterns) || isRapidCarbIngredient(item);
+}
+
+function isPreWorkoutIngredientAllowed(item = {}, slot = null) {
+  if (isForbiddenFatItem(item) || itemHasAnyPattern(item, MEAL_GRAMMAR.workout.pre.excludedPatterns)) return false;
+  if (slot === 'protein' || isProteinCandidate(item)) return false;
+  if (isCarbSlot(slot, item) || item.category === 'fruit') return isEasyCarbSnackItem(item);
+  return !isFatHeavyIngredient(item, MEAL_GRAMMAR.workout.pre.maxFatG);
+}
+
+function isPostWorkoutProteinAllowed(item = {}) {
+  if (isStandardExcludedIngredient(item, 'post_workout')) return false;
+  if (isForbiddenFatItem(item)) return false;
+  return itemHasAnyPattern(item, MEAL_GRAMMAR.workout.post.allowedProteinPatterns)
+    || (isProteinCandidate(item) && !isFatHeavyIngredient(item, MEAL_GRAMMAR.workout.post.maxFatG));
+}
+
+function isMainMealIngredientAllowed(item = {}, mealType = null) {
+  if (isStandardExcludedIngredient(item, mealType)) return false;
+  if (isBreakfastOnlyItem(item)) return false;
+  return true;
+}
+
+function applyMealGrammarCandidateRules(candidates, meal, mealType, slot, userProfile = {}) {
+  if (!Array.isArray(candidates) || candidates.length === 0) return candidates;
+
+  let filtered = candidates.filter((ingredient) => !isStandardExcludedIngredient(ingredient, mealType));
+  if (filtered.length === 0) return [];
+
+  if (mealType === 'breakfast') {
+    const style = effectiveBreakfastStyle(userProfile);
+    if (style === 'sweet' || style === 'savory') {
+      filtered = filtered.filter((ingredient) => isBreakfastIngredientAllowed(ingredient, style, slot));
+    }
+  }
+
+  if (mealType === 'pre_workout') {
+    filtered = filtered.filter((ingredient) => isPreWorkoutIngredientAllowed(ingredient, slot));
+  }
+
+  if (mealType === 'post_workout' && slot === 'protein') {
+    filtered = filtered.filter(isPostWorkoutProteinAllowed);
+  }
+
+  if (isMainMeal(mealType)) {
+    filtered = filtered.filter((ingredient) => isMainMealIngredientAllowed(ingredient, mealType));
+    if (slot === 'protein') {
+      filtered = filtered.filter((ingredient) => !isParmesanItem(ingredient));
+    }
+  }
+
+  return filtered;
 }
 
 function itemTimings(item = {}) {
@@ -1038,6 +1182,284 @@ function ensurePlateStructure(meal, eligibleIngredients, dayTracker, mealTracker
   return meal;
 }
 
+function mealHasProteinSource(meal = {}) {
+  return (meal.ingredients || []).some((item) => isProteinCandidate(item) && Number(item.protein || item.protein_g || 0) >= 6);
+}
+
+function mealHasCarbSource(meal = {}) {
+  return (meal.ingredients || []).some((item) => {
+    if (isCarbSlot(item.slot, item)) return true;
+    if (['grain', 'fruit', 'legume'].includes(item.category)) return true;
+    return Boolean(starchFamily(item));
+  });
+}
+
+function removeMealGrammarForbiddenItems(meal = {}) {
+  const before = meal.ingredients.length;
+  const style = meal.mealType === 'breakfast' ? inferBreakfastStyleFromMeal(meal) : null;
+
+  meal.ingredients = (meal.ingredients || []).filter((item) => {
+    if (isStandardExcludedIngredient(item, meal.mealType)) return false;
+    if (meal.mealType === 'breakfast' && isProteinCandidate(item)) {
+      return isBreakfastProteinAllowed(item, style || 'sweet');
+    }
+    if (meal.mealType === 'pre_workout') {
+      return isPreWorkoutIngredientAllowed(item, item.slot);
+    }
+    if (meal.mealType === 'post_workout' && item.slot === 'protein') {
+      return isPostWorkoutProteinAllowed(item);
+    }
+    if (isMainMeal(meal.mealType)) {
+      return isMainMealIngredientAllowed(item, meal.mealType);
+    }
+    return true;
+  });
+
+  if (meal.ingredients.length !== before) recomputeMealTotals(meal);
+  return meal.ingredients.length !== before;
+}
+
+function grammarFallbackCandidates(ingredients, meal, slot, predicate, userProfile = {}) {
+  const mealType = meal.mealType;
+  let candidates = filterBySlotAndTiming(ingredients, slot, mealType);
+  if (candidates.length === 0) {
+    candidates = ingredients.filter((ingredient) => normalizeDbArray(ingredient.template_slots).includes(slot));
+  }
+
+  candidates = applyMealGrammarCandidateRules(candidates, meal, mealType, slot, userProfile)
+    .filter(predicate);
+
+  if (isMainMeal(mealType)) {
+    candidates = applyPlateCandidateRules(candidates, meal, mealType, slot);
+  }
+
+  if (slot === 'protein') {
+    candidates = prioritizeProteinCandidatesForDiet(candidates, mealType, slot, {
+      ...userProfile,
+      currentMealType: mealType,
+      currentSlot: slot
+    });
+  }
+
+  return candidates;
+}
+
+function chooseGrammarFallback(ingredients, meal, slot, predicate, dayTracker, mealTracker, rng, userProfile, date, tag) {
+  const candidates = grammarFallbackCandidates(ingredients, meal, slot, predicate, {
+    ...userProfile,
+    currentMealType: meal.mealType,
+    currentSlot: slot
+  });
+  if (candidates.length === 0) return null;
+
+  const selectionProfile = {
+    ...userProfile,
+    currentMealType: meal.mealType,
+    currentSlot: slot
+  };
+  const seed = `${userProfile.userId || 'anonymous'}:${date}:${meal.mealType}:${slot}:meal-grammar:${tag}`;
+  return pickIngredient(candidates, dayTracker, mealTracker, rng, selectionProfile, seed)
+    || [...candidates]
+      .sort((a, b) =>
+        mealGrammarPriorityWeight(b, selectionProfile) - mealGrammarPriorityWeight(a, selectionProfile)
+        || String(a.name || '').localeCompare(String(b.name || ''))
+      )[0]
+    || null;
+}
+
+function addGrammarFallbackItem(meal, ingredient, slot, mealCalorieTarget, caloriesFraction = 0.25) {
+  if (!ingredient) return false;
+  const targetCalories = Math.max(80, Math.round(Number(mealCalorieTarget || meal.totalCalories || 400) * caloriesFraction));
+  meal.ingredients.push(buildPlanItem(ingredient, slot, calcPortion(ingredient, targetCalories)));
+  recomputeMealTotals(meal);
+  return true;
+}
+
+function ensureBreakfastProtein(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget) {
+  if (meal.mealType !== 'breakfast') return false;
+  if (mealHasProteinSource(meal)) return false;
+
+  const style = inferBreakfastStyleFromMeal(meal, userProfile);
+  const protein = chooseGrammarFallback(
+    eligibleIngredients,
+    meal,
+    'protein',
+    (ingredient) => isBreakfastProteinAllowed(ingredient, style),
+    dayTracker,
+    mealTracker,
+    rng,
+    { ...userProfile, breakfastChoice: style },
+    date,
+    `${style}-breakfast-protein`
+  );
+
+  if (!protein) {
+    console.warn(`[mealEngine] Breakfast protein unmet: no eligible ${style} breakfast protein available`);
+    return false;
+  }
+
+  recordVariety(protein, dayTracker, mealTracker);
+  return addGrammarFallbackItem(meal, protein, 'protein', mealCalorieTarget, 0.3);
+}
+
+function ensurePreWorkoutCarbOnly(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget) {
+  if (meal.mealType !== 'pre_workout') return false;
+  let changed = false;
+
+  changed = removePlateItems(meal, (item) => isProteinCandidate(item) || isFatHeavyIngredient(item, MEAL_GRAMMAR.workout.pre.maxFatG)) || changed;
+
+  if (!mealHasCarbSource(meal)) {
+    const carb = chooseGrammarFallback(
+      eligibleIngredients,
+      meal,
+      'carb',
+      isEasyCarbSnackItem,
+      dayTracker,
+      mealTracker,
+      rng,
+      userProfile,
+      date,
+      'pre-workout-easy-carb'
+    ) || chooseGrammarFallback(
+      eligibleIngredients,
+      meal,
+      'fruit',
+      isEasyCarbSnackItem,
+      dayTracker,
+      mealTracker,
+      rng,
+      userProfile,
+      date,
+      'pre-workout-fruit'
+    );
+
+    if (carb) {
+      recordVariety(carb, dayTracker, mealTracker);
+      changed = addGrammarFallbackItem(meal, carb, carb.category === 'fruit' ? 'fruit' : 'carb', mealCalorieTarget, 0.65) || changed;
+    } else {
+      console.warn('[mealEngine] Pre-workout easy carb unmet: no eligible rapid carb available');
+    }
+  }
+
+  recomputeMealTotals(meal);
+  return changed;
+}
+
+function ensurePostWorkoutProteinAndCarb(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget) {
+  if (meal.mealType !== 'post_workout') return false;
+  let changed = false;
+
+  if (!mealHasProteinSource(meal)) {
+    const protein = chooseGrammarFallback(
+      eligibleIngredients,
+      meal,
+      'protein',
+      isPostWorkoutProteinAllowed,
+      dayTracker,
+      mealTracker,
+      rng,
+      userProfile,
+      date,
+      'post-workout-protein'
+    );
+
+    if (protein) {
+      recordVariety(protein, dayTracker, mealTracker);
+      changed = addGrammarFallbackItem(meal, protein, 'protein', mealCalorieTarget, 0.45) || changed;
+    } else {
+      console.warn('[mealEngine] Post-workout protein unmet: no eligible recovery protein available');
+    }
+  }
+
+  if (!mealHasCarbSource(meal)) {
+    const carb = chooseGrammarFallback(
+      eligibleIngredients,
+      meal,
+      'carb',
+      (ingredient) => isCarbSlot('carb', ingredient) || isEasyCarbSnackItem(ingredient),
+      dayTracker,
+      mealTracker,
+      rng,
+      userProfile,
+      date,
+      'post-workout-carb'
+    ) || chooseGrammarFallback(
+      eligibleIngredients,
+      meal,
+      'fruit',
+      isEasyCarbSnackItem,
+      dayTracker,
+      mealTracker,
+      rng,
+      userProfile,
+      date,
+      'post-workout-fruit'
+    );
+
+    if (carb) {
+      recordVariety(carb, dayTracker, mealTracker);
+      changed = addGrammarFallbackItem(meal, carb, carb.category === 'fruit' ? 'fruit' : 'carb', mealCalorieTarget, 0.4) || changed;
+    } else {
+      console.warn('[mealEngine] Post-workout carb unmet: no eligible recovery carb available');
+    }
+  }
+
+  recomputeMealTotals(meal);
+  return changed;
+}
+
+function isExplicitFatItem(item = {}) {
+  const text = ingredientText(item);
+  return item.category === 'fat'
+    || item.category === 'nut_seed'
+    || text.includes('avocado')
+    || text.includes('tahini')
+    || text.includes('crema di arachidi')
+    || text.includes('peanut butter')
+    || text.includes('almond butter');
+}
+
+function explicitFatScore(item = {}) {
+  const text = ingredientText(item);
+  if (textMatchesPatterns(text, ['olio evo', 'olio extravergine', 'extra virgin olive oil'])) return 100;
+  if (text.includes('avocado')) return 55;
+  if (text.includes('tahini')) return 50;
+  if (item.category === 'nut_seed') return 35;
+  return Number(item.fat || item.fat_g || 0);
+}
+
+function enforceMainMealFatStacking(meal = {}) {
+  if (!isMainMeal(meal.mealType)) return false;
+  const fatIndexes = (meal.ingredients || [])
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => isExplicitFatItem(item));
+
+  if (fatIndexes.length <= MEAL_GRAMMAR.fats.stacking.maxMainMealFatSources) return false;
+
+  const keep = [...fatIndexes]
+    .sort((a, b) => explicitFatScore(b.item) - explicitFatScore(a.item) || a.index - b.index)
+    .slice(0, MEAL_GRAMMAR.fats.stacking.maxMainMealFatSources)
+    .map(({ index }) => index);
+  const keepIndexes = new Set(keep);
+  const removeIndexes = new Set(fatIndexes.filter(({ index }) => !keepIndexes.has(index)).map(({ index }) => index));
+  meal.ingredients = meal.ingredients.filter((_, index) => !removeIndexes.has(index));
+  recomputeMealTotals(meal);
+  return true;
+}
+
+function enforceMealGrammar(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget) {
+  if (!meal || meal.error) return meal;
+
+  removeMealGrammarForbiddenItems(meal);
+  ensureBreakfastProtein(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget);
+  ensurePreWorkoutCarbOnly(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget);
+  ensurePostWorkoutProteinAndCarb(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget);
+  enforceMainMealFatStacking(meal);
+
+  recomputeMealTotals(meal);
+  return meal;
+}
+
 function validatePlateStructureForMeal(meal = {}, userProfile = {}) {
   const mealType = meal.mealType;
   const counts = plateRoleCounts(meal);
@@ -1158,6 +1580,63 @@ function proteinSourcePriorityWeight(ingredient = {}, userProfile = {}) {
 
   if (isPlantProteinSource(ingredient)) return 0.25;
   return 0.7;
+}
+
+function mealGrammarPriorityWeight(ingredient = {}, userProfile = {}) {
+  const mealType = normalizeToken(userProfile.currentMealType || userProfile.mealType);
+  const slot = normalizeToken(userProfile.currentSlot || ingredient.slot);
+  const text = ingredientText(ingredient);
+  let score = 1;
+
+  if (isStandardExcludedIngredient(ingredient, mealType)) return 0.01;
+
+  if (mealType === 'breakfast') {
+    const style = effectiveBreakfastStyle(userProfile);
+    if ((slot === 'protein' || isProteinCandidate(ingredient)) && (style === 'sweet' || style === 'savory')) {
+      score *= isBreakfastProteinAllowed(ingredient, style) ? 1.45 : 0.05;
+    }
+    for (const [index, pattern] of MEAL_GRAMMAR.dairy.priority.entries()) {
+      if (text.includes(normalizeToken(pattern))) score *= 1.35 - Math.min(index, 6) * 0.03;
+    }
+    if (style === 'sweet' && ['fruit', 'grain', 'dairy', 'dairy_alt'].includes(ingredient.category)) score *= 1.12;
+    if (style === 'savory' && ['egg', 'protein_plant', 'dairy'].includes(ingredient.category)) score *= 1.12;
+  }
+
+  if (mealType === 'pre workout' || mealType === 'pre_workout') {
+    if (isEasyCarbSnackItem(ingredient)) score *= 1.45;
+    if (isFatHeavyIngredient(ingredient, MEAL_GRAMMAR.workout.pre.maxFatG)) score *= 0.15;
+  }
+
+  if (mealType === 'post workout' || mealType === 'post_workout') {
+    if (slot === 'protein' && isPostWorkoutProteinAllowed(ingredient)) score *= 1.45;
+    if (isRapidCarbIngredient(ingredient)) score *= 1.15;
+  }
+
+  if (isMainMeal(mealType)) {
+    if (slot === 'fat') {
+      if (textMatchesPatterns(text, ['olio evo', 'olio extravergine', 'extra virgin olive oil'])) score *= 1.8;
+      if (text.includes('avocado')) score *= 0.45;
+      if (ingredient.category === 'nut_seed') score *= 0.55;
+    }
+
+    if (slot === 'carb') {
+      if (textMatchesPatterns(text, ['integrale', 'wholegrain', 'whole grain', 'farro', 'orzo', 'avena', 'quinoa', 'basmati', 'venere'])) score *= 1.18;
+      if (text.includes('pane')) score *= 0.92;
+    }
+
+    if (slot === 'protein' && isFishIngredient(ingredient)) {
+      if (itemHasAnyPattern(ingredient, MEAL_GRAMMAR.fish.topPriority)) score *= 1.35;
+      else if (itemHasAnyPattern(ingredient, MEAL_GRAMMAR.fish.excellent)) score *= 1.2;
+      else if (itemHasAnyPattern(ingredient, MEAL_GRAMMAR.fish.goodModerate)) score *= 1.05;
+    }
+
+    if (slot === 'protein' && ingredient.category === 'protein_animal') {
+      if (itemHasAnyPattern(ingredient, MEAL_GRAMMAR.meat.allowedPatterns)) score *= 1.1;
+      if (itemHasAnyPattern(ingredient, ['sovracoscia'])) score *= 0.9;
+    }
+  }
+
+  return Math.max(score, 0.01);
 }
 
 function prioritizeProteinCandidatesForDiet(candidates, mealType, slot, userProfile = {}) {
@@ -1289,7 +1768,8 @@ function pickIngredient(candidates, dayTracker, mealTracker, rng, userProfile, s
       candidate,
       score: deterministicSelectionScore(`${selectionSeed}:${candidate.id}:${candidate.name}`) *
         giScore(candidate, rankingProfile) *
-        proteinSourcePriorityWeight(candidate, rankingProfile),
+        proteinSourcePriorityWeight(candidate, rankingProfile) *
+        mealGrammarPriorityWeight(candidate, rankingProfile),
     }))
     .sort((a, b) => b.score - a.score || String(a.candidate.name).localeCompare(String(b.candidate.name)))
     .map((entry) => entry.candidate)[0] || null;
@@ -1304,7 +1784,8 @@ function pickRequiredProteinFallback(candidates, userProfile, selectionSeed) {
       candidate,
       score: deterministicSelectionScore(`${selectionSeed}:protein-floor:${candidate.id}:${candidate.name}`) *
         giScore(candidate, userProfile) *
-        proteinSourcePriorityWeight(candidate, { ...userProfile, currentSlot: 'protein' }),
+        proteinSourcePriorityWeight(candidate, { ...userProfile, currentSlot: 'protein' }) *
+        mealGrammarPriorityWeight(candidate, { ...userProfile, currentSlot: 'protein' }),
     }))
     .sort((a, b) =>
       b.score - a.score ||
@@ -1562,10 +2043,15 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
       ...userProfile,
       workoutNutritionContext: workoutContext,
     });
+    candidates = applyMealGrammarCandidateRules(candidates, meal, mealType, slot, {
+      ...userProfile,
+      workoutNutritionContext: workoutContext,
+    });
     candidates = applyPlateCandidateRules(candidates, meal, mealType, slot);
 
     if (candidates.length === 0) {
-      if (config && config.required) {
+      const intentionallySuppressedByGrammar = mealType === 'pre_workout' && ['protein', 'fat'].includes(slot);
+      if (config && config.required && !intentionallySuppressedByGrammar) {
         console.error(`[mealEngine] No eligible ingredients for required slot "${slot}" in "${mealType}"`);
       }
       continue;
@@ -1602,10 +2088,16 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
     }
   }
 
+  enforceMealGrammar(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget);
   ensureMainMealVegetable(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date);
   ensureDinnerFat(meal, eligibleIngredients);
   enforceDietProteinSourceHierarchy(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date);
   ensurePlateStructure(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget);
+  enforceMealGrammar(meal, eligibleIngredients, dayTracker, mealTracker, rng, userProfile, date, mealCalorieTarget);
+  if (isMainMeal(meal.mealType)) {
+    meal.plateStructure = validatePlateStructureForMeal(meal, userProfile);
+    meal.plate_structure = meal.plateStructure;
+  }
   recomputeMealTotals(meal);
   annotateBreakfastStyle(meal, userProfile);
   return meal;
@@ -2210,6 +2702,257 @@ function buildPlateStructureAudit(meals, userProfile = {}) {
   };
 }
 
+function validateMealGrammarForMeal(meal = {}, userProfile = {}) {
+  const issues = [];
+  const ingredients = meal.ingredients || [];
+  const mealType = meal.mealType;
+
+  const excluded = ingredients.filter((item) => isStandardExcludedIngredient(item, mealType));
+  if (excluded.length > 0) {
+    issues.push({
+      code: 'standard_excluded_ingredient',
+      items: excluded.map((item) => item.name).filter(Boolean)
+    });
+  }
+
+  if (mealType === 'breakfast') {
+    const style = inferBreakfastStyleFromMeal(meal, userProfile);
+    if (!mealHasProteinSource(meal)) issues.push({ code: 'breakfast_missing_protein', style });
+
+    const invalidProteins = ingredients
+      .filter(isProteinCandidate)
+      .filter((item) => !isBreakfastProteinAllowed(item, style));
+    if (invalidProteins.length > 0) {
+      issues.push({
+        code: 'breakfast_incompatible_protein',
+        style,
+        items: invalidProteins.map((item) => item.name).filter(Boolean)
+      });
+    }
+  }
+
+  if (mealType === 'pre_workout') {
+    if (!mealHasCarbSource(meal)) issues.push({ code: 'pre_workout_missing_easy_carb' });
+    const heavyItems = ingredients.filter((item) =>
+      isProteinCandidate(item) || isFatHeavyIngredient(item, MEAL_GRAMMAR.workout.pre.maxFatG)
+    );
+    if (heavyItems.length > 0) {
+      issues.push({
+        code: 'pre_workout_heavy_or_protein_item',
+        items: heavyItems.map((item) => item.name).filter(Boolean)
+      });
+    }
+  }
+
+  if (mealType === 'post_workout') {
+    if (!mealHasProteinSource(meal)) issues.push({ code: 'post_workout_missing_protein' });
+    if (!mealHasCarbSource(meal)) issues.push({ code: 'post_workout_missing_carb' });
+  }
+
+  if (isMainMeal(mealType)) {
+    const explicitFatCount = ingredients.filter(isExplicitFatItem).length;
+    if (explicitFatCount > MEAL_GRAMMAR.fats.stacking.maxMainMealFatSources) {
+      issues.push({
+        code: 'too_many_explicit_fats',
+        max: MEAL_GRAMMAR.fats.stacking.maxMainMealFatSources,
+        actual: explicitFatCount
+      });
+    }
+
+    const parmesanMain = ingredients.filter((item) =>
+      isPlateMainProteinItem(item, mealType) && isParmesanItem(item)
+    );
+    if (parmesanMain.length > 0 && ingredients.filter((item) => isPlateMainProteinItem(item, mealType)).length === parmesanMain.length) {
+      issues.push({ code: 'parmesan_used_as_only_main_protein' });
+    }
+  }
+
+  return {
+    mealType,
+    passed: issues.length === 0,
+    issues
+  };
+}
+
+function buildMealGrammarAudit(meals, userProfile = {}) {
+  const mealAudits = (meals || []).map((meal) => validateMealGrammarForMeal(meal, userProfile));
+  return {
+    version: MEAL_GRAMMAR.version,
+    source: MEAL_GRAMMAR.source,
+    status: MEAL_GRAMMAR.status,
+    scienceBasis: MEAL_GRAMMAR.scienceBasis,
+    passed: mealAudits.every((audit) => audit.passed),
+    meals: mealAudits
+  };
+}
+
+function produceColor(item = {}) {
+  const text = ingredientText(item);
+  if (textMatchesPatterns(text, ['broccoli', 'spinaci', 'zucchine', 'cavolo riccio', 'cetriol', 'asparagi', 'lattuga', 'rucola', 'valeriana', 'cicoria', 'piselli'])) return 'green';
+  if (textMatchesPatterns(text, ['pomodoro', 'peperone rosso', 'ravanell', 'fragol', 'cilieg', 'melograno'])) return 'red';
+  if (textMatchesPatterns(text, ['carot', 'zucca', 'peperone aranc', 'arancia', 'albicocc', 'pesca', 'mandarino'])) return 'orange';
+  if (textMatchesPatterns(text, ['melanzan', 'cavolo viola', 'cipolla rossa', 'mirtill', 'frutti di bosco', 'uva', 'prugna'])) return 'purple';
+  if (textMatchesPatterns(text, ['cavolfiore', 'funghi', 'finocchi', 'cipolla', 'pera', 'mela', 'banana'])) return 'white';
+  return null;
+}
+
+function isPlantVarietyProduce(item = {}) {
+  if (item.category === 'fruit') return true;
+  if (item.category !== 'vegetable') return false;
+  return !isDenseVegetableIngredient(item);
+}
+
+function isCruciferousItem(item = {}) {
+  return itemHasAnyPattern(item, ['broccoli', 'cavolfiore', 'cavolo', 'cavoletti', 'bok choy']);
+}
+
+function isLeafyGreenItem(item = {}) {
+  return itemHasAnyPattern(item, ['spinaci', 'lattuga', 'rucola', 'valeriana', 'cicoria', 'cavolo riccio']);
+}
+
+function isBerryItem(item = {}) {
+  return itemHasAnyPattern(item, ['mirtilli', 'mirtillo', 'fragole', 'fragola', 'frutti di bosco', 'berry', 'berries', 'raspberry', 'blackberry']);
+}
+
+function buildPlantVarietyAudit(meals = []) {
+  const items = meals.flatMap((meal) => (meal.ingredients || []).map((item) => ({ ...item, mealType: meal.mealType })));
+  const produceItems = items.filter(isPlantVarietyProduce);
+  const colors = [...new Set(produceItems.map(produceColor).filter(Boolean))];
+  const vegetableServings = items
+    .filter((item) => item.category === 'vegetable' && !isDenseVegetableIngredient(item))
+    .reduce((sum, item) => sum + Math.max(0.5, Number(item.portionG || 0) / 120), 0);
+  const fruitServings = items
+    .filter((item) => item.category === 'fruit')
+    .reduce((sum, item) => sum + Math.max(0.5, Number(item.portionG || 0) / 130), 0);
+  const mainMealsWithoutVegetables = meals
+    .filter((meal) => ['lunch', 'dinner'].includes(meal.mealType))
+    .filter((meal) => !(meal.ingredients || []).some((item) => item.category === 'vegetable' && !isDenseVegetableIngredient(item)))
+    .map((meal) => meal.mealType);
+
+  const checks = {
+    mainMealsHaveVegetables: mainMealsWithoutVegetables.length === 0,
+    dailyVegetables: vegetableServings >= MEAL_GRAMMAR.plantVariety.vegetableServingsDailyTarget,
+    dailyFruit: fruitServings >= MEAL_GRAMMAR.plantVariety.fruitServingsDailyTarget,
+    dailyColors: colors.length >= MEAL_GRAMMAR.plantVariety.dailyColorMinimum
+  };
+
+  return {
+    version: MEAL_GRAMMAR.version,
+    source: MEAL_GRAMMAR.source,
+    status: MEAL_GRAMMAR.status,
+    passed: Object.values(checks).every(Boolean),
+    colors,
+    dailyColorMinimum: MEAL_GRAMMAR.plantVariety.dailyColorMinimum,
+    dailyColorTarget: MEAL_GRAMMAR.plantVariety.dailyColorTarget,
+    vegetableServings: Math.round(vegetableServings * 10) / 10,
+    vegetableServingsTarget: MEAL_GRAMMAR.plantVariety.vegetableServingsDailyTarget,
+    fruitServings: Math.round(fruitServings * 10) / 10,
+    fruitServingsTarget: MEAL_GRAMMAR.plantVariety.fruitServingsDailyTarget,
+    cruciferousCount: items.filter(isCruciferousItem).length,
+    leafyGreensCount: items.filter(isLeafyGreenItem).length,
+    berriesCount: items.filter(isBerryItem).length,
+    mainMealsWithoutVegetables,
+    checks
+  };
+}
+
+function produceFallbackCandidates(ingredients = [], mealType, category = null, color = null) {
+  return ingredients.filter((ingredient) => {
+    if (!isPlantVarietyProduce(ingredient)) return false;
+    if (category && ingredient.category !== category) return false;
+    if (color && produceColor(ingredient) !== color) return false;
+    if (isStandardExcludedIngredient(ingredient, mealType)) return false;
+
+    const timings = normalizeDbArray(ingredient.meal_timing);
+    return timings.length === 0 || timings.includes(mealType);
+  });
+}
+
+function chooseProduceFallback(ingredients, mealType, category, color, dayTracker, mealTracker, rng, userProfile, date, tag) {
+  const candidates = produceFallbackCandidates(ingredients, mealType, category, color);
+  if (candidates.length === 0) return null;
+
+  const selectionProfile = {
+    ...userProfile,
+    currentMealType: mealType,
+    currentSlot: category === 'fruit' ? 'fruit' : 'vegetable'
+  };
+  const seed = `${userProfile.userId || 'anonymous'}:${date}:${mealType}:${category || 'produce'}:${color || 'any'}:${tag}`;
+  return pickIngredient(candidates, dayTracker, mealTracker, rng, selectionProfile, seed)
+    || candidates
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))[0]
+    || null;
+}
+
+function addProduceFallbackToMeal(meal, ingredient, dayTracker, mealTracker, portionG = null) {
+  if (!meal || !ingredient) return false;
+  const slot = ingredient.category === 'fruit' ? 'fruit' : 'vegetable';
+  const bounds = getPortionBoundsForIngredient(ingredient);
+  const grams = portionG || Math.min(bounds.max, Math.max(bounds.min, bounds.typical));
+  meal.ingredients.push(buildPlanItem(ingredient, slot, grams));
+  recordVariety(ingredient, dayTracker, mealTracker);
+  recomputeMealTotals(meal);
+  return true;
+}
+
+function findMealForProduce(meals = [], preferredTypes = []) {
+  for (const mealType of preferredTypes) {
+    const meal = meals.find((entry) => entry.mealType === mealType);
+    if (meal) return meal;
+  }
+  return meals.find((meal) => !meal.error) || null;
+}
+
+function enforcePlantVariety(meals, eligibleIngredients, dayTracker, rng, userProfile, date) {
+  if (!Array.isArray(meals) || meals.length === 0) return meals;
+
+  const mealTracker = { mainMeal: false, grainCount: 0 };
+  let audit = buildPlantVarietyAudit(meals);
+  const colorOrder = ['green', 'red', 'orange', 'purple', 'white'];
+
+  for (let guard = 0; guard < 6 && !audit.checks.dailyColors; guard += 1) {
+    const missingColor = colorOrder.find((color) => !audit.colors.includes(color));
+    if (!missingColor) break;
+
+    const fruitMeal = findMealForProduce(meals, ['snack', 'breakfast', 'pre_workout', 'post_workout']);
+    const fruit = fruitMeal
+      ? chooseProduceFallback(eligibleIngredients, fruitMeal.mealType, 'fruit', missingColor, dayTracker, mealTracker, rng, userProfile, date, 'color-fruit')
+      : null;
+    if (fruit && addProduceFallbackToMeal(fruitMeal, fruit, dayTracker, mealTracker)) {
+      audit = buildPlantVarietyAudit(meals);
+      continue;
+    }
+
+    const vegMeal = findMealForProduce(meals, ['lunch', 'dinner']);
+    if (!vegMeal || (vegMeal.ingredients || []).filter((item) => item.category === 'vegetable' && !isDenseVegetableIngredient(item)).length >= 2) break;
+    const vegetable = chooseProduceFallback(eligibleIngredients, vegMeal.mealType, 'vegetable', missingColor, dayTracker, mealTracker, rng, userProfile, date, 'color-veg');
+    if (!vegetable || !addProduceFallbackToMeal(vegMeal, vegetable, dayTracker, mealTracker)) break;
+    audit = buildPlantVarietyAudit(meals);
+  }
+
+  audit = buildPlantVarietyAudit(meals);
+
+  for (let guard = 0; guard < 4 && !audit.checks.dailyFruit; guard += 1) {
+    const meal = findMealForProduce(meals, ['snack', 'breakfast', 'pre_workout', 'post_workout']);
+    if (!meal) break;
+    const fruit = chooseProduceFallback(eligibleIngredients, meal.mealType, 'fruit', null, dayTracker, mealTracker, rng, userProfile, date, 'daily-fruit');
+    if (!fruit || !addProduceFallbackToMeal(meal, fruit, dayTracker, mealTracker)) break;
+    audit = buildPlantVarietyAudit(meals);
+  }
+
+  for (let guard = 0; guard < 4 && !audit.checks.dailyVegetables; guard += 1) {
+    const meal = meals
+      .filter((entry) => ['lunch', 'dinner'].includes(entry.mealType))
+      .find((entry) => (entry.ingredients || []).filter((item) => item.category === 'vegetable' && !isDenseVegetableIngredient(item)).length < 2);
+    if (!meal) break;
+    const vegetable = chooseProduceFallback(eligibleIngredients, meal.mealType, 'vegetable', null, dayTracker, { mainMeal: true, grainCount: 0 }, rng, userProfile, date, 'daily-vegetable');
+    if (!vegetable || !addProduceFallbackToMeal(meal, vegetable, dayTracker, { mainMeal: true, grainCount: 0 })) break;
+    audit = buildPlantVarietyAudit(meals);
+  }
+
+  return meals;
+}
+
 function buildMealFloorAudit(meals, userProfile = {}, dailyCalTarget = null) {
   const proteinFloorG = proteinFloorForMeal(userProfile);
   const proteinCeilingG = proteinCeilingForMeal(userProfile);
@@ -2267,6 +3010,154 @@ function buildDaySummary(meals) {
     totalProtein: Math.round(summary.totalProtein * 10) / 10,
     totalCarbs: Math.round(summary.totalCarbs * 10) / 10,
     totalFat: Math.round(summary.totalFat * 10) / 10,
+  };
+}
+
+function displayIngredientName(item = {}, lang = 'it') {
+  const raw = lang === 'en' ? (item.name_en || item.name) : (item.name || item.name_en);
+  const name = String(raw || '').trim();
+  if (!name) return '';
+  const normalized = normalizeToken(name);
+  if (normalized.includes('pane') || normalized.includes('bread')) {
+    if (normalized.includes('fresco') || normalized.includes('fresh')) return name;
+    if (lang === 'en') return name.toLowerCase().includes('fresh') ? name : `Fresh ${name}`;
+    return `Pane fresco${normalized === 'pane' ? '' : ` ${name.replace(/^pane\s*/i, '').trim()}`}`.trim();
+  }
+  return name;
+}
+
+function mealContainsPattern(meal = {}, patterns = []) {
+  return (meal.ingredients || []).some((item) => itemHasAnyPattern(item, patterns));
+}
+
+function mealMainDisplayIngredient(meal = {}, lang = 'it') {
+  const protein = (meal.ingredients || []).find((item) => item.slot === 'protein')
+    || (meal.ingredients || []).find(isProteinCandidate)
+    || (meal.ingredients || [])[0];
+  return displayIngredientName(protein || {}, lang) || (lang === 'en' ? 'planned ingredients' : 'ingredienti previsti');
+}
+
+function chooseMealAssemblyType(meal = {}, userProfile = {}) {
+  const mealType = meal.mealType;
+  if (mealType === 'breakfast') {
+    const style = inferBreakfastStyleFromMeal(meal, userProfile);
+    if (style === 'savory') {
+      if (mealContainsPattern(meal, ['tofu'])) return 'tofu_scramble';
+      if (mealContainsPattern(meal, ['uova', 'uovo', 'egg', 'albumi'])) return 'omelette';
+      return 'fresh_bread_toast';
+    }
+
+    if (mealContainsPattern(meal, ['uova', 'albumi', 'egg']) && mealContainsPattern(meal, ['avena', 'oat'])) return 'pancake';
+    if (mealContainsPattern(meal, ['avena', 'oat']) && mealContainsPattern(meal, ['latte', 'milk'])) return 'porridge';
+    if (mealContainsPattern(meal, ['avena', 'oat'])) return 'overnight_oats';
+    if (mealContainsPattern(meal, ['ricotta'])) return 'ricotta_bowl';
+    if (mealContainsPattern(meal, ['pane', 'bread', 'toast'])) return 'fresh_bread_toast';
+    return 'yogurt_bowl';
+  }
+
+  if (mealType === 'pre_workout') {
+    if (mealContainsPattern(meal, ['pane', 'bread', 'toast'])) return 'fresh_bread_toast';
+    return 'quick_carb_snack';
+  }
+
+  if (mealType === 'post_workout') return 'recovery_plate';
+
+  if (isMainMeal(mealType)) {
+    if (mealContainsPattern(meal, ['pasta'])) return 'pasta_plate';
+    if (mealContainsPattern(meal, ['patate', 'potato', 'sweet potato'])) return 'potato_plate';
+    if (mealContainsPattern(meal, ['ceci', 'lenticchie', 'fagioli', 'piselli', 'hummus'])) return 'legume_bowl';
+    if (mealContainsPattern(meal, ['riso', 'rice', 'farro', 'orzo', 'barley', 'quinoa', 'cous cous', 'couscous'])) return 'grain_bowl';
+    if ((meal.ingredients || []).filter(isPlantVarietyProduce).length >= 2) return 'salad_bowl';
+    return 'grain_bowl';
+  }
+
+  if (mealContainsPattern(meal, ['yogurt', 'skyr', 'ricotta'])) return 'yogurt_bowl';
+  if (mealContainsPattern(meal, ['pane', 'bread', 'toast'])) return 'fresh_bread_toast';
+  return 'quick_carb_snack';
+}
+
+function fillAssemblyTemplate(template, meal, lang = 'it') {
+  const main = mealMainDisplayIngredient(meal, lang);
+  return String(template || '').replace(/\{main\}/g, main);
+}
+
+function annotateMealAssembly(meal = {}, userProfile = {}) {
+  if (!meal || meal.error) return meal;
+  const assemblyType = chooseMealAssemblyType(meal, userProfile);
+  const config = MEAL_ASSEMBLY.assemblies[assemblyType] || MEAL_ASSEMBLY.assemblies.grain_bowl;
+  const titleIt = fillAssemblyTemplate(config.titleIt, meal, 'it');
+  const titleEn = fillAssemblyTemplate(config.titleEn, meal, 'en');
+
+  meal.assembly = {
+    version: MEAL_ASSEMBLY.version,
+    source: MEAL_ASSEMBLY.source,
+    status: MEAL_ASSEMBLY.status,
+    type: assemblyType,
+    style: config.style,
+    served_as: config.servedAs,
+    title: {
+      it: titleIt,
+      en: titleEn
+    },
+    instructions: {
+      it: config.instructionsIt,
+      en: config.instructionsEn
+    }
+  };
+  meal.meal_title = titleIt;
+  meal.mealTitle = {
+    it: titleIt,
+    en: titleEn
+  };
+  return meal;
+}
+
+function validateMealAssembly(meal = {}) {
+  const issues = [];
+  const ingredients = meal.ingredients || [];
+  const assemblyType = meal.assembly?.type || null;
+
+  for (const [component, rules] of Object.entries(MEAL_ASSEMBLY.orphanComponents)) {
+    const present = ingredients.some((item) => itemHasAnyPattern(item, rules.patterns));
+    if (!present) continue;
+
+    const hasRequiredCompanion = rules.requiresAny.some((requirement) => {
+      if (requirement === 'milk_base') return ingredients.some((item) => itemHasAnyPattern(item, ['latte', 'milk', 'bevanda di soia', 'soy milk']));
+      if (requirement === 'yogurt_base') return ingredients.some((item) => itemHasAnyPattern(item, ['yogurt', 'skyr', 'kefir']));
+      if (requirement === 'skyr') return ingredients.some((item) => itemHasAnyPattern(item, ['skyr']));
+      if (requirement === 'ricotta') return ingredients.some((item) => itemHasAnyPattern(item, ['ricotta']));
+      if (requirement === 'bread') return ingredients.some((item) => itemHasAnyPattern(item, ['pane', 'bread', 'toast']));
+      if (requirement === 'honey') return ingredients.some((item) => itemHasAnyPattern(item, ['miele', 'honey']));
+      if (requirement === 'jam') return ingredients.some((item) => itemHasAnyPattern(item, ['marmellata', 'jam']));
+      if (requirement === 'fruit') return ingredients.some((item) => item.category === 'fruit');
+      return assemblyType === requirement || mealContainsPattern(meal, [requirement]);
+    });
+
+    if (!hasRequiredCompanion) {
+      issues.push({
+        code: 'orphan_component',
+        component,
+        preferredAssemblies: [...rules.preferredAssemblies]
+      });
+    }
+  }
+
+  return {
+    mealType: meal.mealType,
+    assemblyType,
+    passed: issues.length === 0,
+    issues
+  };
+}
+
+function buildMealAssemblyAudit(meals = []) {
+  const mealAudits = meals.map(validateMealAssembly);
+  return {
+    version: MEAL_ASSEMBLY.version,
+    source: MEAL_ASSEMBLY.source,
+    status: MEAL_ASSEMBLY.status,
+    passed: mealAudits.every((audit) => audit.passed),
+    meals: mealAudits
   };
 }
 
@@ -2467,7 +3358,16 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     dailyCal,
     dailyProtein
   );
+  enforcePlantVariety(adjustedMeals, safeIngredients, dayTracker, rng, engineProfile, date);
+  enforceMealCeilings(adjustedMeals, engineProfile, dailyCal, dailyProtein);
+  adjustedMeals
+    .filter((meal) => isMainMeal(meal.mealType))
+    .forEach((meal) => {
+      meal.plateStructure = validatePlateStructureForMeal(meal, engineProfile);
+      meal.plate_structure = meal.plateStructure;
+    });
   annotateWorkoutBlocks(adjustedMeals, workoutContext, engineProfile);
+  adjustedMeals.forEach((meal) => annotateMealAssembly(meal, engineProfile));
   const generatedBreakfastStyle = adjustedMeals
     .find((meal) => meal.mealType === 'breakfast')
     ?.breakfast_style || null;
@@ -2511,6 +3411,9 @@ async function generateDayPlan(pool, userProfile, targetDate) {
     },
     mealFloorAudit: buildMealFloorAudit(adjustedMeals, engineProfile, dailyCal),
     plateStructureAudit: buildPlateStructureAudit(adjustedMeals, engineProfile),
+    mealGrammarAudit: buildMealGrammarAudit(adjustedMeals, engineProfile),
+    mealAssemblyAudit: buildMealAssemblyAudit(adjustedMeals),
+    plantVarietyAudit: buildPlantVarietyAudit(adjustedMeals),
     meals: adjustedMeals,
     daySummary: buildDaySummary(adjustedMeals),
     gi_summary: calcDailyGiSummary(adjustedMeals),

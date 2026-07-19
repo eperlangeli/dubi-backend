@@ -216,6 +216,15 @@ const MEAL_GRAMMAR = Object.freeze({
       allowedAsTopping: true,
       notMainProtein: true
     }),
+    agedCheeseExcludedPatterns: Object.freeze([
+      'pecorino',
+      'grana',
+      'asiago stagionato',
+      'emmental',
+      'gouda',
+      'fontina',
+      'quattro formaggi'
+    ]),
     agedCheesesStandardGeneration: false,
     plantMilks: Object.freeze({
       allowedOnlyUnsweetened: true,
