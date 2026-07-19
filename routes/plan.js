@@ -1,5 +1,10 @@
 const express = require('express');
-const { generateDayPlan, generateBreakfastOptions, calcDailyGiSummary } = require('../services/mealEngine');
+const {
+  generateDayPlan,
+  generateBreakfastOptions,
+  calcDailyGiSummary,
+  buildWeeklyMealContext
+} = require('../services/mealEngine');
 const { buildDailyBiometricAdaptation } = require('../services/daily-adaptation');
 const { WORKOUT_NUTRITION } = require('../config/workout-nutrition');
 
@@ -64,6 +69,10 @@ function trainingStateFromContext(context = {}) {
 function savedPlanNeedsTrainingRefresh(plan = {}, context = {}) {
   const saved = trainingStateFromPlan(plan);
   const current = trainingStateFromContext(context);
+
+  if (!plan.mealGrammarAudit || !plan.mealAssemblyAudit || !plan.plantVarietyAudit || !plan.weeklyRotationAudit || !plan.seasonality_filter) {
+    return true;
+  }
 
   if (saved.hasTraining !== current.hasTraining) return true;
   if (!current.hasTraining) return false;
@@ -360,11 +369,48 @@ module.exports = (pool) => {
     return true;
   };
 
-  const httpError = (status, error, extra = {}) => {
+const httpError = (status, error, extra = {}) => {
     const err = new Error(error);
     err.status = status;
     err.payload = { error, ...extra };
     return err;
+  };
+
+  const toIsoDate = (date) => date.toISOString().slice(0, 10);
+
+  const parseIsoDate = (value) => {
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+
+  const addUtcDays = (date, days) => {
+    const next = new Date(date);
+    next.setUTCDate(next.getUTCDate() + days);
+    return next;
+  };
+
+  const getWeekStartForDate = (value) => {
+    const date = parseIsoDate(value);
+    const day = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() - day + 1);
+    return toIsoDate(date);
+  };
+
+  const loadWeeklyPlanContext = async (userId, targetDate) => {
+    const weekStart = getWeekStartForDate(targetDate);
+    const weekEnd = toIsoDate(addUtcDays(parseIsoDate(weekStart), 6));
+    const { rows } = await pool.query(
+      `SELECT plan_date, plan_data
+       FROM daily_plans
+       WHERE user_id = $1
+         AND plan_date >= $2
+         AND plan_date <= $3
+         AND plan_date <> $4
+       ORDER BY plan_date ASC`,
+      [userId, weekStart, weekEnd, targetDate]
+    );
+
+    return buildWeeklyMealContext(rows, { weekStart, weekEnd });
   };
 
   const buildIngredientPlanContext = async (userId, targetDate, breakfastChoice = null) => {
@@ -429,6 +475,7 @@ module.exports = (pool) => {
       || sportProfile?.groups?.[0]
       || sportGroups[0]
       || 'none';
+    const weeklyPlanContext = await loadWeeklyPlanContext(userId, targetDate);
 
     const userProfile = {
       userId,
@@ -459,6 +506,7 @@ module.exports = (pool) => {
       breakfastPref:      row.breakfast_pref || 'both',
       breakfastChoice:    breakfastChoice,
       breakfastChoiceReason: breakfastChoice ? 'breakfast_choice' : null,
+      weeklyPlanContext,
     };
 
     return {

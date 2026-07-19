@@ -104,6 +104,19 @@ const makePool = (targetDate, options = {}) => {
         return { rows: plan ? [{ plan_data: plan }] : [] };
       }
 
+      if (normalized.startsWith('SELECT plan_date, plan_data FROM daily_plans')) {
+        const [userId, weekStart, weekEnd, excludeDate] = params;
+        const rows = [];
+        for (const [key, plan] of state.dailyPlans.entries()) {
+          const [storedUserId, storedDate] = key.split(':');
+          if (Number(storedUserId) !== Number(userId)) continue;
+          if (storedDate < weekStart || storedDate > weekEnd || storedDate === excludeDate) continue;
+          rows.push({ plan_date: storedDate, plan_data: plan });
+        }
+        rows.sort((a, b) => String(a.plan_date).localeCompare(String(b.plan_date)));
+        return { rows };
+      }
+
       if (normalized.startsWith('INSERT INTO daily_plans')) {
         const [userId, date, planJson] = params;
         state.dailyPlanWrites += 1;
