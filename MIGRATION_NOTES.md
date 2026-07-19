@@ -194,10 +194,54 @@ DROP POLICY IF EXISTS ingredient_seasonality_select ON public.ingredient_seasona
 CREATE POLICY ingredient_seasonality_select ON public.ingredient_seasonality
   FOR SELECT USING (true);
 
+GRANT SELECT ON public.ingredient_seasonality TO anon, authenticated, service_role;
+GRANT INSERT, UPDATE, DELETE ON public.ingredient_seasonality TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE public.ingredient_seasonality_id_seq TO service_role;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dubi_app') THEN
+    GRANT SELECT ON public.ingredient_seasonality TO dubi_app;
+  END IF;
+END
+$$;
+
 COMMIT;
 ```
 
 After the table is created, seed one row per fruit/vegetable (or set `ingredients.seasonality`) before depending only on DB metadata. In strict mode, unknown fruit/vegetable seasonality is intentionally treated as not eligible.
+
+Backend helper commands:
+
+```bash
+# Audit only: fails if any active fruit/vegetable has no default match.
+npm run audit:seasonality
+
+# Apply seed rows from config/seasonality.js into ingredient_seasonality.
+npm run seed:seasonality
+```
+
+## 0e. Produce seasonality grants repair
+
+Run this if `npm run seed:seasonality` fails with `permission denied for table ingredient_seasonality`, or if the backend database role is not the table owner. This is safe after `0d`.
+
+```sql
+BEGIN;
+
+GRANT SELECT ON public.ingredient_seasonality TO anon, authenticated, service_role;
+GRANT INSERT, UPDATE, DELETE ON public.ingredient_seasonality TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE public.ingredient_seasonality_id_seq TO service_role;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dubi_app') THEN
+    GRANT SELECT ON public.ingredient_seasonality TO dubi_app;
+  END IF;
+END
+$$;
+
+COMMIT;
+```
 
 ## 1. Schema alignment required by this backend
 
