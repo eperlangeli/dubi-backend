@@ -396,6 +396,28 @@ const httpError = (status, error, extra = {}) => {
     return toIsoDate(date);
   };
 
+  const getWeekDatesForDate = (value) => {
+    const weekStart = getWeekStartForDate(value);
+    const start = parseIsoDate(weekStart);
+    return Array.from({ length: 7 }, (_, index) => toIsoDate(addUtcDays(start, index)));
+  };
+
+  const loadSavedPlansForWeek = async (userId, targetDate) => {
+    const weekStart = getWeekStartForDate(targetDate);
+    const weekEnd = toIsoDate(addUtcDays(parseIsoDate(weekStart), 6));
+    const { rows } = await pool.query(
+      `SELECT plan_date, plan_data
+       FROM daily_plans
+       WHERE user_id = $1
+         AND plan_date >= $2
+         AND plan_date <= $3
+       ORDER BY plan_date ASC`,
+      [userId, weekStart, weekEnd]
+    );
+
+    return new Map((rows || []).map((row) => [String(row.plan_date).slice(0, 10), row.plan_data || {}]));
+  };
+
   const loadWeeklyPlanContext = async (userId, targetDate) => {
     const weekStart = getWeekStartForDate(targetDate);
     const weekEnd = toIsoDate(addUtcDays(parseIsoDate(weekStart), 6));
@@ -567,6 +589,22 @@ const httpError = (status, error, extra = {}) => {
     return plan;
   };
 
+  const ensureWeekIngredientPlans = async (userId, targetDate) => {
+    const weekDates = getWeekDatesForDate(targetDate);
+    const weekPlans = await loadSavedPlansForWeek(userId, targetDate);
+
+    for (const date of weekDates) {
+      if (weekPlans.has(date)) continue;
+
+      const plan = await generateAndSaveIngredientPlan(userId, date, null, {
+        syncMealPlans: false,
+      });
+      weekPlans.set(date, plan);
+    }
+
+    return weekPlans;
+  };
+
   // ── POST /plan/generate ───────────────────────────────────────────────────
   router.post('/generate', verifyToken, async (req, res) => {
     try {
@@ -691,15 +729,20 @@ const httpError = (status, error, extra = {}) => {
           });
         }
 
-        return res.json(await generateAndSaveIngredientPlan(req.userId, targetDate, null));
+        const weekPlans = await ensureWeekIngredientPlans(req.userId, targetDate);
+        return res.json(weekPlans.get(targetDate) || await generateAndSaveIngredientPlan(req.userId, targetDate, null));
       }
 
       const plan = result.rows[0].plan_data || {};
       if (shouldGenerateIfMissing) {
         const context = await buildIngredientPlanContext(req.userId, targetDate, null);
         if (savedPlanNeedsTrainingRefresh(plan, context)) {
-          return res.json(await generateAndSaveIngredientPlan(req.userId, targetDate, null, { context }));
+          const refreshedPlan = await generateAndSaveIngredientPlan(req.userId, targetDate, null, { context });
+          await ensureWeekIngredientPlans(req.userId, targetDate);
+          return res.json(refreshedPlan);
         }
+
+        await ensureWeekIngredientPlans(req.userId, targetDate);
       }
 
       if (!plan.gi_summary && Array.isArray(plan.meals)) {

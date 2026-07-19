@@ -206,8 +206,11 @@ const main = async () => {
     const first = await requestJson(baseUrl, `/plan/ingredient-plan/${targetDate}`, token);
     assert.strictEqual(first.status, 200);
     assert.strictEqual(first.json.date, targetDate);
-    assert.strictEqual(pool.state.dailyPlanWrites, 1);
+    assert.strictEqual(pool.state.dailyPlanWrites, 7, 'first GET should generate the whole missing week');
     assert(pool.state.dailyPlans.has(toKey(42, targetDate)));
+    for (const date of ['2026-07-13', '2026-07-14', '2026-07-15', '2026-07-16', '2026-07-17', '2026-07-18', '2026-07-19']) {
+      assert(pool.state.dailyPlans.has(toKey(42, date)), `missing primed daily plan for ${date}`);
+    }
 
     const mealTypes = first.json.meals.map((meal) => meal.mealType);
     assert(mealTypes.includes('pre_workout'), 'future planned training day should include pre_workout');
@@ -223,7 +226,7 @@ const main = async () => {
 
     const second = await requestJson(baseUrl, `/plan/ingredient-plan/${targetDate}`, token);
     assert.strictEqual(second.status, 200);
-    assert.strictEqual(pool.state.dailyPlanWrites, 1, 'second GET should use saved plan, not regenerate');
+    assert.strictEqual(pool.state.dailyPlanWrites, 7, 'second GET should use saved week plans, not regenerate');
     assert.strictEqual(planSignature(second.json), planSignature(first.json));
 
     console.log('ingredient-plan GET generate-if-missing tests passed');
