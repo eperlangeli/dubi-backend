@@ -521,8 +521,21 @@ async function loadEligibleIngredients(pool, dietCol, allergenCols) {
   for (const col of allergenCols) conditions.push(`i.${col} = false`);
 
   const { rows } = await pool.query(`
-    SELECT i.*
+    SELECT
+      i.*,
+      COALESCE(seasonality.rules, '[]'::jsonb) AS seasonality_rules
     FROM ingredients i
+    LEFT JOIN LATERAL (
+      SELECT jsonb_agg(jsonb_build_object(
+        'country', s.country,
+        'regions', s.regions,
+        'months', s.months,
+        'hemisphere', s.hemisphere,
+        'climate_area', s.climate_area
+      ) ORDER BY s.country, s.regions::text) AS rules
+      FROM ingredient_seasonality s
+      WHERE s.ingredient_id = i.id
+    ) seasonality ON TRUE
     WHERE ${conditions.join(' AND ')}
     ORDER BY i.nutritionist_validated DESC, i.name
   `);
@@ -787,10 +800,14 @@ function isIngredientInSeason(item = {}, targetDate, location = userSeasonalityL
   }
 
   const month = planMonth(targetDate);
-  const rules = [
-    ...normalizeSeasonalityRules(item.seasonality),
-    ...defaultSeasonalityRulesForIngredient(item)
+  const explicitRules = [
+    ...normalizeSeasonalityRules(item.seasonality_rules || item.seasonalityRules),
+    ...normalizeSeasonalityRules(item.seasonality)
   ];
+  const rules = explicitRules.length > 0
+    ? explicitRules
+    : defaultSeasonalityRulesForIngredient(item);
+  const ruleSource = explicitRules.length > 0 ? 'db_or_ingredient' : 'config_default';
 
   const matched = rules.find((rule) =>
     countryAllowedByRule(rule, location)
@@ -798,13 +815,14 @@ function isIngredientInSeason(item = {}, targetDate, location = userSeasonalityL
     && monthAllowedByRule(rule, month)
   );
 
-  if (matched) return { eligible: true, reason: 'fresh_in_season', month };
-  if (isNaturalFrozenItem(item)) return { eligible: true, reason: 'frozen_natural_fallback', month };
+  if (matched) return { eligible: true, reason: 'fresh_in_season', month, ruleSource };
+  if (isNaturalFrozenItem(item)) return { eligible: true, reason: 'frozen_natural_fallback', month, ruleSource };
 
   return {
     eligible: false,
     reason: rules.length > 0 ? 'out_of_season' : 'unknown_seasonality',
-    month
+    month,
+    ruleSource
   };
 }
 
