@@ -227,11 +227,11 @@ module.exports = (pool) => {
   };
 
   const normalizeTrainingTime = (value) => canonicalFromMap(value, {
-    mattina: 'morning',
-    morning: 'morning',
-    pranzo: 'lunch',
-    lunch: 'lunch',
-    'pausa pranzo': 'lunch',
+    mattina: 'morning_fasted',
+    morning: 'morning_fasted',
+    pranzo: 'afternoon',
+    lunch: 'afternoon',
+    'pausa pranzo': 'afternoon',
     pomeriggio: 'afternoon',
     afternoon: 'afternoon',
     sera: 'evening',

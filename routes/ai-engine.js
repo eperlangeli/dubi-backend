@@ -84,10 +84,26 @@ const normalizeGoal = (goal) => {
   const value = String(goal || 'maintain').toLowerCase().trim();
   if (['definition', 'definizione', 'cut', 'cutting'].includes(value)) return 'definition';
   if (['fatloss', 'fat_loss', 'dimagrimento', 'weight_loss', 'lose_weight'].includes(value)) return 'fat_loss';
-  if (['lean_bulk', 'lean bulk', 'massa pulita'].includes(value)) return 'lean_bulk';
+  if (['lean_bulk', 'lean bulk', 'massa pulita'].includes(value)) return 'muscle_gain';
   if (['gain', 'muscle_gain', 'massa', 'bulk', 'bulking'].includes(value)) return 'muscle_gain';
   return 'maintain';
 };
+
+const GOAL_MACRO_RULES = Object.freeze({
+  // Validated DUBI nutritionist rules:
+  // fat_loss: -20% and 2.2 g/kg (Helms et al. 2014).
+  // definition: -10% and 2.2 g/kg for already-lean users.
+  // muscle_gain: +15% (Iraki et al. 2019) and 1.6 g/kg protein plateau (Morton et al. 2018).
+  // maintain: 0% and 1.6 g/kg (Morton et al. 2018).
+  maintain: Object.freeze({ calorieMultiplier: 1, proteinPerKg: 1.6, carbFraction: 0.45 }),
+  definition: Object.freeze({ calorieMultiplier: 0.9, proteinPerKg: 2.2, carbFraction: 0.45 }),
+  fat_loss: Object.freeze({ calorieMultiplier: 0.8, proteinPerKg: 2.2, carbFraction: 0.40 }),
+  muscle_gain: Object.freeze({ calorieMultiplier: 1.15, proteinPerKg: 1.6, carbFraction: 0.50 })
+});
+
+// Fat is dynamic residual after protein + carbs, kept in the practical 25-35%
+// range inside the Institute of Medicine AMDR 20-35%.
+const FAT_FRACTION_RANGE = Object.freeze({ min: 0.25, max: 0.35 });
 
 const parseWorkoutDays = (value) => {
   const direct = Number(value);
@@ -145,18 +161,21 @@ const calculateBaseMacroTargets = (user, metabolism) => {
   const weight = Number(user.weight || 0);
   const gender = normalizeGender(user.gender);
   const minCalories = gender === 'M' ? 1500 : 1200;
-  const goalConfig = {
-    maintain: { kcalDelta: 0, proteinPerKg: 1.7, fatPerKg: 0.9, floorAtBmr: false },
-    definition: { kcalDelta: -450, proteinPerKg: 2.5, fatPerKg: 0.9, floorAtBmr: false },
-    fat_loss: { kcalDelta: -625, proteinPerKg: 2.0, fatPerKg: 0.85, floorAtBmr: true },
-    lean_bulk: { kcalDelta: 250, proteinPerKg: 2.0, fatPerKg: 1.0, floorAtBmr: false },
-    muscle_gain: { kcalDelta: 500, proteinPerKg: 2.0, fatPerKg: 1.0, floorAtBmr: false }
-  }[goal];
-  const rawCalories = metabolism.tdee + goalConfig.kcalDelta;
-  const calories = Math.round(Math.max(minCalories, goalConfig.floorAtBmr ? Math.max(rawCalories, metabolism.bmr) : rawCalories));
+  const goalConfig = GOAL_MACRO_RULES[goal] || GOAL_MACRO_RULES.maintain;
+  const calories = Math.round(Math.max(minCalories, metabolism.tdee * goalConfig.calorieMultiplier));
   const protein = Math.round(weight * goalConfig.proteinPerKg);
-  const fats = Math.round(weight * goalConfig.fatPerKg);
-  const carbs = Math.max(50, Math.round((calories - protein * 4 - fats * 9) / 4));
+  const proteinCalories = protein * 4;
+  const desiredCarbs = Math.max(0, Math.round((calories * goalConfig.carbFraction) / 4));
+  const minFatCalories = calories * FAT_FRACTION_RANGE.min;
+  const maxFatCalories = calories * FAT_FRACTION_RANGE.max;
+  const carbLowerBound = Math.max(0, Math.ceil((calories - proteinCalories - maxFatCalories) / 4));
+  const carbUpperBound = Math.max(carbLowerBound, Math.floor((calories - proteinCalories - minFatCalories) / 4));
+  const practicalMinCarbs = 50;
+  const carbFloor = practicalMinCarbs <= carbUpperBound
+    ? Math.max(carbLowerBound, practicalMinCarbs)
+    : carbLowerBound;
+  const carbs = Math.min(carbUpperBound, Math.max(carbFloor, desiredCarbs));
+  const fats = Math.max(0, Math.round((calories - protein * 4 - carbs * 4) / 9));
 
   return { calories, protein, carbs, fats };
 };

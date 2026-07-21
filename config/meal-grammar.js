@@ -148,10 +148,10 @@ const MEAL_GRAMMAR = Object.freeze({
   workout: Object.freeze({
     pre: Object.freeze({
       easyCarbRequired: true,
-      proteinOptional: true,
+      proteinOptional: false,
       recentProteinWindowHours: Object.freeze([2, 3]),
       ifRecentProteinThenCarbOnly: true,
-      maxFatG: 5,
+      maxFatG: 0,
       excludedPatterns: Object.freeze([
         'pollo',
         'chicken',

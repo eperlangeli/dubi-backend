@@ -107,6 +107,44 @@ const calculateActivityKcal = (workoutDays = 0, workoutIntensity = 'moderate', b
 
 const calculateTDEE = (bmr, activityKcal = 500) => Math.round(bmr + activityKcal);
 
+const GOAL_MACRO_RULES = Object.freeze({
+  // Deficit/surplus and protein targets validated by the DUBI nutritionist.
+  // fat_loss: Helms et al. 2014 (-20%, 2.2 g/kg to preserve lean mass).
+  // definition: conservative -10% for already-lean users, 2.2 g/kg.
+  // gain: Iraki et al. 2019 (+15%); Morton et al. 2018 protein plateau around 1.6 g/kg.
+  // maintenance: 0%; Morton et al. 2018 1.6 g/kg.
+  fat_loss: Object.freeze({ calorieMultiplier: 0.8, proteinPerKg: 2.2, label: 'fatLoss' }),
+  definition: Object.freeze({ calorieMultiplier: 0.9, proteinPerKg: 2.2, label: 'definition' }),
+  gain: Object.freeze({ calorieMultiplier: 1.15, proteinPerKg: 1.6, label: 'gain' }),
+  maintenance: Object.freeze({ calorieMultiplier: 1, proteinPerKg: 1.6, label: 'maintenance' })
+});
+
+// Fat is the dynamic residual after protein and carbs, constrained to the AMDR
+// range from the Institute of Medicine (20-35%); DUBI keeps the practical target
+// window at 25-35% for standard plans and adjusts carbs to stay inside it.
+const FAT_FRACTION_RANGE = Object.freeze({ min: 0.25, max: 0.35 });
+
+const DEFAULT_CARB_FRACTION_BY_GOAL = Object.freeze({
+  fat_loss: 0.40,
+  definition: 0.45,
+  gain: 0.50,
+  maintenance: 0.45
+});
+
+const normalizeGoalForMacros = (goal) => {
+  const normalized = String(goal || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[\s-]+/g, '_');
+
+  if (['fat_loss', 'fatloss', 'weight_loss', 'lose_weight', 'dimagrimento'].includes(normalized)) return 'fat_loss';
+  if (['definition', 'definizione', 'cut', 'cutting'].includes(normalized)) return 'definition';
+  if (['gain', 'muscle_gain', 'massa', 'bulk', 'bulking', 'lean_bulk'].includes(normalized)) return 'gain';
+  return 'maintenance';
+};
+
 // ─── Sport groups ─────────────────────────────────────────────────────────────
 
 const SPORT_GROUP_MAP = {
@@ -249,7 +287,7 @@ const blendSportProfiles = (sportGroups = []) => {
 
 // ─── Calcolo macro ────────────────────────────────────────────────────────────
 
-const calculateMacros = (tdee, goal, blendedProfile = null) => {
+const calculateMacros = (tdee, goal, blendedProfile = null, weightKg = 70) => {
   // Accepting a group string keeps this helper compatible with older callers.
   const sportProfile = typeof blendedProfile === 'string'
     ? (SPORT_GROUP_PROFILES[blendedProfile]
@@ -257,51 +295,39 @@ const calculateMacros = (tdee, goal, blendedProfile = null) => {
       : null)
     : blendedProfile;
 
-  // Applica bonus TDEE da sport
   const adjustedTdee = sportProfile
     ? Math.round(tdee * (1 + sportProfile.tdeeBonus))
     : tdee;
 
-  // Aggiustamento calorico da obiettivo
-  let calories;
-  switch (goal) {
-    case 'fat_loss':    calories = Math.round(adjustedTdee * 0.80); break;
-    case 'muscle_gain': calories = Math.round(adjustedTdee * 1.15); break;
-    case 'cut':         calories = Math.round(adjustedTdee * 0.85); break;
-    default:            calories = adjustedTdee;
-  }
-
-  let protein, carbs, fat;
-
-  if (sportProfile) {
-    // Split macro definito dallo sport
-    protein = Math.round((calories * sportProfile.protein) / 4);
-    fat     = Math.round((calories * sportProfile.fat)     / 9);
-    carbs   = Math.round((calories - protein * 4 - fat * 9) / 4);
-  } else {
-    // Split macro di default basato sull'obiettivo
-    switch (goal) {
-      case 'fat_loss':
-        protein = Math.round((calories * 0.35) / 4);
-        fat     = Math.round((calories * 0.25) / 9);
-        break;
-      case 'muscle_gain':
-        protein = Math.round((calories * 0.30) / 4);
-        fat     = Math.round((calories * 0.30) / 9);
-        break;
-      case 'cut':
-        protein = Math.round((calories * 0.40) / 4);
-        fat     = Math.round((calories * 0.25) / 9);
-        break;
-      default:
-        protein = Math.round((calories * 0.25) / 4);
-        fat     = Math.round((calories * 0.30) / 9);
-    }
-    carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
-  }
+  const normalizedGoal = normalizeGoalForMacros(goal);
+  const goalRule = GOAL_MACRO_RULES[normalizedGoal] || GOAL_MACRO_RULES.maintenance;
+  const calories = Math.round(adjustedTdee * goalRule.calorieMultiplier);
+  const safeWeightKg = Number.isFinite(Number(weightKg)) && Number(weightKg) > 0 ? Number(weightKg) : 70;
+  const protein = Math.round(safeWeightKg * goalRule.proteinPerKg);
+  const proteinCalories = protein * 4;
+  const desiredCarbFraction = sportProfile?.carbs
+    || DEFAULT_CARB_FRACTION_BY_GOAL[normalizedGoal]
+    || DEFAULT_CARB_FRACTION_BY_GOAL.maintenance;
+  const desiredCarbs = Math.max(0, Math.round((calories * desiredCarbFraction) / 4));
+  const minFatCalories = calories * FAT_FRACTION_RANGE.min;
+  const maxFatCalories = calories * FAT_FRACTION_RANGE.max;
+  const carbLowerBound = Math.max(0, Math.ceil((calories - proteinCalories - maxFatCalories) / 4));
+  const carbUpperBound = Math.max(carbLowerBound, Math.floor((calories - proteinCalories - minFatCalories) / 4));
+  const practicalMinCarbs = 50;
+  const carbFloor = practicalMinCarbs <= carbUpperBound
+    ? Math.max(carbLowerBound, practicalMinCarbs)
+    : carbLowerBound;
+  const carbs = clamp(desiredCarbs, carbFloor, carbUpperBound);
+  const fat = Math.max(0, Math.round((calories - proteinCalories - carbs * 4) / 9));
 
   const sportGroups = sportProfile?.groups || [];
   const sportGroup = sportGroups.length ? sportGroups.join('+') : 'none';
+  const actualMacroSplit = {
+    protein: calories > 0 ? Number(((protein * 4) / calories).toFixed(4)) : 0,
+    carbs: calories > 0 ? Number(((carbs * 4) / calories).toFixed(4)) : 0,
+    fat: calories > 0 ? Number(((fat * 9) / calories).toFixed(4)) : 0,
+  };
+
   return {
     calories,
     protein,
@@ -310,12 +336,21 @@ const calculateMacros = (tdee, goal, blendedProfile = null) => {
     sportGroup,
     sportGroups,
     sportProfile: sportGroups.length > 1 ? `${sportGroups.join('-')}_blend` : sportGroup,
-    macroSplit: sportProfile ? {
-      protein: Number(sportProfile.protein.toFixed(4)),
-      carbs: Number(sportProfile.carbs.toFixed(4)),
-      fat: Number(sportProfile.fat.toFixed(4)),
-    } : null,
+    macroSplit: actualMacroSplit,
     tdeeBonus: sportProfile ? Number(sportProfile.tdeeBonus.toFixed(4)) : 0,
+    goalMacroRule: {
+      goal: normalizedGoal,
+      label: goalRule.label,
+      calorieMultiplier: goalRule.calorieMultiplier,
+      proteinPerKg: goalRule.proteinPerKg,
+      fatFractionRange: FAT_FRACTION_RANGE,
+      scienceReferences: [
+        'Helms et al. 2014',
+        'Iraki et al. 2019',
+        'Morton et al. 2018',
+        'Institute of Medicine AMDR'
+      ]
+    }
   };
 };
 
@@ -469,7 +504,7 @@ const httpError = (status, error, extra = {}) => {
     const sports       = normalizeSports(row.sports, row.sport);
     const sportGroups  = getSportGroups(sports);
     const sportProfile = blendSportProfiles(sportGroups);
-    const freshMacros  = calculateMacros(tdee, row.goal || 'maintain', sportProfile);
+    const freshMacros  = calculateMacros(tdee, row.goal || 'maintain', sportProfile, Number(row.weight) || 70);
     const dailyAdaptation = await buildDailyBiometricAdaptation(pool, {
       userId,
       targetDate,
@@ -638,7 +673,7 @@ const httpError = (status, error, extra = {}) => {
       const sports       = normalizeSports(user.sports, user.sport);
       const sportGroups  = getSportGroups(sports);
       const sportProfile = blendSportProfiles(sportGroups);
-      const macros       = calculateMacros(tdee, user.goal, sportProfile);
+      const macros       = calculateMacros(tdee, user.goal, sportProfile, Number(user.weight) || 70);
 
       const planResult = await pool.query(
         'INSERT INTO meal_plans (user_id, calories, protein, carbs, fat) VALUES ($1, $2, $3, $4, $5) RETURNING *',

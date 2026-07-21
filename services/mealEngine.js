@@ -982,11 +982,20 @@ function isEasyCarbSnackItem(item = {}) {
   return itemHasAnyPattern(item, MEAL_GRAMMAR.snack.easyCarbPatterns) || isRapidCarbIngredient(item);
 }
 
+function isPreWorkoutDisallowedItem(item = {}) {
+  return isProteinCandidate(item)
+    || item.slot === 'protein'
+    || item.slot === 'fat'
+    || ['fat', 'nut_seed'].includes(item.category)
+    || isForbiddenFatItem(item)
+    || itemHasAnyPattern(item, MEAL_GRAMMAR.workout.pre.excludedPatterns);
+}
+
 function isPreWorkoutIngredientAllowed(item = {}, slot = null) {
   if (isForbiddenFatItem(item) || itemHasAnyPattern(item, MEAL_GRAMMAR.workout.pre.excludedPatterns)) return false;
   if (slot === 'protein' || isProteinCandidate(item)) return false;
   if (isCarbSlot(slot, item) || item.category === 'fruit') return isEasyCarbSnackItem(item);
-  return !isFatHeavyIngredient(item, MEAL_GRAMMAR.workout.pre.maxFatG);
+  return !isPreWorkoutDisallowedItem(item);
 }
 
 function isPostWorkoutProteinAllowed(item = {}) {
@@ -1866,7 +1875,7 @@ function ensurePreWorkoutCarbOnly(meal, eligibleIngredients, dayTracker, mealTra
   if (meal.mealType !== 'pre_workout') return false;
   let changed = false;
 
-  changed = removePlateItems(meal, (item) => isProteinCandidate(item) || isFatHeavyIngredient(item, MEAL_GRAMMAR.workout.pre.maxFatG)) || changed;
+  changed = removePlateItems(meal, isPreWorkoutDisallowedItem) || changed;
 
   if (!mealHasCarbSource(meal)) {
     const carb = chooseGrammarFallback(
@@ -2164,7 +2173,7 @@ function mealGrammarPriorityWeight(ingredient = {}, userProfile = {}) {
 
   if (mealType === 'pre workout' || mealType === 'pre_workout') {
     if (isEasyCarbSnackItem(ingredient)) score *= 1.45;
-    if (isFatHeavyIngredient(ingredient, MEAL_GRAMMAR.workout.pre.maxFatG)) score *= 0.15;
+    if (isPreWorkoutDisallowedItem(ingredient)) score *= 0.15;
   }
 
   if (mealType === 'post workout' || mealType === 'post_workout') {
@@ -2471,17 +2480,17 @@ function vegetableGramsForMeal(meal) {
 }
 
 function mainMealFiberFloor() {
-  const floor = Number(MEAL_FLOORS.main_meal_fiber_g || 0);
+  const floor = Number(MEAL_FLOORS.fiber_per_main_meal_g || MEAL_FLOORS.main_meal_fiber_g || 0);
   return Number.isFinite(floor) && floor > 0 ? floor : 0;
 }
 
 function mainMealVegetableFloor() {
-  const floor = Number(MEAL_FLOORS.main_meal_vegetable_g || 0);
+  const floor = Number(MEAL_FLOORS.vegetables_per_main_meal_g || MEAL_FLOORS.main_meal_vegetable_g || 0);
   return Number.isFinite(floor) && floor > 0 ? floor : 0;
 }
 
 function dinnerFatFloor() {
-  const floor = Number(MEAL_FLOORS.dinner_fat_g || 0);
+  const floor = Number(MEAL_FLOORS.fat_dinner_min_g || MEAL_FLOORS.dinner_fat_g || 0);
   return Number.isFinite(floor) && floor > 0 ? floor : 0;
 }
 
@@ -2494,7 +2503,7 @@ function proteinCeilingForMeal(userProfile = {}) {
 
 function mealCalorieCeiling(dailyCalTarget) {
   const dailyCalories = Number(dailyCalTarget || 0);
-  const fraction = positiveConfigNumber(MEAL_FLOORS.max_meal_calorie_fraction, 0.4);
+  const fraction = positiveConfigNumber(MEAL_FLOORS.max_meal_calorie_fraction, 0.35);
   if (!Number.isFinite(dailyCalories) || dailyCalories <= 0) return 0;
   return Math.round(dailyCalories * fraction);
 }
@@ -2812,7 +2821,6 @@ function adjustedWorkoutRange(range, multiplier = 1) {
   return {
     min: Number.isFinite(min) ? Math.round(min * multiplier) : null,
     max: Number.isFinite(max) ? Math.round(max * multiplier) : null,
-    todoNutritionistValidation: Boolean(range.todoNutritionistValidation),
   };
 }
 
@@ -2880,7 +2888,9 @@ function getWorkoutBlockTargets(mealType, workoutContext, userProfile = {}) {
       timingWindowMin: pre.timingWindowMin || null,
       targetCarbsG: adjustedWorkoutRange(pre.targetCarbsG, modifier.carbMultiplier || 1),
       targetProteinG: adjustedWorkoutRange(pre.targetProteinG, modifier.proteinMultiplier || 1),
-      maxFatG: pre.maxFatG || WORKOUT_NUTRITION.giRules.lowFatNearWorkoutMaxG,
+      maxFatG: Number.isFinite(Number(pre.maxFatG))
+        ? Number(pre.maxFatG)
+        : WORKOUT_NUTRITION.giRules.lowFatNearWorkoutMaxG,
       preferRapidCarbs: Boolean(pre.preferRapidCarbs),
       preferLowFat: Boolean(pre.preferLowFat),
     };
@@ -2895,8 +2905,8 @@ function getWorkoutBlockTargets(mealType, workoutContext, userProfile = {}) {
     return {
       role: post.role || 'recovery',
       timing: post.timing || null,
-      targetCarbsG: targetCarbs ? { min: Math.round(targetCarbs * 0.8), max: Math.round(targetCarbs * 1.15), todoNutritionistValidation: true } : null,
-      targetProteinG: adjustedWorkoutRange(post.targetProteinG, modifier.proteinMultiplier || 1),
+      targetCarbsG: targetCarbs ? { min: Math.round(targetCarbs * 0.8), max: Math.round(targetCarbs * 1.15) } : null,
+      targetProteinG: adjustedWorkoutRange(post.targetProteinG, 1),
       maxFatG: WORKOUT_NUTRITION.giRules.moderateFatNearWorkoutMaxG,
       preferCarbProtein: Boolean(post.preferCarbProtein),
       preferLowModerateFat: Boolean(post.preferLowModerateFat),
@@ -2926,7 +2936,7 @@ function enforceWorkoutNutritionBlocks(meals, userProfile = {}) {
     const targets = getWorkoutBlockTargets(meal.mealType, workoutContext, userProfile);
     if (!targets) continue;
 
-    if (targets.maxFatG) {
+    if (Number.isFinite(Number(targets.maxFatG)) && Number(targets.maxFatG) > 0) {
       capMealMacro(meal, 'fat', targets.maxFatG, (item) => isFatHeavyIngredient(item, targets.maxFatG));
     }
 
@@ -2942,13 +2952,17 @@ function enforceWorkoutNutritionBlocks(meals, userProfile = {}) {
     if (meal.mealType === 'post_workout') {
       boostMealMacro(meal, 'protein', targets.targetProteinG?.min, isProteinFloorItem);
       boostMealMacro(meal, 'carbs', targets.targetCarbsG?.min, isRapidCarbIngredient);
-      capMealMacro(meal, 'fat', targets.maxFatG, (item) => isFatHeavyIngredient(item, targets.maxFatG));
+      if (Number.isFinite(Number(targets.maxFatG)) && Number(targets.maxFatG) > 0) {
+        capMealMacro(meal, 'fat', targets.maxFatG, (item) => isFatHeavyIngredient(item, targets.maxFatG));
+      }
     }
 
     if (targets.role === 'main_pre_workout_meal') {
       boostMealMacro(meal, 'protein', targets.targetProteinG?.min, isProteinFloorItem);
       boostMealMacro(meal, 'carbs', targets.targetCarbsG?.min, (item) => !isRapidCarbIngredient(item));
-      capMealMacro(meal, 'fat', targets.maxFatG, (item) => isFatHeavyIngredient(item, targets.maxFatG));
+      if (Number.isFinite(Number(targets.maxFatG)) && Number(targets.maxFatG) > 0) {
+        capMealMacro(meal, 'fat', targets.maxFatG, (item) => isFatHeavyIngredient(item, targets.maxFatG));
+      }
     }
   }
 
@@ -2956,7 +2970,7 @@ function enforceWorkoutNutritionBlocks(meals, userProfile = {}) {
 }
 
 function proteinFloorForMeal(userProfile = {}) {
-  const perKg = Number(MEAL_FLOORS.protein_per_meal_g_per_kg || 0.3);
+  const perKg = Number(MEAL_FLOORS.protein_per_meal_min_g_per_kg || MEAL_FLOORS.protein_per_meal_g_per_kg || 0.3);
   const weightKg = Number(userProfile.weightKg || userProfile.weight || userProfile.currentWeight || 0);
   if (!Number.isFinite(perKg) || perKg <= 0 || !Number.isFinite(weightKg) || weightKg <= 0) return 0;
   return Math.round(weightKg * perKg * 10) / 10;
@@ -3362,9 +3376,7 @@ function validateMealGrammarForMeal(meal = {}, userProfile = {}) {
 
   if (mealType === 'pre_workout') {
     if (!mealHasCarbSource(meal)) issues.push({ code: 'pre_workout_missing_easy_carb' });
-    const heavyItems = ingredients.filter((item) =>
-      isProteinCandidate(item) || isFatHeavyIngredient(item, MEAL_GRAMMAR.workout.pre.maxFatG)
-    );
+    const heavyItems = ingredients.filter(isPreWorkoutDisallowedItem);
     if (heavyItems.length > 0) {
       issues.push({
         code: 'pre_workout_heavy_or_protein_item',
@@ -4046,7 +4058,7 @@ function publicWorkoutTargets(targets = null) {
   return {
     carbs_g: targets.targetCarbsG || null,
     protein_g: targets.targetProteinG || null,
-    fat_g_max: targets.maxFatG || null,
+    fat_g_max: targets.maxFatG ?? null,
   };
 }
 
@@ -4233,7 +4245,7 @@ async function generateDayPlan(pool, userProfile, targetDate) {
       proteinPerMainMealG: proteinFloorForMeal(engineProfile),
       proteinMaxPerMealG: proteinCeilingForMeal(engineProfile),
       maxMealCaloriesKcal: mealCalorieCeiling(dailyCal),
-      maxMealCalorieFraction: positiveConfigNumber(MEAL_FLOORS.max_meal_calorie_fraction, 0.4),
+      maxMealCalorieFraction: positiveConfigNumber(MEAL_FLOORS.max_meal_calorie_fraction, 0.35),
       mainMealFiberG: mainMealFiberFloor(engineProfile),
       mainMealVegetableG: mainMealVegetableFloor(engineProfile),
       dinnerFatG: dinnerFatFloor(engineProfile),

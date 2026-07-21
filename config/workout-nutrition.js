@@ -1,16 +1,20 @@
 'use strict';
 
-// DUBI workout nutrition timing rules.
-// All values are provisional and da validare col nutrizionista before final tuning.
+// DUBI workout nutrition timing rules validated by the DUBI nutritionist.
+// Scientific references:
+// - ISSN nutrient timing position stand: rapid digestible carbohydrates 45-60 min pre-session.
+// - Moore et al. 2009 and Witard et al. 2014: ~20-40 g post-workout protein; DUBI standard target 25 g.
+// - Endurance glycogen restoration literature: ~1.0 g/kg post-workout carbs for recreational strength/mixed training,
+//   with endurance allowed to scale upward via sport-specific carb multipliers.
+// - Practical digestion rule: protein and fats are set to zero in the immediate pre-workout snack because
+//   they slow gastric emptying; trace intrinsic fat from real foods is tolerated, but no added fat/protein source is allowed.
 
 const WORKOUT_NUTRITION = Object.freeze({
   version: 'workout-nutrition-v1',
   source: 'config/workout-nutrition.js',
-  validationStatus: 'provisional_da_validare_col_nutrizionista',
+  validationStatus: 'validated_by_dubi_nutritionist',
   allowedTimeSlots: Object.freeze([
     'morning_fasted',
-    'morning',
-    'lunch',
     'afternoon',
     'evening',
     'unset'
@@ -19,11 +23,11 @@ const WORKOUT_NUTRITION = Object.freeze({
     early_morning: 'morning_fasted',
     fasted_morning: 'morning_fasted',
     mattina_presto: 'morning_fasted',
-    morning: 'morning',
-    mattina: 'morning',
-    lunch: 'lunch',
-    pranzo: 'lunch',
-    midday: 'lunch',
+    morning: 'morning_fasted',
+    mattina: 'morning_fasted',
+    lunch: 'afternoon',
+    pranzo: 'afternoon',
+    midday: 'afternoon',
     afternoon: 'afternoon',
     pomeriggio: 'afternoon',
     evening: 'evening',
@@ -63,22 +67,6 @@ const WORKOUT_NUTRITION = Object.freeze({
       snack: 0.07,
       dinner: 0.19
     }),
-    morning: Object.freeze({
-      breakfast: 0.18,
-      pre_workout: 0.07,
-      post_workout: 0.22,
-      lunch: 0.27,
-      snack: 0.07,
-      dinner: 0.19
-    }),
-    lunch: Object.freeze({
-      breakfast: 0.20,
-      pre_workout: 0.08,
-      post_workout: 0.18,
-      lunch: 0.24,
-      snack: 0.07,
-      dinner: 0.23
-    }),
     afternoon: Object.freeze({
       breakfast: 0.20,
       lunch: 0.30,
@@ -114,9 +102,12 @@ const WORKOUT_NUTRITION = Object.freeze({
         role: 'rapid_carb_snack',
         timing: 'before_session',
         timingWindowMin: Object.freeze([0, 60]),
-        targetCarbsG: Object.freeze({ min: 20, max: 40, todoNutritionistValidation: true }),
-        targetProteinG: Object.freeze({ min: 0, max: 10, todoNutritionistValidation: true }),
-        maxFatG: 3,
+        targetCarbsG: Object.freeze({ min: 15, max: 20 }),
+        targetProteinG: Object.freeze({ min: 0, max: 0 }),
+        maxFatG: 0,
+        allowedFoods: 'rapid_digestible_carbohydrates_only',
+        examples: Object.freeze(['gallette', 'miele', 'banana', 'datteri']),
+        rationale: 'For low-intensity sessions, skipping pre-workout fuel is valid; if used, keep protein and fat at zero because they slow gastric emptying.',
         preferRapidCarbs: true,
         preferLowFat: true,
         completeMealBeforeWorkout: false
@@ -124,56 +115,8 @@ const WORKOUT_NUTRITION = Object.freeze({
       postWorkout: Object.freeze({
         role: 'recovery_complete_meal',
         timing: 'after_session',
-        targetCarbsGPerKg: 0.8,
-        targetProteinG: Object.freeze({ min: 20, max: 30, todoNutritionistValidation: true }),
-        preferCarbProtein: true,
-        preferLowModerateFat: true
-      })
-    }),
-    morning: Object.freeze({
-      resolved: true,
-      label: 'Allenamento mattina',
-      structure: Object.freeze(['breakfast', 'pre_workout', 'post_workout', 'lunch', 'snack', 'dinner']),
-      mainPreMeal: 'breakfast',
-      preWorkout: Object.freeze({
-        role: 'rapid_carb_snack',
-        timing: '45_60_min_pre',
-        timingWindowMin: Object.freeze([45, 60]),
-        targetCarbsG: Object.freeze({ min: 20, max: 40, todoNutritionistValidation: true }),
-        targetProteinG: Object.freeze({ min: 0, max: 15, todoNutritionistValidation: true }),
-        maxFatG: 5,
-        preferRapidCarbs: true,
-        preferLowFat: true
-      }),
-      postWorkout: Object.freeze({
-        role: 'recovery_complete_meal',
-        timing: 'after_session',
-        targetCarbsGPerKg: 0.8,
-        targetProteinG: Object.freeze({ min: 20, max: 30, todoNutritionistValidation: true }),
-        preferCarbProtein: true,
-        preferLowModerateFat: true
-      })
-    }),
-    lunch: Object.freeze({
-      resolved: true,
-      label: 'Allenamento pausa pranzo',
-      structure: Object.freeze(['breakfast', 'pre_workout', 'post_workout', 'lunch', 'snack', 'dinner']),
-      mainPreMeal: 'breakfast',
-      preWorkout: Object.freeze({
-        role: 'rapid_carb_snack',
-        timing: '45_60_min_pre',
-        timingWindowMin: Object.freeze([45, 60]),
-        targetCarbsG: Object.freeze({ min: 20, max: 40, todoNutritionistValidation: true }),
-        targetProteinG: Object.freeze({ min: 0, max: 15, todoNutritionistValidation: true }),
-        maxFatG: 5,
-        preferRapidCarbs: true,
-        preferLowFat: true
-      }),
-      postWorkout: Object.freeze({
-        role: 'recovery_complete_meal',
-        timing: 'after_session',
-        targetCarbsGPerKg: 0.9,
-        targetProteinG: Object.freeze({ min: 20, max: 30, todoNutritionistValidation: true }),
+        targetCarbsGPerKg: 1,
+        targetProteinG: Object.freeze({ min: 25, max: 25 }),
         preferCarbProtein: true,
         preferLowModerateFat: true
       })
@@ -192,9 +135,12 @@ const WORKOUT_NUTRITION = Object.freeze({
         role: 'rapid_carb_snack',
         timing: '45_60_min_pre',
         timingWindowMin: Object.freeze([45, 60]),
-        targetCarbsG: Object.freeze({ min: 20, max: 40, todoNutritionistValidation: true }),
-        targetProteinG: Object.freeze({ min: 0, max: 15, todoNutritionistValidation: true }),
-        maxFatG: 5,
+        targetCarbsG: Object.freeze({ min: 20, max: 30 }),
+        targetProteinG: Object.freeze({ min: 0, max: 0 }),
+        maxFatG: 0,
+        allowedFoods: 'rapid_digestible_carbohydrates_only',
+        examples: Object.freeze(['gallette', 'miele', 'banana', 'datteri']),
+        rationale: 'Protein and fat are set to zero in the immediate pre-workout snack because they slow gastric emptying before exercise.',
         preferRapidCarbs: true,
         preferLowFat: true
       }),
@@ -202,7 +148,7 @@ const WORKOUT_NUTRITION = Object.freeze({
         role: 'recovery',
         timing: 'after_session',
         targetCarbsGPerKg: 1,
-        targetProteinG: Object.freeze({ min: 20, max: 30, todoNutritionistValidation: true }),
+        targetProteinG: Object.freeze({ min: 25, max: 25 }),
         preferCarbProtein: true,
         preferLowModerateFat: true
       })
@@ -221,17 +167,20 @@ const WORKOUT_NUTRITION = Object.freeze({
         role: 'rapid_carb_snack',
         timing: '45_60_min_pre',
         timingWindowMin: Object.freeze([45, 60]),
-        targetCarbsG: Object.freeze({ min: 20, max: 40, todoNutritionistValidation: true }),
-        targetProteinG: Object.freeze({ min: 0, max: 15, todoNutritionistValidation: true }),
-        maxFatG: 5,
+        targetCarbsG: Object.freeze({ min: 20, max: 30 }),
+        targetProteinG: Object.freeze({ min: 0, max: 0 }),
+        maxFatG: 0,
+        allowedFoods: 'rapid_digestible_carbohydrates_only',
+        examples: Object.freeze(['gallette', 'miele', 'banana', 'datteri']),
+        rationale: 'Protein and fat are set to zero in the immediate pre-workout snack because they slow gastric emptying before exercise.',
         preferRapidCarbs: true,
         preferLowFat: true
       }),
       postWorkout: Object.freeze({
         role: 'recovery',
         timing: 'after_session',
-        targetCarbsGPerKg: 0.8,
-        targetProteinG: Object.freeze({ min: 20, max: 30, todoNutritionistValidation: true }),
+        targetCarbsGPerKg: 1,
+        targetProteinG: Object.freeze({ min: 25, max: 25 }),
         preferCarbProtein: true,
         preferLowModerateFat: true
       })
@@ -251,9 +200,12 @@ const WORKOUT_NUTRITION = Object.freeze({
         role: 'rapid_carb_snack_placeholder',
         timing: 'placeholder_45_60_min_pre',
         timingWindowMin: Object.freeze([45, 60]),
-        targetCarbsG: Object.freeze({ min: 20, max: 40, todoNutritionistValidation: true }),
-        targetProteinG: Object.freeze({ min: 0, max: 15, todoNutritionistValidation: true }),
-        maxFatG: 5,
+        targetCarbsG: Object.freeze({ min: 20, max: 30 }),
+        targetProteinG: Object.freeze({ min: 0, max: 0 }),
+        maxFatG: 0,
+        allowedFoods: 'rapid_digestible_carbohydrates_only',
+        examples: Object.freeze(['gallette', 'miele', 'banana', 'datteri']),
+        rationale: 'Protein and fat are set to zero in the immediate pre-workout snack because they slow gastric emptying before exercise.',
         preferRapidCarbs: true,
         preferLowFat: true
       }),
@@ -261,7 +213,7 @@ const WORKOUT_NUTRITION = Object.freeze({
         role: 'recovery_placeholder',
         timing: 'placeholder_after_session',
         targetCarbsGPerKg: 1,
-        targetProteinG: Object.freeze({ min: 20, max: 30, todoNutritionistValidation: true }),
+        targetProteinG: Object.freeze({ min: 25, max: 25 }),
         preferCarbProtein: true,
         preferLowModerateFat: true
       })

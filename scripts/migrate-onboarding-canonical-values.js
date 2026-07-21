@@ -63,10 +63,10 @@ const maps = {
     none: 'none'
   },
   training: {
-    mattina: 'morning',
-    morning: 'morning',
-    pranzo: 'lunch',
-    lunch: 'lunch',
+    mattina: 'morning_fasted',
+    morning: 'morning_fasted',
+    pranzo: 'afternoon',
+    lunch: 'afternoon',
     pomeriggio: 'afternoon',
     afternoon: 'afternoon',
     sera: 'evening',
