@@ -26,6 +26,8 @@ const DEFAULT_CORS_ORIGINS = [
   'https://dubi.health',
   'https://www.dubi.health',
   'capacitor://localhost',
+  'http://localhost',
+  'ionic://localhost',
   'http://localhost:3000',
   'http://localhost:5173',
   'http://localhost:8080',
@@ -34,10 +36,10 @@ const DEFAULT_CORS_ORIGINS = [
   'http://127.0.0.1:8080'
 ];
 const corsOrigins = new Set(
-  String(process.env.CORS_ORIGINS || DEFAULT_CORS_ORIGINS.join(','))
+  [...DEFAULT_CORS_ORIGINS, ...String(process.env.CORS_ORIGINS || '')
     .split(',')
     .map((origin) => origin.trim())
-    .filter(Boolean)
+    .filter(Boolean)]
 );
 
 app.use(cors({
