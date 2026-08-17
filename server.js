@@ -50,6 +50,12 @@ app.use(cors({
   },
   credentials: true
 }));
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
 app.use(express.json({ limit: '1mb' }));
 app.use('/waitlist', require('./routes/waitlist')(pool));
 app.use(withAuthenticatedDbContext(pool));
@@ -132,8 +138,8 @@ app.use('/nps', require('./routes/nps')(scopedPool));
 
 // ERROR HANDLER
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: err.message });
+  console.error('Unhandled server error:', err?.message || err);
+  res.status(500).json({ error: 'internal_server_error' });
 });
 
 // START SERVER

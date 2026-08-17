@@ -21,8 +21,53 @@ try {
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 const PASSWORD_RESET_COOLDOWN_MS = 60 * 1000;
 const PASSWORD_RESET_MESSAGE = 'If this email is registered, you will receive a reset link.';
+const GENERIC_LOGIN_ERROR = 'Email o password non corretti';
 const DELETION_OTP_TTL_MS = 15 * 60 * 1000;
 const RESEND_FROM_EMAIL = 'onboarding@dubi.health';
+
+const rateLimitBuckets = new Map();
+
+const getClientIp = (req) => (
+  String(req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown')
+    .split(',')[0]
+    .trim()
+);
+
+const createIpRateLimiter = ({ name, windowMs, max, message = 'Too many requests' }) => (req, res, next) => {
+  const now = Date.now();
+  const key = `${name}:${getClientIp(req)}`;
+  const current = rateLimitBuckets.get(key);
+
+  if (!current || now - current.startedAt >= windowMs) {
+    rateLimitBuckets.set(key, { count: 1, startedAt: now });
+    return next();
+  }
+
+  if (current.count >= max) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((windowMs - (now - current.startedAt)) / 1000));
+    res.setHeader('Retry-After', String(retryAfterSeconds));
+    return res.status(429).json({ error: message });
+  }
+
+  current.count += 1;
+  return next();
+};
+
+const loginRateLimit = createIpRateLimiter({
+  name: 'auth-login',
+  windowMs: 15 * 60 * 1000,
+  max: 5
+});
+const registerRateLimit = createIpRateLimiter({
+  name: 'auth-register',
+  windowMs: 60 * 60 * 1000,
+  max: 3
+});
+const passwordResetRateLimit = createIpRateLimiter({
+  name: 'auth-reset-password',
+  windowMs: 60 * 60 * 1000,
+  max: 3
+});
 
 const hashResetToken = (token) => (
   crypto.createHash('sha256').update(token).digest('hex')
@@ -575,10 +620,11 @@ module.exports = (pool) => {
     }
   };
 
-  router.post('/register', async (req, res) => {
+  router.post('/register', registerRateLimit, async (req, res) => {
     let client;
     try {
-      const { email, password, dateOfBirth, age, weight, height, goal } = req.body;
+      const { password, dateOfBirth, age, weight, height, goal } = req.body || {};
+      const email = String(req.body?.email || '').trim().toLowerCase();
 
       if (!email || !password) {
         return res.status(400).json({ error: 'Email and password required' });
@@ -645,33 +691,39 @@ module.exports = (pool) => {
         }
       }
       if (error.code === '23505') {
-        res.status(400).json({ error: 'Email already exists' });
+        res.status(400).json({ error: 'Unable to register with these details' });
       } else {
-        res.status(500).json({ error: error.message });
+        console.error('Registration failed:', error.message);
+        res.status(500).json({ error: 'registration_failed' });
       }
     } finally {
       if (client) client.release();
     }
   });
 
-  router.post('/login', async (req, res) => {
+  router.post('/login', loginRateLimit, async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const email = String(req.body?.email || '').trim().toLowerCase();
+      const password = String(req.body?.password || '');
+
+      if (!email || !password) {
+        return res.status(401).json({ error: GENERIC_LOGIN_ERROR });
+      }
 
       const result = await pool.query(
-        'SELECT * FROM users WHERE email = $1',
+        'SELECT * FROM users WHERE LOWER(email) = $1',
         [email]
       );
 
       if (result.rows.length === 0) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: GENERIC_LOGIN_ERROR });
       }
 
       const user = result.rows[0];
       const isValid = bcryptjs.compareSync(password, user.password_hash);
 
       if (!isValid) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: GENERIC_LOGIN_ERROR });
       }
 
       if (user.is_suspended) {
@@ -688,11 +740,12 @@ module.exports = (pool) => {
 
       res.json({ token, user: toPublicUser(user) });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('Login failed:', error.message);
+      res.status(500).json({ error: 'login_failed' });
     }
   });
 
-  router.post('/forgot-password', async (req, res) => {
+  router.post('/forgot-password', passwordResetRateLimit, async (req, res) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
     let client;
     let resetToken = null;
@@ -812,7 +865,7 @@ module.exports = (pool) => {
     return res.status(200).json({ message: PASSWORD_RESET_MESSAGE });
   });
 
-  router.post('/reset-password', async (req, res) => {
+  router.post('/reset-password', passwordResetRateLimit, async (req, res) => {
     const token = String(req.body?.token || '').trim();
     const newPassword = String(req.body?.newPassword || '');
 
@@ -903,7 +956,8 @@ module.exports = (pool) => {
 
       res.json(toPublicUser(result.rows[0]));
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('Auth user fetch failed:', error.message);
+      res.status(500).json({ error: 'user_fetch_failed' });
     }
   });
 
