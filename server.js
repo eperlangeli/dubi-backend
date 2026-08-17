@@ -27,6 +27,7 @@ const DEFAULT_CORS_ORIGINS = [
   'https://www.dubi.health',
   'capacitor://localhost',
   'http://localhost',
+  'https://localhost',
   'ionic://localhost',
   'http://localhost:3000',
   'http://localhost:5173',
