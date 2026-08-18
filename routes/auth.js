@@ -1159,6 +1159,7 @@ module.exports = (pool) => {
         onboarding,
         userPlans,
         dailyPlans,
+        dailyConsumption,
         mealPlans,
         progress,
         weightHistory,
@@ -1172,6 +1173,7 @@ module.exports = (pool) => {
         selectUserOwnedRows('user_onboarding', 'updated_at DESC NULLS LAST, id ASC'),
         selectUserOwnedRows('user_plans', 'created_at DESC NULLS LAST, id ASC'),
         selectUserOwnedRows('daily_plans', 'plan_date DESC NULLS LAST, id ASC'),
+        selectUserOwnedRows('daily_consumption', 'date DESC NULLS LAST, logged_at DESC NULLS LAST, id ASC'),
         selectUserOwnedRows('meal_plans', 'created_at DESC NULLS LAST, id ASC'),
         selectUserOwnedRows('user_progress', 'created_at DESC NULLS LAST, id ASC'),
         selectUserOwnedRows('weight_history', 'logged_at DESC NULLS LAST, id ASC'),
@@ -1190,6 +1192,7 @@ module.exports = (pool) => {
           user_onboarding: onboarding,
           user_plans: userPlans,
           daily_plans: dailyPlans,
+          daily_consumption: dailyConsumption,
           meal_plans: mealPlans,
           user_progress: progress,
           weight_history: weightHistory,
@@ -1374,6 +1377,7 @@ module.exports = (pool) => {
 
       const userOwnedTables = [
         'adherence',
+        'daily_consumption',
         'daily_plans',
         'nps_responses',
         'openwearables_connections',

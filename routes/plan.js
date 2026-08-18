@@ -391,6 +391,72 @@ module.exports = (pool) => {
   const router = express.Router();
   const authModule = require('./auth')(pool);
   const { verifyToken } = authModule;
+  const ALLOWED_CONSUMPTION_MEAL_TYPES = new Set([
+    'breakfast',
+    'lunch',
+    'dinner',
+    'snack',
+    'pre_workout',
+    'post_workout'
+  ]);
+
+  const isValidIsoDate = (value) => {
+    const date = String(value || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+    const parsed = new Date(`${date}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
+  };
+
+  const formatDbDate = (value) => {
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    return String(value || '').slice(0, 10);
+  };
+
+  const normalizeMacroValue = (value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) return 0;
+    return Number(numeric.toFixed(2));
+  };
+
+  const normalizeConsumedIngredients = (ingredients) => {
+    if (!Array.isArray(ingredients)) return null;
+    return ingredients.slice(0, 100).map((ingredient) => ({
+      ingredient_id: ingredient?.ingredient_id ?? ingredient?.id ?? null,
+      name: String(ingredient?.name || '').trim().slice(0, 160),
+      portion_g: normalizeMacroValue(ingredient?.portion_g ?? ingredient?.portionG),
+      calories: normalizeMacroValue(ingredient?.calories),
+      protein: normalizeMacroValue(ingredient?.protein),
+      carbs: normalizeMacroValue(ingredient?.carbs),
+      fat: normalizeMacroValue(ingredient?.fat)
+    })).filter((ingredient) => ingredient.name);
+  };
+
+  const normalizeConsumptionTotal = (total = {}, ingredients = []) => {
+    const calculated = ingredients.reduce((sum, ingredient) => ({
+      calories: sum.calories + ingredient.calories,
+      protein: sum.protein + ingredient.protein,
+      carbs: sum.carbs + ingredient.carbs,
+      fat: sum.fat + ingredient.fat
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+    return {
+      calories: normalizeMacroValue(total.calories ?? calculated.calories),
+      protein: normalizeMacroValue(total.protein ?? calculated.protein),
+      carbs: normalizeMacroValue(total.carbs ?? calculated.carbs),
+      fat: normalizeMacroValue(total.fat ?? calculated.fat)
+    };
+  };
+
+  const formatConsumptionMeal = (row) => ({
+    meal_type: row.meal_type,
+    total: {
+      calories: Number(row.total_calories || 0),
+      protein: Number(row.total_protein || 0),
+      carbs: Number(row.total_carbs || 0),
+      fat: Number(row.total_fat || 0)
+    },
+    logged_at: row.logged_at
+  });
 
   const requireHealthDataConsent = async (userId, res) => {
     const { rows } = await pool.query(
@@ -702,6 +768,117 @@ const httpError = (status, error, extra = {}) => {
       res.json(result.rows[0]);
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // -- POST /plan/consumption/log -------------------------------------------
+  router.post('/consumption/log', verifyToken, async (req, res) => {
+    try {
+      const { date, meal_type: mealType, ingredients_consumed: rawIngredients, total: rawTotal } = req.body || {};
+      const targetDate = String(date || '').trim();
+
+      if (!isValidIsoDate(targetDate)) {
+        return res.status(400).json({ error: 'invalid_date', expected: 'YYYY-MM-DD' });
+      }
+
+      if (!ALLOWED_CONSUMPTION_MEAL_TYPES.has(mealType)) {
+        return res.status(400).json({
+          error: 'invalid_meal_type',
+          allowed: [...ALLOWED_CONSUMPTION_MEAL_TYPES]
+        });
+      }
+
+      const ingredients = normalizeConsumedIngredients(rawIngredients);
+      if (!ingredients) {
+        return res.status(400).json({ error: 'ingredients_consumed_must_be_array' });
+      }
+
+      const total = normalizeConsumptionTotal(rawTotal, ingredients);
+      const { rows } = await pool.query(
+        `INSERT INTO daily_consumption (
+           user_id,
+           date,
+           meal_type,
+           ingredients_json,
+           total_calories,
+           total_protein,
+           total_carbs,
+           total_fat,
+           logged_at
+         )
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, NOW())
+         ON CONFLICT (user_id, date, meal_type)
+         DO UPDATE SET
+           ingredients_json = EXCLUDED.ingredients_json,
+           total_calories = EXCLUDED.total_calories,
+           total_protein = EXCLUDED.total_protein,
+           total_carbs = EXCLUDED.total_carbs,
+           total_fat = EXCLUDED.total_fat,
+           logged_at = NOW()
+         RETURNING date, meal_type, ingredients_json, total_calories, total_protein, total_carbs, total_fat, logged_at`,
+        [
+          req.userId,
+          targetDate,
+          mealType,
+          JSON.stringify(ingredients),
+          total.calories,
+          total.protein,
+          total.carbs,
+          total.fat
+        ]
+      );
+
+      return res.json({
+        date: formatDbDate(rows[0].date),
+        meal: {
+          ...formatConsumptionMeal(rows[0]),
+          ingredients_consumed: rows[0].ingredients_json || []
+        }
+      });
+    } catch (error) {
+      console.error('[plan] consumption log error:', error.message);
+      return res.status(500).json({ error: 'consumption_log_failed' });
+    }
+  });
+
+  // -- GET /plan/consumption/summary?date=YYYY-MM-DD ------------------------
+  router.get('/consumption/summary', verifyToken, async (req, res) => {
+    try {
+      const targetDate = String(req.query.date || new Date().toISOString().slice(0, 10)).trim();
+
+      if (!isValidIsoDate(targetDate)) {
+        return res.status(400).json({ error: 'invalid_date', expected: 'YYYY-MM-DD' });
+      }
+
+      const { rows } = await pool.query(
+        `SELECT meal_type, total_calories, total_protein, total_carbs, total_fat, logged_at
+         FROM daily_consumption
+         WHERE user_id = $1
+           AND date = $2
+         ORDER BY CASE meal_type
+           WHEN 'breakfast' THEN 1
+           WHEN 'lunch' THEN 2
+           WHEN 'pre_workout' THEN 3
+           WHEN 'post_workout' THEN 4
+           WHEN 'dinner' THEN 5
+           WHEN 'snack' THEN 6
+           ELSE 7
+         END`,
+        [req.userId, targetDate]
+      );
+
+      const meals = rows.map(formatConsumptionMeal);
+      const totals = meals.reduce((sum, meal) => ({
+        calories: Number((sum.calories + meal.total.calories).toFixed(2)),
+        protein: Number((sum.protein + meal.total.protein).toFixed(2)),
+        carbs: Number((sum.carbs + meal.total.carbs).toFixed(2)),
+        fat: Number((sum.fat + meal.total.fat).toFixed(2))
+      }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+      return res.json({ date: targetDate, totals, meals });
+    } catch (error) {
+      console.error('[plan] consumption summary error:', error.message);
+      return res.status(500).json({ error: 'consumption_summary_failed' });
     }
   });
 

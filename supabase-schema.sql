@@ -693,10 +693,36 @@ CREATE TABLE IF NOT EXISTS daily_plans (
 
 CREATE INDEX IF NOT EXISTS idx_daily_plans_user ON daily_plans(user_id, plan_date DESC);
 
+CREATE TABLE IF NOT EXISTS daily_consumption (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  meal_type TEXT NOT NULL CHECK (meal_type IN (
+    'breakfast',
+    'lunch',
+    'dinner',
+    'snack',
+    'pre_workout',
+    'post_workout'
+  )),
+  ingredients_json JSONB DEFAULT '[]'::jsonb,
+  total_calories NUMERIC DEFAULT 0,
+  total_protein NUMERIC DEFAULT 0,
+  total_carbs NUMERIC DEFAULT 0,
+  total_fat NUMERIC DEFAULT 0,
+  logged_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, date, meal_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_consumption_user_date
+  ON daily_consumption(user_id, date DESC);
+
 ALTER TABLE ingredients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ingredient_seasonality ENABLE ROW LEVEL SECURITY;
 ALTER TABLE meal_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_consumption ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_consumption FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS ingredients_select ON ingredients;
 DROP POLICY IF EXISTS ingredient_seasonality_select ON ingredient_seasonality;
@@ -704,6 +730,7 @@ DROP POLICY IF EXISTS templates_select ON meal_templates;
 DROP POLICY IF EXISTS daily_plans_select ON daily_plans;
 DROP POLICY IF EXISTS daily_plans_insert ON daily_plans;
 DROP POLICY IF EXISTS daily_plans_update ON daily_plans;
+DROP POLICY IF EXISTS daily_consumption_isolation ON daily_consumption;
 
 CREATE POLICY ingredients_select ON ingredients
   FOR SELECT USING (is_active = true);
@@ -722,6 +749,10 @@ CREATE POLICY daily_plans_insert ON daily_plans
 
 CREATE POLICY daily_plans_update ON daily_plans
   FOR UPDATE USING (user_id = current_setting('app.current_user_id', true)::integer);
+
+CREATE POLICY daily_consumption_isolation ON daily_consumption
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true)::integer)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::integer);
 
 ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS source_id TEXT;
 ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS source_food_id TEXT;

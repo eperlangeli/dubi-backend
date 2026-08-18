@@ -44,6 +44,7 @@ ALTER TABLE nutrition_ingredient_refs FORCE ROW LEVEL SECURITY;
 ALTER TABLE recipe_nutrition_audits FORCE ROW LEVEL SECURITY;
 ALTER TABLE weight_history FORCE ROW LEVEL SECURITY;
 ALTER TABLE adherence FORCE ROW LEVEL SECURITY;
+ALTER TABLE daily_consumption FORCE ROW LEVEL SECURITY;
 ALTER TABLE nps_responses FORCE ROW LEVEL SECURITY;
 ALTER TABLE user_ingredient_swaps FORCE ROW LEVEL SECURITY;
 ALTER TABLE user_anomaly_events FORCE ROW LEVEL SECURITY;
@@ -88,6 +89,7 @@ WHERE schemaname = 'public'
     'recipe_nutrition_audits',
     'weight_history',
     'adherence',
+    'daily_consumption',
     'nps_responses',
     'user_ingredient_swaps',
     'user_anomaly_events',
