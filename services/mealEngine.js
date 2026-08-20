@@ -2435,8 +2435,8 @@ function buildPlanItem(ingredient, slot, portionG) {
   const macros = macrosForPortion(ingredient, portionG);
   return {
     id: ingredient.id,
+    ingredient_id: ingredient.id,
     name: ingredient.name,
-    name_en: ingredient.name_en,
     category: ingredient.category,
     subcategory: ingredient.subcategory,
     source_id: ingredient.source_id || null,
@@ -4009,6 +4009,7 @@ function serializeBreakfastOption(meal, style) {
   return {
     style,
     ingredients: (meal.ingredients || []).map((item) => ({
+      ingredient_id: item.ingredient_id || item.id || null,
       name: item.name,
       name_en: item.name_en || null,
       portionG: item.portionG,
