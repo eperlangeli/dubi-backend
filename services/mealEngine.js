@@ -384,8 +384,26 @@ function isDenseVegetableIngredient(ingredient = {}) {
 }
 
 function getPortionBoundsForIngredient(ingredient = {}) {
+  // Preferisce i valori DB se presenti e validi (serving_min_g, serving_max_g, serving_step_g)
+  const dbMin  = positiveConfigNumber(ingredient.serving_min_g,  0);
+  const dbMax  = positiveConfigNumber(ingredient.serving_max_g,  0);
+  const dbStep = positiveConfigNumber(ingredient.serving_step_g, 0);
+
+  const hasDbBounds = dbMin > 0 && dbMax > 0 && dbMax >= dbMin;
+
+  if (hasDbBounds) {
+    const typical = Math.round((dbMin + dbMax) / 2 / (dbStep || 10)) * (dbStep || 10);
+    return {
+      min:     dbMin,
+      max:     dbMax,
+      typical: Math.max(dbMin, Math.min(dbMax, typical)),
+      step:    dbStep || 10,
+    };
+  }
+
+  // Fallback ai valori per categoria (legacy)
   const bounds = getPortionBounds(ingredient.category);
-  if (!isDenseVegetableIngredient(ingredient)) return bounds;
+  if (!isDenseVegetableIngredient(ingredient)) return { ...bounds, step: 10 };
 
   const max = positiveConfigNumber(MEAL_FLOORS.dense_vegetable_max_portion_g, 40);
   const typical = Math.min(max, positiveConfigNumber(MEAL_FLOORS.dense_vegetable_typical_portion_g, 25));
@@ -394,6 +412,7 @@ function getPortionBoundsForIngredient(ingredient = {}) {
     min: Math.min(bounds.min, typical),
     max: Math.min(bounds.max, max),
     typical,
+    step: 10,
   };
 }
 
@@ -403,7 +422,12 @@ function calcPortion(ingredient, targetCalories) {
   if (!caloriesPer100g) return bounds.typical;
 
   const rawG = (targetCalories / caloriesPer100g) * 100;
-  return Math.round(Math.max(bounds.min, Math.min(bounds.max, rawG)));
+  const clamped = Math.max(bounds.min, Math.min(bounds.max, rawG));
+
+  // Arrotonda al serving_step più vicino, poi riclamp
+  const step = bounds.step || 10;
+  const stepped = Math.round(clamped / step) * step;
+  return Math.max(bounds.min, Math.min(bounds.max, stepped));
 }
 
 function macrosForPortion(ingredient, portionG) {
@@ -2741,16 +2765,23 @@ async function composeMeal(pool, mealType, mealCalorieTarget, eligibleIngredient
   return meal;
 }
 
-function setItemPortion(item, portionG) {
-  item.portionG = Math.round(portionG);
+ function setItemPortion(item, portionG) {
+  const bounds = getPortionBoundsForIngredient(item);
+  const step = bounds.step || 10;
+
+  // Arrotonda al serving_step, poi clamp a min/max
+  const stepped  = Math.round(portionG / step) * step;
+  const clamped  = Math.max(bounds.min, Math.min(bounds.max, stepped));
+
+  item.portionG = clamped;
   const macros = macrosForPortion(item, item.portionG);
   item.calories = macros.calories;
-  item.protein = macros.protein;
-  item.carbs = macros.carbs;
-  item.fat = macros.fat;
-  item.fiber = macros.fiber;
+  item.protein  = macros.protein;
+  item.carbs    = macros.carbs;
+  item.fat      = macros.fat;
+  item.fiber    = macros.fiber;
 }
-
+  
 function adjustItemPortion(item, ratio, options = {}) {
   const bounds = getPortionBoundsForIngredient(item);
   const maxPortion = options.allowAboveMax ? Number.POSITIVE_INFINITY : bounds.max;
