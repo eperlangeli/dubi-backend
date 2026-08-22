@@ -593,8 +593,26 @@ function isRapidCarbIngredient(ingredient = {}) {
   );
 }
 
+const CARB_SLOT_FAMILIES = Object.freeze({
+  mainCarbSlots: Object.freeze(['carb', 'carb complex']),
+  fastCarbSlots: Object.freeze(['carb fast']),
+  allCarbSlots:  Object.freeze(['carb', 'carb complex', 'carb fast']),
+});
+
+function hasMainCarbSlot(item = {}) {
+  const slots = itemSlots(item);
+  return CARB_SLOT_FAMILIES.mainCarbSlots.some((s) => slots.includes(s));
+}
+
+function hasAnyCarbSlot(item = {}) {
+  const slots = itemSlots(item);
+  return CARB_SLOT_FAMILIES.allCarbSlots.some((s) => slots.includes(s));
+}
+
 function isCarbSlot(slot, ingredient = {}) {
-  return ['carb', 'fruit'].includes(slot)
+  const normalizedSlot = normalizeToken(slot || '');
+  return CARB_SLOT_FAMILIES.allCarbSlots.includes(normalizedSlot)
+    || normalizedSlot === 'fruit'
     || ['grain', 'fruit'].includes(ingredient.category);
 }
 
@@ -1416,9 +1434,18 @@ function isPlateMainProteinItem(item = {}, mealType = item.mealType) {
 
 function isPlateMainCarbItem(item = {}, mealType = item.mealType) {
   if (!isMainMeal(mealType)) return false;
-  if (!hasSlot(item, 'carb')) return false;
   if (isSweetFruitItem(item) || isBreakfastOnlyItem(item)) return false;
-  return PLATE_STRUCTURE.carbCategories.includes(item.category) || Boolean(starchFamily(item));
+
+  const slots = itemSlots(item);
+  const hasExplicitCarbSlot = slots.some(
+    (s) => CARB_SLOT_FAMILIES.allCarbSlots.includes(s)
+  );
+
+  if (hasMainCarbSlot(item)) return true;
+  if (hasExplicitCarbSlot) return false;
+
+  return PLATE_STRUCTURE.carbCategories.includes(item.category)
+    || Boolean(starchFamily(item));
 }
 
 function isPlateVegetableItem(item = {}, mealType = item.mealType) {
@@ -4313,5 +4340,12 @@ module.exports = {
   giScore,
   calcDailyGiSummary,
   applyPathologyFilter,
-  calcPathologyExclusions
+  calcPathologyExclusions,
+  _test: {
+    validatePlateStructureForMeal,
+    isCarbSlot,
+    hasMainCarbSlot,
+    hasAnyCarbSlot,
+    CARB_SLOT_FAMILIES,
+  }
 };
