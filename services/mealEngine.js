@@ -1301,7 +1301,7 @@ function weeklyCandidateAllowed(item = {}, mealType, slot, userProfile = {}) {
     if (Number.isFinite(limit) && Number(proteinCounts[group] || 0) >= limit) return false;
   }
 
-  if (slot === 'carb') {
+  if (hasMainCarbSlot({ slot })) {
     const group = carbWeeklyGroup(item);
     const limit = weeklyLimitForCarbGroup(group, userProfile);
     if (Number.isFinite(limit) && Number(carbCounts[group] || 0) >= limit) return false;
@@ -1374,7 +1374,7 @@ function applyMealGrammarCandidateRules(candidates, meal, mealType, slot, userPr
       filtered = filterWithFallback(filtered, (ingredient) => !isMainMealDairyProteinExcludedItem(ingredient));
       filtered = applyWeeklyProteinMinimumPreference(filtered, mealType, userProfile);
     }
-    if (slot === 'carb') {
+    if (hasMainCarbSlot({ slot })) {
       filtered = applyWeeklyCarbMinimumPreference(filtered, mealType, userProfile);
     }
   }
@@ -2243,7 +2243,7 @@ function mealGrammarPriorityWeight(ingredient = {}, userProfile = {}) {
       if (ingredient.category === 'nut_seed') score *= 0.55;
     }
 
-    if (slot === 'carb') {
+    if (hasMainCarbSlot({ slot })) {
       const group = carbWeeklyGroup(ingredient);
       const carbCounts = weeklyCarbCounts(userProfile);
       const uniqueCarbs = Object.keys(carbCounts).filter((key) => Number(carbCounts[key] || 0) > 0).length;
