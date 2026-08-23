@@ -1,0 +1,932 @@
+{
+  "whitelist_version": "1.0",
+  "status": "frozen",
+  "purpose": "controlled_draft_recipe_authoring",
+  "total_ingredients_classified": 199,
+  "clean_count": 161,
+  "excluded_count": 38,
+  "clean_ingredients": [
+    {
+      "ingredient_id": 1,
+      "name": "Petto di pollo"
+    },
+    {
+      "ingredient_id": 2,
+      "name": "Fesa di tacchino"
+    },
+    {
+      "ingredient_id": 3,
+      "name": "Manzo magro"
+    },
+    {
+      "ingredient_id": 4,
+      "name": "Bresaola"
+    },
+    {
+      "ingredient_id": 5,
+      "name": "Salmone"
+    },
+    {
+      "ingredient_id": 6,
+      "name": "Tonno al naturale"
+    },
+    {
+      "ingredient_id": 7,
+      "name": "Merluzzo"
+    },
+    {
+      "ingredient_id": 8,
+      "name": "Branzino"
+    },
+    {
+      "ingredient_id": 9,
+      "name": "Sgombro"
+    },
+    {
+      "ingredient_id": 10,
+      "name": "Trota"
+    },
+    {
+      "ingredient_id": 11,
+      "name": "Nasello"
+    },
+    {
+      "ingredient_id": 12,
+      "name": "Gamberi"
+    },
+    {
+      "ingredient_id": 13,
+      "name": "Polpo"
+    },
+    {
+      "ingredient_id": 14,
+      "name": "Tofu"
+    },
+    {
+      "ingredient_id": 15,
+      "name": "Tempeh"
+    },
+    {
+      "ingredient_id": 16,
+      "name": "Seitan"
+    },
+    {
+      "ingredient_id": 17,
+      "name": "Edamame"
+    },
+    {
+      "ingredient_id": 18,
+      "name": "Ceci cotti"
+    },
+    {
+      "ingredient_id": 19,
+      "name": "Fagioli cotti"
+    },
+    {
+      "ingredient_id": 20,
+      "name": "Lenticchie cotte"
+    },
+    {
+      "ingredient_id": 23,
+      "name": "Riso bianco"
+    },
+    {
+      "ingredient_id": 24,
+      "name": "Riso basmati"
+    },
+    {
+      "ingredient_id": 25,
+      "name": "Riso nero"
+    },
+    {
+      "ingredient_id": 26,
+      "name": "Riso integrale"
+    },
+    {
+      "ingredient_id": 27,
+      "name": "Riso jasmine"
+    },
+    {
+      "ingredient_id": 29,
+      "name": "Crema di riso"
+    },
+    {
+      "ingredient_id": 30,
+      "name": "Fiocchi di avena"
+    },
+    {
+      "ingredient_id": 31,
+      "name": "Farina di avena"
+    },
+    {
+      "ingredient_id": 32,
+      "name": "Quinoa"
+    },
+    {
+      "ingredient_id": 33,
+      "name": "Orzo perlato"
+    },
+    {
+      "ingredient_id": 34,
+      "name": "Cous cous"
+    },
+    {
+      "ingredient_id": 35,
+      "name": "Pasta integrale"
+    },
+    {
+      "ingredient_id": 36,
+      "name": "Pasta di lenticchie"
+    },
+    {
+      "ingredient_id": 37,
+      "name": "Noodles di riso"
+    },
+    {
+      "ingredient_id": 40,
+      "name": "Pane di segale"
+    },
+    {
+      "ingredient_id": 43,
+      "name": "Grano saraceno"
+    },
+    {
+      "ingredient_id": 44,
+      "name": "Amaranto"
+    },
+    {
+      "ingredient_id": 45,
+      "name": "Polenta"
+    },
+    {
+      "ingredient_id": 46,
+      "name": "Pasta di riso"
+    },
+    {
+      "ingredient_id": 48,
+      "name": "Farina di ceci"
+    },
+    {
+      "ingredient_id": 49,
+      "name": "Yogurt greco 0%"
+    },
+    {
+      "ingredient_id": 50,
+      "name": "Ricotta magra"
+    },
+    {
+      "ingredient_id": 51,
+      "name": "Skyr naturale"
+    },
+    {
+      "ingredient_id": 52,
+      "name": "Kefir naturale"
+    },
+    {
+      "ingredient_id": 53,
+      "name": "Fiocchi di latte"
+    },
+    {
+      "ingredient_id": 54,
+      "name": "Yogurt senza lattosio"
+    },
+    {
+      "ingredient_id": 56,
+      "name": "Feta"
+    },
+    {
+      "ingredient_id": 57,
+      "name": "Grana Padano"
+    },
+    {
+      "ingredient_id": 58,
+      "name": "Latte parzialmente scremato"
+    },
+    {
+      "ingredient_id": 63,
+      "name": "Tofu silken"
+    },
+    {
+      "ingredient_id": 65,
+      "name": "Uova intere"
+    },
+    {
+      "ingredient_id": 66,
+      "name": "Albumi"
+    },
+    {
+      "ingredient_id": 67,
+      "name": "Uovo sodo"
+    },
+    {
+      "ingredient_id": 68,
+      "name": "Spinaci"
+    },
+    {
+      "ingredient_id": 69,
+      "name": "Zucchine"
+    },
+    {
+      "ingredient_id": 70,
+      "name": "Broccoli"
+    },
+    {
+      "ingredient_id": 71,
+      "name": "Carote"
+    },
+    {
+      "ingredient_id": 72,
+      "name": "Peperoni"
+    },
+    {
+      "ingredient_id": 73,
+      "name": "Asparagi"
+    },
+    {
+      "ingredient_id": 74,
+      "name": "Funghi"
+    },
+    {
+      "ingredient_id": 76,
+      "name": "Cetrioli"
+    },
+    {
+      "ingredient_id": 77,
+      "name": "Mais"
+    },
+    {
+      "ingredient_id": 78,
+      "name": "Rucola"
+    },
+    {
+      "ingredient_id": 79,
+      "name": "Finocchi"
+    },
+    {
+      "ingredient_id": 80,
+      "name": "Fagiolini"
+    },
+    {
+      "ingredient_id": 81,
+      "name": "Zucca"
+    },
+    {
+      "ingredient_id": 82,
+      "name": "Pomodoro"
+    },
+    {
+      "ingredient_id": 83,
+      "name": "Pomodorini"
+    },
+    {
+      "ingredient_id": 84,
+      "name": "Cavolo kale"
+    },
+    {
+      "ingredient_id": 85,
+      "name": "Sedano"
+    },
+    {
+      "ingredient_id": 86,
+      "name": "Barbabietola"
+    },
+    {
+      "ingredient_id": 88,
+      "name": "Patate"
+    },
+    {
+      "ingredient_id": 89,
+      "name": "Patata dolce"
+    },
+    {
+      "ingredient_id": 90,
+      "name": "Banana"
+    },
+    {
+      "ingredient_id": 91,
+      "name": "Mela"
+    },
+    {
+      "ingredient_id": 92,
+      "name": "Pera"
+    },
+    {
+      "ingredient_id": 93,
+      "name": "Fragole"
+    },
+    {
+      "ingredient_id": 94,
+      "name": "Mirtilli"
+    },
+    {
+      "ingredient_id": 95,
+      "name": "Lamponi"
+    },
+    {
+      "ingredient_id": 97,
+      "name": "Kiwi"
+    },
+    {
+      "ingredient_id": 98,
+      "name": "Mango"
+    },
+    {
+      "ingredient_id": 99,
+      "name": "Papaya"
+    },
+    {
+      "ingredient_id": 100,
+      "name": "Ananas"
+    },
+    {
+      "ingredient_id": 101,
+      "name": "Avocado"
+    },
+    {
+      "ingredient_id": 102,
+      "name": "Datteri"
+    },
+    {
+      "ingredient_id": 104,
+      "name": "Mandorle"
+    },
+    {
+      "ingredient_id": 105,
+      "name": "Noci"
+    },
+    {
+      "ingredient_id": 107,
+      "name": "Tahina"
+    },
+    {
+      "ingredient_id": 108,
+      "name": "Semi di chia"
+    },
+    {
+      "ingredient_id": 109,
+      "name": "Semi di lino"
+    },
+    {
+      "ingredient_id": 110,
+      "name": "Olio EVO"
+    },
+    {
+      "ingredient_id": 111,
+      "name": "Miele"
+    },
+    {
+      "ingredient_id": 113,
+      "name": "Olive"
+    },
+    {
+      "ingredient_id": 116,
+      "name": "Cacao amaro"
+    },
+    {
+      "ingredient_id": 201,
+      "name": "Alici/Acciughe"
+    },
+    {
+      "ingredient_id": 202,
+      "name": "Aringa"
+    },
+    {
+      "ingredient_id": 203,
+      "name": "Calamari"
+    },
+    {
+      "ingredient_id": 204,
+      "name": "Cannolicchi"
+    },
+    {
+      "ingredient_id": 205,
+      "name": "Capesante"
+    },
+    {
+      "ingredient_id": 206,
+      "name": "Coniglio"
+    },
+    {
+      "ingredient_id": 207,
+      "name": "Cozze"
+    },
+    {
+      "ingredient_id": 208,
+      "name": "Fegato di manzo"
+    },
+    {
+      "ingredient_id": 209,
+      "name": "Ostriche"
+    },
+    {
+      "ingredient_id": 210,
+      "name": "Sardine al naturale"
+    },
+    {
+      "ingredient_id": 211,
+      "name": "Vongole"
+    },
+    {
+      "ingredient_id": 212,
+      "name": "Natto"
+    },
+    {
+      "ingredient_id": 213,
+      "name": "Azuki cotti"
+    },
+    {
+      "ingredient_id": 214,
+      "name": "Fave cotte"
+    },
+    {
+      "ingredient_id": 216,
+      "name": "Soia cotta"
+    },
+    {
+      "ingredient_id": 220,
+      "name": "Bietola"
+    },
+    {
+      "ingredient_id": 221,
+      "name": "Capperi"
+    },
+    {
+      "ingredient_id": 222,
+      "name": "Carciofo"
+    },
+    {
+      "ingredient_id": 223,
+      "name": "Cavoletti di Bruxelles"
+    },
+    {
+      "ingredient_id": 224,
+      "name": "Cavolo cappuccio"
+    },
+    {
+      "ingredient_id": 225,
+      "name": "Cavolo romanesco"
+    },
+    {
+      "ingredient_id": 226,
+      "name": "Cavolo viola"
+    },
+    {
+      "ingredient_id": 227,
+      "name": "Cime di rapa"
+    },
+    {
+      "ingredient_id": 228,
+      "name": "Cipolla"
+    },
+    {
+      "ingredient_id": 229,
+      "name": "Crauti"
+    },
+    {
+      "ingredient_id": 230,
+      "name": "Daikon"
+    },
+    {
+      "ingredient_id": 232,
+      "name": "Germogli di soia"
+    },
+    {
+      "ingredient_id": 234,
+      "name": "Pak choi (cavolo cinese)"
+    },
+    {
+      "ingredient_id": 235,
+      "name": "Porro"
+    },
+    {
+      "ingredient_id": 236,
+      "name": "Radicchio"
+    },
+    {
+      "ingredient_id": 237,
+      "name": "Albicocca"
+    },
+    {
+      "ingredient_id": 238,
+      "name": "Arancia"
+    },
+    {
+      "ingredient_id": 240,
+      "name": "Ciliegie"
+    },
+    {
+      "ingredient_id": 241,
+      "name": "Fico fresco"
+    },
+    {
+      "ingredient_id": 242,
+      "name": "Limone"
+    },
+    {
+      "ingredient_id": 243,
+      "name": "Melograno (arilli)"
+    },
+    {
+      "ingredient_id": 244,
+      "name": "Melone cantalupo"
+    },
+    {
+      "ingredient_id": 245,
+      "name": "Pesca"
+    },
+    {
+      "ingredient_id": 246,
+      "name": "Pompelmo"
+    },
+    {
+      "ingredient_id": 247,
+      "name": "Susina"
+    },
+    {
+      "ingredient_id": 248,
+      "name": "Uva"
+    },
+    {
+      "ingredient_id": 250,
+      "name": "Farina di mandorle"
+    },
+    {
+      "ingredient_id": 251,
+      "name": "Nocciole"
+    },
+    {
+      "ingredient_id": 252,
+      "name": "Semi di canapa"
+    },
+    {
+      "ingredient_id": 253,
+      "name": "Semi di girasole"
+    },
+    {
+      "ingredient_id": 254,
+      "name": "Semi di zucca"
+    },
+    {
+      "ingredient_id": 255,
+      "name": "Aceto di mele"
+    },
+    {
+      "ingredient_id": 256,
+      "name": "Olio di cocco vergine"
+    },
+    {
+      "ingredient_id": 259,
+      "name": "Caffè (espresso)"
+    },
+    {
+      "ingredient_id": 261,
+      "name": "Matcha in polvere"
+    },
+    {
+      "ingredient_id": 264,
+      "name": "Sale iodato"
+    },
+    {
+      "ingredient_id": 265,
+      "name": "Spirulina in polvere"
+    },
+    {
+      "ingredient_id": 266,
+      "name": "Tè verde"
+    },
+    {
+      "ingredient_id": 267,
+      "name": "Aglio"
+    },
+    {
+      "ingredient_id": 268,
+      "name": "Basilico fresco"
+    },
+    {
+      "ingredient_id": 269,
+      "name": "Cannella in polvere"
+    },
+    {
+      "ingredient_id": 270,
+      "name": "Curcuma in polvere"
+    },
+    {
+      "ingredient_id": 271,
+      "name": "Menta fresca"
+    },
+    {
+      "ingredient_id": 272,
+      "name": "Origano secco"
+    },
+    {
+      "ingredient_id": 273,
+      "name": "Pepe nero"
+    },
+    {
+      "ingredient_id": 274,
+      "name": "Peperoncino fresco"
+    },
+    {
+      "ingredient_id": 275,
+      "name": "Prezzemolo"
+    },
+    {
+      "ingredient_id": 276,
+      "name": "Rosmarino"
+    },
+    {
+      "ingredient_id": 277,
+      "name": "Zenzero fresco"
+    },
+    {
+      "ingredient_id": 278,
+      "name": "Crema di nocciole 100%"
+    },
+    {
+      "ingredient_id": 279,
+      "name": "Burro di anacardi 100%"
+    },
+    {
+      "ingredient_id": 280,
+      "name": "Crema di pistacchi 100%"
+    }
+  ],
+  "excluded_ingredients": [
+    {
+      "ingredient_id": 21,
+      "name": "Lenticchie rosse",
+      "classification": "TEMPORARILY_EXCLUDE_NUTRITION_BASIS_REVIEW",
+      "reason": "Marked raw while nutrition values match cooked lentils, so authored grams do not currently represent a stable nutrition basis.",
+      "resolution_required": "Resolve raw/cooked nutrition basis and serving semantics before draft use."
+    },
+    {
+      "ingredient_id": 22,
+      "name": "Legumi misti cotti",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Mixed cooked legumes can vary materially in composition and macro profile.",
+      "resolution_required": "Define a deterministic blend or split into specific legume ingredients."
+    },
+    {
+      "ingredient_id": 28,
+      "name": "Riso soffiato",
+      "classification": "TEMPORARILY_EXCLUDE_REQUIRES_YIELD_OR_BASIS_DECISION",
+      "reason": "Ready-to-eat puffed rice has unresolved product form and basis semantics for quantitative authoring.",
+      "resolution_required": "Review product form, nutrition basis and serving metadata."
+    },
+    {
+      "ingredient_id": 38,
+      "name": "Pane integrale",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Wholemeal bread composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 39,
+      "name": "Pane per toast",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Toast bread composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 41,
+      "name": "Gallette di riso",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Ready-to-eat/rice-cake product with unresolved product-form/basis semantics for conservative quantitative draft authoring.",
+      "resolution_required": "Define stable product form, nutrition/measurement basis and serving semantics before reintroducing it into the clean whitelist."
+    },
+    {
+      "ingredient_id": 42,
+      "name": "Crackers integrali",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Wholegrain crackers composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 47,
+      "name": "Pane senza glutine",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Gluten-free bread composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 55,
+      "name": "Mozzarella light",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Light mozzarella composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 59,
+      "name": "Latte di mandorla",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Almond drink composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 60,
+      "name": "Latte di avena",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Oat drink composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 61,
+      "name": "Latte di riso",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Rice drink composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 62,
+      "name": "Yogurt di cocco",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Coconut yogurt composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 64,
+      "name": "Latte di cocco light",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Light coconut milk composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 75,
+      "name": "Insalata mista",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Mixed salad composition can vary materially by ingredient mix.",
+      "resolution_required": "Define a deterministic component mix or use specific vegetables."
+    },
+    {
+      "ingredient_id": 87,
+      "name": "Verdure miste",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Mixed vegetables composition can vary materially by ingredient mix.",
+      "resolution_required": "Define a deterministic component mix or use specific vegetables."
+    },
+    {
+      "ingredient_id": 96,
+      "name": "Frutti di bosco misti",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Mixed berries composition can vary materially by fruit mix.",
+      "resolution_required": "Define a deterministic component mix or use specific fruits."
+    },
+    {
+      "ingredient_id": 103,
+      "name": "Frutta fresca di stagione",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Seasonal fresh fruit identity varies and does not provide stable quantitative semantics.",
+      "resolution_required": "Use a specific fruit or define a deterministic selection rule."
+    },
+    {
+      "ingredient_id": 106,
+      "name": "Burro di arachidi",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Peanut butter composition depends on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 112,
+      "name": "Marmellata senza zuccheri",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Sugar-free jam composition depends materially on sweetener and product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 114,
+      "name": "Proteine in polvere whey",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Whey protein powder nutrition depends materially on brand/formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 115,
+      "name": "Proteine in polvere plant",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Plant protein powder nutrition depends materially on blend and brand/formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 117,
+      "name": "Cioccolato fondente 70%",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Dark chocolate composition depends on product formulation even at declared cocoa percentage.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 199,
+      "name": "Miglio (cotto)",
+      "classification": "TEMPORARILY_EXCLUDE_METADATA_REVIEW",
+      "reason": "Cooked millet still has cooking-method metadata requiring review before authoring.",
+      "resolution_required": "Review allowed_cooking_methods and cooked-form authoring semantics."
+    },
+    {
+      "ingredient_id": 200,
+      "name": "Teff (cotto)",
+      "classification": "TEMPORARILY_EXCLUDE_METADATA_REVIEW",
+      "reason": "Cooked teff still has cooking-method metadata requiring review before authoring.",
+      "resolution_required": "Review allowed_cooking_methods and cooked-form authoring semantics."
+    },
+    {
+      "ingredient_id": 215,
+      "name": "Piselli freschi/surgelati",
+      "classification": "TEMPORARILY_EXCLUDE_METADATA_REVIEW",
+      "reason": "Fresh/frozen peas combined identity and taxonomy make authoring form ambiguous.",
+      "resolution_required": "Split or review form, taxonomy and template slots before draft use."
+    },
+    {
+      "ingredient_id": 217,
+      "name": "Castagne lessate",
+      "classification": "TEMPORARILY_EXCLUDE_REQUIRES_YIELD_OR_BASIS_DECISION",
+      "reason": "Boiled chestnut representation has unresolved cooking-method and basis semantics.",
+      "resolution_required": "Review cooked basis, yield assumptions and allowed cooking methods."
+    },
+    {
+      "ingredient_id": 218,
+      "name": "Farina di cocco",
+      "classification": "TEMPORARILY_EXCLUDE_NUTRITION_BASIS_REVIEW",
+      "reason": "Coconut flour taxonomy and nutrition basis require review before grams can be trusted for draft recipes.",
+      "resolution_required": "Review category/template slot and nutrition basis."
+    },
+    {
+      "ingredient_id": 219,
+      "name": "Alghe nori (secche)",
+      "classification": "TEMPORARILY_EXCLUDE_METADATA_REVIEW",
+      "reason": "Dried nori serving step and quantity semantics require review.",
+      "resolution_required": "Review serving bounds, serving step and dry-form quantity semantics."
+    },
+    {
+      "ingredient_id": 231,
+      "name": "Funghi shiitake secchi",
+      "classification": "TEMPORARILY_EXCLUDE_REQUIRES_YIELD_OR_BASIS_DECISION",
+      "reason": "Dried shiitake cooking/rehydration semantics require a basis decision.",
+      "resolution_required": "Review raw/dried basis and whether a yield conversion is required."
+    },
+    {
+      "ingredient_id": 233,
+      "name": "Kimchi",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Kimchi composition and fermentation profile vary materially by recipe/product.",
+      "resolution_required": "Define a canonical recipe/product specification before draft use."
+    },
+    {
+      "ingredient_id": 239,
+      "name": "Açaí (polpa)",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Açai pulp composition can vary by product and added ingredients.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 249,
+      "name": "Crema di mandorle",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Almond cream composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 257,
+      "name": "Bevanda di soia",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Soy drink composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 258,
+      "name": "Yogurt di soia",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Soy yogurt composition depends materially on product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 260,
+      "name": "Eritritolo",
+      "classification": "TEMPORARILY_EXCLUDE_METADATA_REVIEW",
+      "reason": "Erythritol serving bounds/step metadata require review for quantitative authoring.",
+      "resolution_required": "Review serving_min_g, serving_max_g and serving_step_g."
+    },
+    {
+      "ingredient_id": 262,
+      "name": "Miso (pasta)",
+      "classification": "TEMPORARILY_EXCLUDE_VARIABLE_OR_PRODUCT_SPECIFIC",
+      "reason": "Miso paste composition depends materially on fermentation and product formulation.",
+      "resolution_required": "Define a canonical product/specification before draft use."
+    },
+    {
+      "ingredient_id": 263,
+      "name": "Psyllium (bucce)",
+      "classification": "TEMPORARILY_EXCLUDE_METADATA_REVIEW",
+      "reason": "Psyllium serving bounds/step metadata require review for quantitative authoring.",
+      "resolution_required": "Review serving_min_g, serving_max_g and serving_step_g."
+    }
+  ],
+  "notes": [
+    "This whitelist is only for controlled draft recipe authoring.",
+    "This whitelist is not professional nutrition validation.",
+    "This whitelist is not clinical validation.",
+    "This whitelist is not allergy-safe validation.",
+    "Granular allergen NULL values mean unknown and remain a later validation gate.",
+    "Cross-contact safety is not implied by inclusion in this whitelist.",
+    "Runtime recipe use requires later validation gates before user-facing allergy-safe or clinical behavior.",
+    "Temporary exclusions may be reintroduced through reviewed whitelist revisions."
+  ]
+}

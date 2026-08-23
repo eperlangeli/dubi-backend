@@ -170,29 +170,30 @@
       ]
     },
     {
-      "authoring_key": "pilot01_pre_workout_rice_cakes_banana_honey",
-      "name": "Rice cakes, banana and honey",
-      "description": "A quick pre-workout draft recipe with rice cakes, banana and honey.",
-      "recipe_format_code": "handheld",
+      "authoring_key": "pilot01_pre_workout_cream_of_rice_banana_honey",
+      "name": "Cream of rice with banana and honey",
+      "description": "A simple pre-workout draft recipe with cream of rice, banana and honey.",
+      "recipe_format_code": "bowl",
       "cuisine_family_code": "neutral",
       "eligible_meal_types": ["pre_workout"],
       "difficulty": "easy",
       "prep_time_min": 4,
-      "cook_time_min": 0,
+      "cook_time_min": 5,
       "instructions_steps": [
-        "Place the rice cakes on a plate.",
-        "Slice the banana and add it over or beside the rice cakes.",
-        "Drizzle honey over the banana and serve."
+        "Cook the cream of rice with water until smooth.",
+        "Slice the banana.",
+        "Top the cream of rice with the banana.",
+        "Drizzle the honey over the bowl and serve."
       ],
-      "equipment": ["none"],
+      "equipment": ["stovetop"],
       "transportable": true,
       "meal_prep_compatible": false,
       "budget_tier": "budget",
       "ingredients": [
         {
-          "ingredient_id": 41,
-          "ingredient_name": "Gallette di riso",
-          "quantity_g": 35,
+          "ingredient_id": 29,
+          "ingredient_name": "Crema di riso",
+          "quantity_g": 50,
           "quantity_unit": "g",
           "measurement_basis": "raw",
           "culinary_role": "carb_primary",
