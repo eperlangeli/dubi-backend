@@ -1,0 +1,622 @@
+[
+  {
+    "authoring_key": "pilot02_breakfast_skyr_blueberry_chia_bowl",
+    "name": "Skyr blueberry chia bowl",
+    "description": "A simple breakfast draft recipe with skyr, blueberries, chia seeds and honey.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["breakfast"],
+    "difficulty": "easy",
+    "prep_time_min": 6,
+    "cook_time_min": 0,
+    "equipment": ["none"],
+    "breakfast_style": "sweet",
+    "ingredients": [
+      {
+        "ingredient_id": 51,
+        "ingredient_name": "Skyr naturale",
+        "quantity_g": 170,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "protein_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 94,
+        "ingredient_name": "Mirtilli",
+        "quantity_g": 100,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fruit",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 108,
+        "ingredient_name": "Semi di chia",
+        "quantity_g": 12,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fat",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 111,
+        "ingredient_name": "Miele",
+        "quantity_g": 10,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "flavor",
+        "is_scalable": true
+      }
+    ],
+    "instructions_steps": [
+      "Spoon the skyr into a bowl.",
+      "Add the blueberries.",
+      "Sprinkle the chia seeds over the bowl.",
+      "Drizzle with honey and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot02_breakfast_egg_spinach_rye_plate",
+    "name": "Egg spinach rye plate",
+    "description": "A simple savory breakfast draft recipe with eggs, spinach and rye bread.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["breakfast"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 10,
+    "equipment": ["stovetop"],
+    "breakfast_style": "savory",
+    "ingredients": [
+      {
+        "ingredient_id": 65,
+        "ingredient_name": "Uova intere",
+        "quantity_g": 120,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "protein_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 68,
+        "ingredient_name": "Spinaci",
+        "quantity_g": 100,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "vegetable",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 40,
+        "ingredient_name": "Pane di segale",
+        "quantity_g": 60,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "carb_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 110,
+        "ingredient_name": "Olio EVO",
+        "quantity_g": 5,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fat",
+        "is_scalable": true
+      }
+    ],
+    "instructions_steps": [
+      "Cook the spinach in a pan until wilted.",
+      "Cook the eggs in the same pan.",
+      "Place the rye bread on the plate.",
+      "Serve the eggs and spinach with olive oil."
+    ]
+  },
+  {
+    "authoring_key": "pilot02_snack_pear_walnuts",
+    "name": "Pear with walnuts",
+    "description": "A simple snack draft recipe with pear and walnuts.",
+    "recipe_format_code": "handheld",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["snack"],
+    "difficulty": "easy",
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "equipment": ["none"],
+    "transportable": true,
+    "ingredients": [
+      {
+        "ingredient_id": 92,
+        "ingredient_name": "Pera",
+        "quantity_g": 160,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fruit",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 105,
+        "ingredient_name": "Noci",
+        "quantity_g": 20,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fat",
+        "is_scalable": true
+      }
+    ],
+    "instructions_steps": [
+      "Wash the pear.",
+      "Slice the pear.",
+      "Serve the pear with the walnuts."
+    ]
+  },
+  {
+    "authoring_key": "pilot02_lunch_dinner_salmon_quinoa_broccoli_plate",
+    "name": "Salmon quinoa broccoli plate",
+    "description": "A simple lunch or dinner draft recipe with salmon, quinoa and broccoli.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "mediterranean",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "medium",
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      {
+        "ingredient_id": 5,
+        "ingredient_name": "Salmone",
+        "quantity_g": 150,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "protein_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 32,
+        "ingredient_name": "Quinoa",
+        "quantity_g": 70,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "carb_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 70,
+        "ingredient_name": "Broccoli",
+        "quantity_g": 180,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "vegetable",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 110,
+        "ingredient_name": "Olio EVO",
+        "quantity_g": 10,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fat",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 242,
+        "ingredient_name": "Limone",
+        "quantity_g": 20,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "flavor",
+        "is_scalable": true
+      }
+    ],
+    "instructions_steps": [
+      "Cook the quinoa according to package directions.",
+      "Cook the broccoli until tender.",
+      "Cook the salmon thoroughly in a pan.",
+      "Plate the quinoa, broccoli and salmon.",
+      "Finish with olive oil and lemon."
+    ]
+  },
+  {
+    "authoring_key": "pilot02_lunch_dinner_tofu_rice_noodle_pak_choi_bowl",
+    "name": "Tofu rice noodle pak choi bowl",
+    "description": "A simple lunch or dinner draft recipe with tofu, rice noodles and vegetables.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "asian_inspired",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "easy",
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      {
+        "ingredient_id": 14,
+        "ingredient_name": "Tofu",
+        "quantity_g": 160,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "protein_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 37,
+        "ingredient_name": "Noodles di riso",
+        "quantity_g": 75,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "carb_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 234,
+        "ingredient_name": "Pak choi (cavolo cinese)",
+        "quantity_g": 150,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "vegetable",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 232,
+        "ingredient_name": "Germogli di soia",
+        "quantity_g": 60,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "vegetable",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 110,
+        "ingredient_name": "Olio EVO",
+        "quantity_g": 5,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fat",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 255,
+        "ingredient_name": "Aceto di mele",
+        "quantity_g": 10,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "flavor",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 267,
+        "ingredient_name": "Aglio",
+        "quantity_g": 3,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "flavor",
+        "is_scalable": true
+      }
+    ],
+    "instructions_steps": [
+      "Cook the rice noodles according to package directions.",
+      "Cook the tofu in a pan until heated through.",
+      "Add the pak choi and bean sprouts to the pan.",
+      "Combine the noodles, tofu and vegetables in a bowl.",
+      "Finish with olive oil, apple cider vinegar and garlic."
+    ]
+  },
+  {
+    "authoring_key": "pilot02_lunch_dinner_lentil_pasta_tomato_spinach_bowl",
+    "name": "Lentil pasta tomato spinach bowl",
+    "description": "A simple lunch or dinner draft recipe with lentil pasta, tomato and spinach.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "italian",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 15,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      {
+        "ingredient_id": 36,
+        "ingredient_name": "Pasta di lenticchie",
+        "quantity_g": 80,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "carb_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 82,
+        "ingredient_name": "Pomodoro",
+        "quantity_g": 150,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "vegetable",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 68,
+        "ingredient_name": "Spinaci",
+        "quantity_g": 80,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "vegetable",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 57,
+        "ingredient_name": "Grana Padano",
+        "quantity_g": 15,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "garnish",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 110,
+        "ingredient_name": "Olio EVO",
+        "quantity_g": 10,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fat",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 268,
+        "ingredient_name": "Basilico fresco",
+        "quantity_g": 5,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "flavor",
+        "is_scalable": true
+      }
+    ],
+    "instructions_steps": [
+      "Cook the lentil pasta according to package directions.",
+      "Warm the tomato and spinach in a pan.",
+      "Combine the pasta with the tomato and spinach.",
+      "Finish with olive oil, Grana Padano and basil."
+    ]
+  },
+  {
+    "authoring_key": "pilot02_lunch_dinner_turkey_sweet_potato_pepper_plate",
+    "name": "Turkey sweet potato pepper plate",
+    "description": "A simple lunch or dinner draft recipe with turkey, sweet potato and peppers.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "mediterranean",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "medium",
+    "prep_time_min": 10,
+    "cook_time_min": 18,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      {
+        "ingredient_id": 2,
+        "ingredient_name": "Fesa di tacchino",
+        "quantity_g": 160,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "protein_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 89,
+        "ingredient_name": "Patata dolce",
+        "quantity_g": 200,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "carb_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 72,
+        "ingredient_name": "Peperoni",
+        "quantity_g": 150,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "vegetable",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 228,
+        "ingredient_name": "Cipolla",
+        "quantity_g": 40,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "flavor",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 110,
+        "ingredient_name": "Olio EVO",
+        "quantity_g": 10,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fat",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 276,
+        "ingredient_name": "Rosmarino",
+        "quantity_g": 2,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "flavor",
+        "is_scalable": true
+      }
+    ],
+    "instructions_steps": [
+      "Cut the sweet potato and peppers into small pieces.",
+      "Cook the sweet potato in a pan until tender.",
+      "Cook the turkey thoroughly in the same pan.",
+      "Add the peppers and onion until softened.",
+      "Serve with olive oil and rosemary."
+    ]
+  },
+  {
+    "authoring_key": "pilot02_pre_workout_dates_banana_rice_cream",
+    "name": "Date banana cream of rice",
+    "description": "A simple pre-workout draft recipe with cream of rice, banana and dates.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["pre_workout"],
+    "difficulty": "easy",
+    "prep_time_min": 4,
+    "cook_time_min": 5,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      {
+        "ingredient_id": 29,
+        "ingredient_name": "Crema di riso",
+        "quantity_g": 40,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "carb_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 90,
+        "ingredient_name": "Banana",
+        "quantity_g": 100,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fruit",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 102,
+        "ingredient_name": "Datteri",
+        "quantity_g": 25,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fruit",
+        "is_scalable": true
+      }
+    ],
+    "instructions_steps": [
+      "Cook the cream of rice with water until smooth.",
+      "Slice the banana.",
+      "Cut the dates into small pieces.",
+      "Top the cream of rice with banana and dates."
+    ]
+  },
+  {
+    "authoring_key": "pilot02_post_workout_turkey_jasmine_mango_bowl",
+    "name": "Turkey jasmine mango bowl",
+    "description": "A simple post-workout draft recipe with turkey, jasmine rice and mango.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["post_workout"],
+    "difficulty": "easy",
+    "prep_time_min": 10,
+    "cook_time_min": 18,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      {
+        "ingredient_id": 2,
+        "ingredient_name": "Fesa di tacchino",
+        "quantity_g": 155,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "protein_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 27,
+        "ingredient_name": "Riso jasmine",
+        "quantity_g": 80,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "carb_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 98,
+        "ingredient_name": "Mango",
+        "quantity_g": 120,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fruit",
+        "is_scalable": true
+      }
+    ],
+    "instructions_steps": [
+      "Cook the jasmine rice according to package directions.",
+      "Cook the turkey thoroughly in a pan.",
+      "Cut the mango into bite-size pieces.",
+      "Combine the rice, turkey and mango in a bowl."
+    ]
+  },
+  {
+    "authoring_key": "pilot02_post_workout_cod_potato_green_bean_plate",
+    "name": "Cod potato green bean plate",
+    "description": "A simple post-workout draft recipe with cod, potatoes and green beans.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "mediterranean",
+    "eligible_meal_types": ["post_workout"],
+    "difficulty": "easy",
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      {
+        "ingredient_id": 7,
+        "ingredient_name": "Merluzzo",
+        "quantity_g": 170,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "protein_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 88,
+        "ingredient_name": "Patate",
+        "quantity_g": 220,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "carb_primary",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 80,
+        "ingredient_name": "Fagiolini",
+        "quantity_g": 150,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "vegetable",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 110,
+        "ingredient_name": "Olio EVO",
+        "quantity_g": 8,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "fat",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 242,
+        "ingredient_name": "Limone",
+        "quantity_g": 20,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "flavor",
+        "is_scalable": true
+      },
+      {
+        "ingredient_id": 275,
+        "ingredient_name": "Prezzemolo",
+        "quantity_g": 5,
+        "quantity_unit": "g",
+        "measurement_basis": "raw",
+        "culinary_role": "flavor",
+        "is_scalable": true
+      }
+    ],
+    "instructions_steps": [
+      "Cook the potatoes until tender.",
+      "Cook the green beans until tender.",
+      "Cook the cod thoroughly in a pan.",
+      "Plate the cod with the potatoes and green beans.",
+      "Finish with olive oil, lemon and parsley."
+    ]
+  }
+]
