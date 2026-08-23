@@ -1,0 +1,77 @@
+{
+  "recipes": [],
+  "_authoring_notes": {
+    "purpose": "Canonical draft recipe authoring package for recipe_definitions and recipe_ingredients only.",
+    "status": "Template only. Do not treat this file as definitive recipe data.",
+    "recipe_references": {
+      "recipe_format_code": [
+        "plated_meal",
+        "bowl",
+        "salad",
+        "sandwich_wrap",
+        "soup_stew",
+        "smoothie",
+        "drink",
+        "handheld"
+      ],
+      "cuisine_family_code": [
+        "italian",
+        "mediterranean",
+        "asian_inspired",
+        "middle_eastern",
+        "latin_inspired",
+        "neutral"
+      ]
+    },
+    "recipe_shape": {
+      "authoring_key": "",
+      "name": "",
+      "description": "",
+      "recipe_format_code": "",
+      "cuisine_family_code": "",
+      "eligible_meal_types": [],
+      "difficulty": "",
+      "prep_time_min": 0,
+      "cook_time_min": 0,
+      "instructions_steps": [],
+      "equipment": [],
+      "transportable": false,
+      "breakfast_style": "",
+      "meal_prep_compatible": false,
+      "storage_fridge_days": null,
+      "storage_freezer_days": null,
+      "reheating_method": "",
+      "budget_tier": "",
+      "notes": "",
+      "ingredients": [
+        {
+          "ingredient_id": 0,
+          "ingredient_name": "",
+          "quantity_g": 0,
+          "quantity_unit": "",
+          "measurement_basis": "",
+          "culinary_role": "",
+          "is_scalable": true,
+          "scalable_min_g": null,
+          "scalable_max_g": null,
+          "scalable_step_g": null,
+          "is_optional_culinary_metadata": false,
+          "fixed_or_scalable_reason": "",
+          "notes": ""
+        }
+      ]
+    },
+    "derived_or_review_fields_not_authored": [
+      "dietary_styles",
+      "ingredient_count_excluding_water_spices",
+      "total_time_min",
+      "time_class",
+      "base_has_blocked_policy",
+      "base_has_unresolved_policy",
+      "base_requires_clinical_review",
+      "validation_status",
+      "nutrition_review_status",
+      "clinical_review_status"
+    ]
+  }
+}
