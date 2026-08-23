@@ -1,0 +1,272 @@
+{
+  "recipes": [
+    {
+      "authoring_key": "pilot01_breakfast_greek_yogurt_oat_strawberry_bowl",
+      "name": "Greek yogurt oat strawberry bowl",
+      "description": "A simple sweet breakfast bowl with Greek yogurt, oats, strawberries and honey.",
+      "recipe_format_code": "bowl",
+      "cuisine_family_code": "neutral",
+      "eligible_meal_types": ["breakfast"],
+      "difficulty": "easy",
+      "prep_time_min": 8,
+      "cook_time_min": 0,
+      "instructions_steps": [
+        "Spoon the Greek yogurt into a bowl.",
+        "Add the oats and gently fold them through the yogurt.",
+        "Top with sliced strawberries.",
+        "Drizzle with honey and serve."
+      ],
+      "equipment": ["none"],
+      "breakfast_style": "sweet",
+      "meal_prep_compatible": false,
+      "budget_tier": "moderate",
+      "ingredients": [
+        {
+          "ingredient_id": 49,
+          "ingredient_name": "Yogurt greco 0%",
+          "quantity_g": 175,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "protein_primary",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 30,
+          "ingredient_name": "Fiocchi di avena",
+          "quantity_g": 50,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "carb_primary",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 93,
+          "ingredient_name": "Fragole",
+          "quantity_g": 125,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "fruit",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "quantity_g": 15,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "flavor",
+          "is_scalable": true
+        }
+      ]
+    },
+    {
+      "authoring_key": "pilot01_snack_apple_with_almonds",
+      "name": "Apple with almonds",
+      "description": "A minimal snack made with fresh apple and almonds.",
+      "recipe_format_code": "handheld",
+      "cuisine_family_code": "neutral",
+      "eligible_meal_types": ["snack"],
+      "difficulty": "easy",
+      "prep_time_min": 5,
+      "cook_time_min": 0,
+      "instructions_steps": [
+        "Wash the apple and slice it into wedges.",
+        "Place the apple slices on a small plate.",
+        "Serve with almonds on the side."
+      ],
+      "equipment": ["none"],
+      "transportable": true,
+      "meal_prep_compatible": false,
+      "budget_tier": "moderate",
+      "ingredients": [
+        {
+          "ingredient_id": 91,
+          "ingredient_name": "Mela",
+          "quantity_g": 155,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "fruit",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 104,
+          "ingredient_name": "Mandorle",
+          "quantity_g": 25,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "fat",
+          "is_scalable": true
+        }
+      ]
+    },
+    {
+      "authoring_key": "pilot01_lunch_dinner_chicken_basmati_zucchini_plate",
+      "name": "Chicken basmati rice and zucchini plate",
+      "description": "A simple plate with chicken, basmati rice, zucchini, olive oil and lemon.",
+      "recipe_format_code": "plated_meal",
+      "cuisine_family_code": "mediterranean",
+      "eligible_meal_types": ["lunch", "dinner"],
+      "difficulty": "easy",
+      "prep_time_min": 10,
+      "cook_time_min": 20,
+      "instructions_steps": [
+        "Cook the basmati rice in water according to package directions.",
+        "Cook the chicken in a pan until fully cooked through.",
+        "Slice the zucchini and cook it in a pan or steam it until tender.",
+        "Plate the rice, chicken and zucchini.",
+        "Finish with olive oil and lemon juice."
+      ],
+      "equipment": ["stovetop"],
+      "meal_prep_compatible": true,
+      "storage_fridge_days": 2,
+      "reheating_method": "microwave",
+      "budget_tier": "moderate",
+      "ingredients": [
+        {
+          "ingredient_id": 1,
+          "ingredient_name": "Petto di pollo",
+          "quantity_g": 155,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "protein_primary",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 24,
+          "ingredient_name": "Riso basmati",
+          "quantity_g": 80,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "carb_primary",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 69,
+          "ingredient_name": "Zucchine",
+          "quantity_g": 175,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "vegetable",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "quantity_g": 10,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "fat",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 242,
+          "ingredient_name": "Limone",
+          "quantity_g": 20,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "flavor",
+          "is_scalable": true
+        }
+      ]
+    },
+    {
+      "authoring_key": "pilot01_pre_workout_rice_cakes_banana_honey",
+      "name": "Rice cakes, banana and honey",
+      "description": "A quick pre-workout draft recipe with rice cakes, banana and honey.",
+      "recipe_format_code": "handheld",
+      "cuisine_family_code": "neutral",
+      "eligible_meal_types": ["pre_workout"],
+      "difficulty": "easy",
+      "prep_time_min": 4,
+      "cook_time_min": 0,
+      "instructions_steps": [
+        "Place the rice cakes on a plate.",
+        "Slice the banana and add it over or beside the rice cakes.",
+        "Drizzle honey over the banana and serve."
+      ],
+      "equipment": ["none"],
+      "transportable": true,
+      "meal_prep_compatible": false,
+      "budget_tier": "budget",
+      "ingredients": [
+        {
+          "ingredient_id": 41,
+          "ingredient_name": "Gallette di riso",
+          "quantity_g": 35,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "carb_primary",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 90,
+          "ingredient_name": "Banana",
+          "quantity_g": 120,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "fruit",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "quantity_g": 15,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "flavor",
+          "is_scalable": true
+        }
+      ]
+    },
+    {
+      "authoring_key": "pilot01_post_workout_chicken_basmati_pineapple_bowl",
+      "name": "Chicken basmati pineapple bowl",
+      "description": "A simple post-workout draft candidate bowl with chicken, basmati rice and pineapple.",
+      "recipe_format_code": "bowl",
+      "cuisine_family_code": "neutral",
+      "eligible_meal_types": ["post_workout"],
+      "difficulty": "easy",
+      "prep_time_min": 10,
+      "cook_time_min": 20,
+      "instructions_steps": [
+        "Cook the basmati rice in water according to package directions.",
+        "Cook the chicken in a pan until fully cooked through.",
+        "Cut the pineapple into bite-size pieces.",
+        "Combine the rice, chicken and pineapple in a bowl.",
+        "Serve."
+      ],
+      "equipment": ["stovetop"],
+      "meal_prep_compatible": false,
+      "budget_tier": "moderate",
+      "ingredients": [
+        {
+          "ingredient_id": 1,
+          "ingredient_name": "Petto di pollo",
+          "quantity_g": 155,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "protein_primary",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 24,
+          "ingredient_name": "Riso basmati",
+          "quantity_g": 80,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "carb_primary",
+          "is_scalable": true
+        },
+        {
+          "ingredient_id": 100,
+          "ingredient_name": "Ananas",
+          "quantity_g": 125,
+          "quantity_unit": "g",
+          "measurement_basis": "raw",
+          "culinary_role": "fruit",
+          "is_scalable": true
+        }
+      ]
+    }
+  ]
+}

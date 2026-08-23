@@ -44,6 +44,7 @@ const DIFFICULTIES = Object.freeze(['easy', 'medium']);
 const BREAKFAST_STYLES = Object.freeze(['sweet', 'savory', 'both', 'not_applicable']);
 const REHEATING_METHODS = Object.freeze(['microwave', 'stovetop', 'oven', 'none']);
 const BUDGET_TIERS = Object.freeze(['budget', 'moderate', 'premium']);
+const YIELD_CONVERSION_WARNING = 'YIELD_CONVERSION_NOT_CHECKED: measurement-basis compatibility and validated yield-conversion availability require ingredient metadata / DB audit';
 const CULINARY_ROLES = Object.freeze([
   'protein_primary',
   'carb_primary',
@@ -170,8 +171,6 @@ function validateIngredient(ingredient, index, recipeWarnings) {
 
   if (!MEASUREMENT_BASES.includes(ingredient.measurement_basis)) {
     errors.push(`ingredients[${index}].measurement_basis has invalid value ${JSON.stringify(ingredient.measurement_basis)}`);
-  } else if (ingredient.measurement_basis !== 'raw') {
-    recipeWarnings.add('YIELD_CONVERSION_NOT_CHECKED: cooked/preserved measurement basis requires later DB yield/provenance audit');
   }
 
   if (!CULINARY_ROLES.includes(ingredient.culinary_role)) {
@@ -236,6 +235,7 @@ function validateRecipe(recipe, index, seenKeys) {
     'ALLERGEN_STATE_NOT_CHECKED: recipe safety must derive from ingredient data later',
     'PROFESSIONAL_REVIEW_NOT_CHECKED: draft authoring cannot approve recipes',
     'INGREDIENT_SERVING_BOUNDS_NOT_CHECKED: requires DB/export metadata',
+    YIELD_CONVERSION_WARNING,
   ]);
 
   if (!isPlainObject(recipe)) {
