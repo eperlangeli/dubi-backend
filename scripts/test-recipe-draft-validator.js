@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { validateDraftPackage } = require('./validate-recipe-drafts');
+const { validateDraftPackage, validateFile } = require('./validate-recipe-drafts');
 
 function validDraft(overrides = {}) {
   return {
@@ -57,6 +57,10 @@ function assertInvalidWith(packageInput, expectedText) {
   );
   assert.strictEqual(report.summary.invalid_recipes, 0);
   assert.strictEqual(report.summary.errors, 0);
+  assert(
+    !report.recipes[0].errors.some((error) => error.includes('INGREDIENT_NOT_IN_CLEAN_WHITELIST')),
+    `Expected clean ingredient to pass whitelist gate, got ${JSON.stringify(report.recipes[0].errors, null, 2)}`
+  );
 }
 
 {
@@ -126,6 +130,38 @@ assertInvalidWith({
   recipes: [validDraft({ equipment: ['none', 'oven'] })],
 }, 'equipment containing none');
 
+assertInvalidWith({
+  recipes: [validDraft({
+    authoring_key: 'excluded_rice_cakes_fixture',
+    ingredients: [
+      {
+        ingredient_id: 41,
+        ingredient_name: 'Gallette di riso',
+        quantity_g: 40,
+        quantity_unit: 'g',
+        measurement_basis: 'raw',
+        culinary_role: 'carb_primary',
+      },
+    ],
+  })],
+}, 'INGREDIENT_NOT_IN_CLEAN_WHITELIST');
+
+assertInvalidWith({
+  recipes: [validDraft({
+    authoring_key: 'unclassified_ingredient_fixture',
+    ingredients: [
+      {
+        ingredient_id: 999999,
+        ingredient_name: 'Unclassified ingredient fixture',
+        quantity_g: 40,
+        quantity_unit: 'g',
+        measurement_basis: 'raw',
+        culinary_role: 'carb_primary',
+      },
+    ],
+  })],
+}, 'INGREDIENT_NOT_CLASSIFIED_IN_WHITELIST');
+
 {
   const report = validateDraftPackage({
     recipes: [
@@ -152,6 +188,16 @@ assertInvalidWith({
     ],
   });
   assert.strictEqual(report.valid, true, firstErrors({ recipes: [validDraft()] }).join('\n'));
+}
+
+{
+  const pilotPath = path.join(__dirname, '..', 'data', 'recipe-drafts', 'pilot-01.json');
+  const report = validateFile(pilotPath);
+  assert.strictEqual(report.valid, true, JSON.stringify(report, null, 2));
+  assert.strictEqual(report.summary.total_recipes, 5);
+  assert.strictEqual(report.summary.valid_recipes, 5);
+  assert.strictEqual(report.summary.invalid_recipes, 0);
+  assert.strictEqual(report.summary.errors, 0);
 }
 
 console.log('recipe draft validator tests passed');

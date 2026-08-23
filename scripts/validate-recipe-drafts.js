@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 
 const RECIPE_FORMAT_CODES = Object.freeze([
   'plated_meal',
@@ -44,6 +45,10 @@ const DIFFICULTIES = Object.freeze(['easy', 'medium']);
 const BREAKFAST_STYLES = Object.freeze(['sweet', 'savory', 'both', 'not_applicable']);
 const REHEATING_METHODS = Object.freeze(['microwave', 'stovetop', 'oven', 'none']);
 const BUDGET_TIERS = Object.freeze(['budget', 'moderate', 'premium']);
+const CLEAN_WHITELIST_PATH = path.join(__dirname, '..', 'data', 'ingredient-whitelists', 'clean-v1.json');
+const INGREDIENT_NOT_IN_CLEAN_WHITELIST = 'INGREDIENT_NOT_IN_CLEAN_WHITELIST';
+const INGREDIENT_NOT_CLASSIFIED_IN_WHITELIST = 'INGREDIENT_NOT_CLASSIFIED_IN_WHITELIST';
+const WHITELIST_CONFIGURATION_ERROR = 'WHITELIST_CONFIGURATION_ERROR';
 const YIELD_CONVERSION_WARNING = 'YIELD_CONVERSION_NOT_CHECKED: measurement-basis compatibility and validated yield-conversion availability require ingredient metadata / DB audit';
 const CULINARY_ROLES = Object.freeze([
   'protein_primary',
@@ -146,7 +151,82 @@ function normalizePackage(input) {
   return null;
 }
 
-function validateIngredient(ingredient, index, recipeWarnings) {
+function loadCleanWhitelist(filePath = CLEAN_WHITELIST_PATH) {
+  const errors = [];
+  let parsed;
+
+  try {
+    parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    return {
+      valid: false,
+      errors: [`${WHITELIST_CONFIGURATION_ERROR}: cannot load clean ingredient whitelist: ${error.message}`],
+      cleanIngredientIds: new Set(),
+      excludedIngredientLookup: new Map(),
+    };
+  }
+
+  if (!isPlainObject(parsed)) {
+    errors.push(`${WHITELIST_CONFIGURATION_ERROR}: clean ingredient whitelist root must be an object`);
+  }
+  if (!Array.isArray(parsed.clean_ingredients)) {
+    errors.push(`${WHITELIST_CONFIGURATION_ERROR}: clean_ingredients must be an array`);
+  }
+  if (!Array.isArray(parsed.excluded_ingredients)) {
+    errors.push(`${WHITELIST_CONFIGURATION_ERROR}: excluded_ingredients must be an array`);
+  }
+
+  if (errors.length > 0) {
+    return {
+      valid: false,
+      errors,
+      cleanIngredientIds: new Set(),
+      excludedIngredientLookup: new Map(),
+    };
+  }
+
+  const cleanIngredientIds = new Set();
+  const excludedIngredientLookup = new Map();
+  const seenIds = new Map();
+
+  function recordId(entry, section, index) {
+    if (!isPlainObject(entry)) {
+      errors.push(`${WHITELIST_CONFIGURATION_ERROR}: ${section}[${index}] must be an object`);
+      return null;
+    }
+    if (!isPositiveInteger(entry.ingredient_id)) {
+      errors.push(`${WHITELIST_CONFIGURATION_ERROR}: ${section}[${index}].ingredient_id must be an integer > 0`);
+      return null;
+    }
+
+    const previousSection = seenIds.get(entry.ingredient_id);
+    if (previousSection) {
+      errors.push(`${WHITELIST_CONFIGURATION_ERROR}: ingredient_id ${entry.ingredient_id} appears in both/duplicate whitelist sections (${previousSection}, ${section})`);
+    } else {
+      seenIds.set(entry.ingredient_id, section);
+    }
+    return entry.ingredient_id;
+  }
+
+  parsed.clean_ingredients.forEach((entry, index) => {
+    const ingredientId = recordId(entry, 'clean_ingredients', index);
+    if (ingredientId !== null) cleanIngredientIds.add(ingredientId);
+  });
+
+  parsed.excluded_ingredients.forEach((entry, index) => {
+    const ingredientId = recordId(entry, 'excluded_ingredients', index);
+    if (ingredientId !== null) excludedIngredientLookup.set(ingredientId, entry);
+  });
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    cleanIngredientIds,
+    excludedIngredientLookup,
+  };
+}
+
+function validateIngredient(ingredient, index, recipeWarnings, whitelist, authoringKey) {
   const errors = [];
 
   if (!isPlainObject(ingredient)) {
@@ -155,6 +235,17 @@ function validateIngredient(ingredient, index, recipeWarnings) {
 
   if (!isPositiveInteger(ingredient.ingredient_id)) {
     errors.push(`ingredients[${index}].ingredient_id must be an integer > 0`);
+  } else if (whitelist.cleanIngredientIds.has(ingredient.ingredient_id)) {
+    // Static authoring guardrail only: this does not imply allergy or clinical approval.
+  } else if (whitelist.excludedIngredientLookup.has(ingredient.ingredient_id)) {
+    const excluded = whitelist.excludedIngredientLookup.get(ingredient.ingredient_id);
+    errors.push(
+      `${INGREDIENT_NOT_IN_CLEAN_WHITELIST}: authoring_key=${JSON.stringify(authoringKey)}, ingredient_id=${ingredient.ingredient_id}, ingredient_name=${JSON.stringify(ingredient.ingredient_name || excluded.name || null)}, classification=${JSON.stringify(excluded.classification || null)}, reason=${JSON.stringify(excluded.reason || null)}`
+    );
+  } else {
+    errors.push(
+      `${INGREDIENT_NOT_CLASSIFIED_IN_WHITELIST}: authoring_key=${JSON.stringify(authoringKey)}, ingredient_id=${ingredient.ingredient_id}, ingredient_name=${JSON.stringify(ingredient.ingredient_name || null)}`
+    );
   }
 
   if (ingredient.ingredient_name !== undefined && !optionalNonEmptyString(ingredient.ingredient_name)) {
@@ -228,7 +319,7 @@ function validateIngredient(ingredient, index, recipeWarnings) {
   return { errors };
 }
 
-function validateRecipe(recipe, index, seenKeys) {
+function validateRecipe(recipe, index, seenKeys, whitelist) {
   const errors = [];
   const warnings = new Set([
     'INGREDIENT_ID_EXISTENCE_NOT_CHECKED: requires DB/export metadata',
@@ -312,7 +403,7 @@ function validateRecipe(recipe, index, seenKeys) {
     errors.push('ingredients must contain at least one row');
   } else {
     recipe.ingredients.forEach((ingredient, ingredientIndex) => {
-      validateIngredient(ingredient, ingredientIndex, warnings).errors.forEach((error) => errors.push(error));
+      validateIngredient(ingredient, ingredientIndex, warnings, whitelist, authoringKey).errors.forEach((error) => errors.push(error));
     });
   }
 
@@ -330,7 +421,7 @@ function validateRecipe(recipe, index, seenKeys) {
   };
 }
 
-function validateDraftPackage(input) {
+function validateDraftPackage(input, options = {}) {
   const normalized = normalizePackage(input);
   if (!normalized) {
     return {
@@ -352,8 +443,29 @@ function validateDraftPackage(input) {
     };
   }
 
+  const whitelist = options.whitelist || loadCleanWhitelist(options.whitelistPath);
+  if (!whitelist.valid) {
+    return {
+      valid: false,
+      summary: {
+        total_recipes: normalized.recipes.length,
+        valid_recipes: 0,
+        invalid_recipes: normalized.recipes.length,
+        errors: whitelist.errors.length,
+        warnings: 0,
+      },
+      recipes: [
+        {
+          authoring_key: null,
+          errors: whitelist.errors,
+          warnings: [],
+        },
+      ],
+    };
+  }
+
   const seenKeys = new Set();
-  const recipeReports = normalized.recipes.map((recipe, index) => validateRecipe(recipe, index, seenKeys));
+  const recipeReports = normalized.recipes.map((recipe, index) => validateRecipe(recipe, index, seenKeys, whitelist));
   const errors = recipeReports.reduce((sum, report) => sum + report.errors.length, 0);
   const warnings = recipeReports.reduce((sum, report) => sum + report.warnings.length, 0);
   const validRecipes = recipeReports.filter((report) => report.errors.length === 0).length;
@@ -411,6 +523,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  loadCleanWhitelist,
   validateDraftPackage,
   validateFile,
   constants: {
@@ -421,5 +534,8 @@ module.exports = {
     QUANTITY_UNITS,
     MEASUREMENT_BASES,
     CULINARY_ROLES,
+    INGREDIENT_NOT_IN_CLEAN_WHITELIST,
+    INGREDIENT_NOT_CLASSIFIED_IN_WHITELIST,
+    WHITELIST_CONFIGURATION_ERROR,
   },
 };
