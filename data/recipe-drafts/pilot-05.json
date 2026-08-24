@@ -1,0 +1,625 @@
+[
+  {
+    "authoring_key": "pilot05_breakfast_oat_flour_pear_cottage_bowl",
+    "name": "Oat flour pear cottage bowl",
+    "description": "A breakfast draft bowl with oat flour, cottage cheese, pear and hemp seeds.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["breakfast"],
+    "difficulty": "easy",
+    "prep_time_min": 6,
+    "cook_time_min": 5,
+    "equipment": ["stovetop"],
+    "breakfast_style": "sweet",
+    "ingredients": [
+      { "ingredient_id": 31, "ingredient_name": "Farina di avena", "quantity_g": 50, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 53, "ingredient_name": "Fiocchi di latte", "quantity_g": 150, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 92, "ingredient_name": "Pera", "quantity_g": 140, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fruit", "is_scalable": true },
+      { "ingredient_id": 252, "ingredient_name": "Semi di canapa", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true },
+      { "ingredient_id": 269, "ingredient_name": "Cannella in polvere", "quantity_g": 5, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the oat flour with water until thick and smooth.",
+      "Spoon the cottage cheese into a bowl.",
+      "Dice the pear.",
+      "Top the bowl with pear, hemp seeds and cinnamon.",
+      "Serve warm."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_breakfast_album_rye_zucchini_plate",
+    "name": "Albumen rye zucchini plate",
+    "description": "A savory breakfast draft plate with egg whites, rye bread and zucchini.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "mediterranean",
+    "eligible_meal_types": ["breakfast"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 10,
+    "equipment": ["stovetop"],
+    "breakfast_style": "savory",
+    "ingredients": [
+      { "ingredient_id": 66, "ingredient_name": "Albumi", "quantity_g": 155, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 40, "ingredient_name": "Pane di segale", "quantity_g": 60, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 69, "ingredient_name": "Zucchine", "quantity_g": 125, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 256, "ingredient_name": "Olio di cocco vergine", "quantity_g": 5, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook egg whites in a pan with coconut oil until set.",
+      "Cook zucchini in the same pan until tender.",
+      "Toast rye bread lightly if desired.",
+      "Serve egg whites with zucchini and rye bread."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_breakfast_lactose_free_yogurt_grape_flax_bowl",
+    "name": "Lactose-free yogurt grape flax bowl",
+    "description": "A breakfast draft bowl with lactose-free yogurt, grapes, flax seeds and cacao.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["breakfast"],
+    "difficulty": "easy",
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "equipment": ["none"],
+    "breakfast_style": "sweet",
+    "ingredients": [
+      { "ingredient_id": 54, "ingredient_name": "Yogurt senza lattosio", "quantity_g": 170, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 248, "ingredient_name": "Uva", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fruit", "is_scalable": true },
+      { "ingredient_id": 109, "ingredient_name": "Semi di lino", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true },
+      { "ingredient_id": 116, "ingredient_name": "Cacao amaro", "quantity_g": 5, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Spoon the yogurt into a bowl.",
+      "Halve the grapes if desired.",
+      "Top the yogurt with grapes and flax seeds.",
+      "Finish with cacao and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_breakfast_natto_buckwheat_avocado_bowl",
+    "name": "Natto buckwheat avocado bowl",
+    "description": "A savory breakfast draft bowl with natto, buckwheat and avocado.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "asian_inspired",
+    "eligible_meal_types": ["breakfast"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 15,
+    "equipment": ["stovetop"],
+    "breakfast_style": "savory",
+    "ingredients": [
+      { "ingredient_id": 212, "ingredient_name": "Natto", "quantity_g": 80, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 43, "ingredient_name": "Grano saraceno", "quantity_g": 60, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 101, "ingredient_name": "Avocado", "quantity_g": 60, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true },
+      { "ingredient_id": 271, "ingredient_name": "Menta fresca", "quantity_g": 5, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the buckwheat in water until tender.",
+      "Spoon the buckwheat into a bowl.",
+      "Add the natto.",
+      "Slice the avocado and add it to the bowl.",
+      "Finish with fresh mint and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_breakfast_milk_cream_rice_cherry_bowl",
+    "name": "Milk cream of rice cherry bowl",
+    "description": "A warm breakfast draft bowl with cream of rice, milk, cherries and almond flour.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["breakfast"],
+    "difficulty": "easy",
+    "prep_time_min": 5,
+    "cook_time_min": 5,
+    "equipment": ["stovetop"],
+    "breakfast_style": "sweet",
+    "ingredients": [
+      { "ingredient_id": 29, "ingredient_name": "Crema di riso", "quantity_g": 50, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 58, "ingredient_name": "Latte parzialmente scremato", "quantity_g": 200, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 240, "ingredient_name": "Ciliegie", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fruit", "is_scalable": true },
+      { "ingredient_id": 250, "ingredient_name": "Farina di mandorle", "quantity_g": 25, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the cream of rice with the milk until smooth.",
+      "Spoon it into a bowl.",
+      "Add the cherries.",
+      "Top with almond flour and serve warm."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_snack_apricot_hazelnuts",
+    "name": "Apricot hazelnut snack",
+    "description": "A practical snack draft plate with apricot and hazelnuts.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["snack"],
+    "difficulty": "easy",
+    "prep_time_min": 4,
+    "cook_time_min": 0,
+    "equipment": ["none"],
+    "ingredients": [
+      { "ingredient_id": 237, "ingredient_name": "Albicocca", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fruit", "is_scalable": true },
+      { "ingredient_id": 251, "ingredient_name": "Nocciole", "quantity_g": 20, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Wash and slice the apricot.",
+      "Place the apricot on a small plate.",
+      "Add the hazelnuts and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_snack_anchovy_cucumber_lemon_bites",
+    "name": "Anchovy cucumber lemon bites",
+    "description": "A snack draft recipe with anchovies, cucumber and lemon.",
+    "recipe_format_code": "handheld",
+    "cuisine_family_code": "italian",
+    "eligible_meal_types": ["snack"],
+    "difficulty": "easy",
+    "prep_time_min": 7,
+    "cook_time_min": 0,
+    "equipment": ["none"],
+    "ingredients": [
+      { "ingredient_id": 201, "ingredient_name": "Alici/Acciughe", "quantity_g": 50, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 76, "ingredient_name": "Cetrioli", "quantity_g": 80, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 242, "ingredient_name": "Limone", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Slice cucumber into thick rounds.",
+      "Top cucumber with anchovies.",
+      "Finish with lemon juice.",
+      "Serve as small bites."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_snack_papaya_pumpkin_seeds",
+    "name": "Papaya pumpkin seed snack",
+    "description": "A simple snack draft bowl with papaya and pumpkin seeds.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["snack"],
+    "difficulty": "easy",
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "equipment": ["none"],
+    "ingredients": [
+      { "ingredient_id": 99, "ingredient_name": "Papaya", "quantity_g": 150, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fruit", "is_scalable": true },
+      { "ingredient_id": 254, "ingredient_name": "Semi di zucca", "quantity_g": 20, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cut the papaya into bite-size pieces.",
+      "Place the papaya in a small bowl.",
+      "Top with pumpkin seeds and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_anchovy_integral_rice_fennel_plate",
+    "name": "Anchovy integral rice fennel plate",
+    "description": "A lunch or dinner draft plate with anchovies, brown rice and fennel.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "mediterranean",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 25,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 201, "ingredient_name": "Alici/Acciughe", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 26, "ingredient_name": "Riso integrale", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 79, "ingredient_name": "Finocchi", "quantity_g": 150, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 110, "ingredient_name": "Olio EVO", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true },
+      { "ingredient_id": 242, "ingredient_name": "Limone", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the brown rice until tender.",
+      "Cook the fennel in a pan with olive oil.",
+      "Cook the anchovies briefly until done.",
+      "Plate the anchovies with rice and fennel.",
+      "Finish with lemon and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_herring_potato_beet_salad",
+    "name": "Herring potato beet salad",
+    "description": "A lunch or dinner draft salad with herring, potato, beetroot and cucumber.",
+    "recipe_format_code": "salad",
+    "cuisine_family_code": "mediterranean",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "easy",
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 202, "ingredient_name": "Aringa", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 88, "ingredient_name": "Patate", "quantity_g": 200, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 86, "ingredient_name": "Barbabietola", "quantity_g": 100, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 76, "ingredient_name": "Cetrioli", "quantity_g": 80, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 255, "ingredient_name": "Aceto di mele", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the potatoes until tender.",
+      "Cook the herring until done.",
+      "Cut the beetroot and cucumber into bite-size pieces.",
+      "Combine the herring, potatoes and vegetables in a bowl.",
+      "Dress with apple cider vinegar and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_mussels_white_rice_leek_stew",
+    "name": "Mussels white rice leek stew",
+    "description": "A lunch or dinner draft stew with mussels, white rice, leek and cabbage.",
+    "recipe_format_code": "soup_stew",
+    "cuisine_family_code": "mediterranean",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "medium",
+    "prep_time_min": 10,
+    "cook_time_min": 22,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 207, "ingredient_name": "Cozze", "quantity_g": 160, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 23, "ingredient_name": "Riso bianco", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 235, "ingredient_name": "Porro", "quantity_g": 80, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 224, "ingredient_name": "Cavolo cappuccio", "quantity_g": 100, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 275, "ingredient_name": "Prezzemolo", "quantity_g": 5, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "garnish", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the rice in water until tender.",
+      "Cook the leek and cabbage in a pot until softened.",
+      "Add the mussels and cook until done.",
+      "Stir in the rice.",
+      "Finish with parsley and serve as a stew."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_oyster_couscous_daikon_bowl",
+    "name": "Oyster couscous daikon bowl",
+    "description": "An Asian-inspired lunch or dinner draft bowl with oysters, couscous and daikon.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "asian_inspired",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "medium",
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 209, "ingredient_name": "Ostriche", "quantity_g": 90, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 34, "ingredient_name": "Cous cous", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 230, "ingredient_name": "Daikon", "quantity_g": 80, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 232, "ingredient_name": "Germogli di soia", "quantity_g": 60, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 277, "ingredient_name": "Zenzero fresco", "quantity_g": 5, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Prepare the couscous according to package directions.",
+      "Cook the oysters in a pan until done.",
+      "Slice the daikon.",
+      "Combine the couscous, oysters, daikon and sprouts in a bowl.",
+      "Finish with fresh ginger and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_natto_black_rice_pak_choi_bowl",
+    "name": "Natto black rice pak choi bowl",
+    "description": "An Asian-inspired lunch or dinner draft bowl with natto, black rice and pak choi.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "asian_inspired",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 25,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 212, "ingredient_name": "Natto", "quantity_g": 90, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 25, "ingredient_name": "Riso nero", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 234, "ingredient_name": "Pak choi (cavolo cinese)", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 228, "ingredient_name": "Cipolla", "quantity_g": 40, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 255, "ingredient_name": "Aceto di mele", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the black rice until tender.",
+      "Cook the pak choi and onion until softened.",
+      "Spoon the rice into a bowl.",
+      "Add the vegetables and natto.",
+      "Finish with apple cider vinegar and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_fave_polenta_romanesco_plate",
+    "name": "Fave polenta romanesco plate",
+    "description": "An Italian lunch or dinner draft plate with cooked fava beans, polenta and romanesco.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "italian",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 20,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 214, "ingredient_name": "Fave cotte", "quantity_g": 160, "quantity_unit": "g", "measurement_basis": "cooked", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 45, "ingredient_name": "Polenta", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 225, "ingredient_name": "Cavolo romanesco", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 110, "ingredient_name": "Olio EVO", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true },
+      { "ingredient_id": 276, "ingredient_name": "Rosmarino", "quantity_g": 5, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the polenta until thick and smooth.",
+      "Warm the cooked fava beans in a pan.",
+      "Cook the romanesco until tender.",
+      "Plate the fava beans with polenta and romanesco.",
+      "Finish with olive oil and rosemary."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_soia_integral_pasta_cime_rapa_bowl",
+    "name": "Soia integral pasta cime di rapa bowl",
+    "description": "An Italian lunch or dinner draft bowl with cooked soybeans, whole-wheat pasta and cime di rapa.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "italian",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 18,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 216, "ingredient_name": "Soia cotta", "quantity_g": 150, "quantity_unit": "g", "measurement_basis": "cooked", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 35, "ingredient_name": "Pasta integrale", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 227, "ingredient_name": "Cime di rapa", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 267, "ingredient_name": "Aglio", "quantity_g": 5, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true },
+      { "ingredient_id": 110, "ingredient_name": "Olio EVO", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the pasta until tender.",
+      "Cook the cime di rapa with olive oil and garlic.",
+      "Warm the cooked soybeans in the pan.",
+      "Combine the pasta, soybeans and greens in a bowl.",
+      "Serve warm."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_sardine_barley_radicchio_plate",
+    "name": "Sardine barley radicchio plate",
+    "description": "A Mediterranean lunch or dinner draft plate with sardines, barley and radicchio.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "mediterranean",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 22,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 210, "ingredient_name": "Sardine al naturale", "quantity_g": 90, "quantity_unit": "g", "measurement_basis": "cooked", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 33, "ingredient_name": "Orzo perlato", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 236, "ingredient_name": "Radicchio", "quantity_g": 80, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 85, "ingredient_name": "Sedano", "quantity_g": 60, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 242, "ingredient_name": "Limone", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the barley until tender.",
+      "Slice the radicchio and celery.",
+      "Warm the sardines gently if desired.",
+      "Plate the sardines with barley and vegetables.",
+      "Finish with lemon and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_liver_buckwheat_chard_plate",
+    "name": "Liver buckwheat chard plate",
+    "description": "A lunch or dinner draft plate with beef liver, buckwheat and chard.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "medium",
+    "prep_time_min": 10,
+    "cook_time_min": 18,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 208, "ingredient_name": "Fegato di manzo", "quantity_g": 110, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 43, "ingredient_name": "Grano saraceno", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 220, "ingredient_name": "Bietola", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 228, "ingredient_name": "Cipolla", "quantity_g": 40, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 110, "ingredient_name": "Olio EVO", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the buckwheat until tender.",
+      "Cook the chard and onion with olive oil.",
+      "Cook the beef liver in a pan until done.",
+      "Plate the liver with buckwheat and vegetables.",
+      "Serve warm."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_cannolicchi_rice_noodle_purple_cabbage_bowl",
+    "name": "Cannolicchi rice noodle purple cabbage bowl",
+    "description": "An Asian-inspired lunch or dinner draft bowl with cannolicchi, rice noodles and purple cabbage.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "asian_inspired",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "medium",
+    "prep_time_min": 10,
+    "cook_time_min": 16,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 204, "ingredient_name": "Cannolicchi", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 37, "ingredient_name": "Noodles di riso", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 226, "ingredient_name": "Cavolo viola", "quantity_g": 100, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 230, "ingredient_name": "Daikon", "quantity_g": 80, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 274, "ingredient_name": "Peperoncino fresco", "quantity_g": 5, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the rice noodles until tender.",
+      "Cook the cannolicchi in a pan until done.",
+      "Cook the purple cabbage briefly.",
+      "Combine the noodles, cannolicchi, cabbage and daikon in a bowl.",
+      "Finish with fresh chili and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_fava_feta_tomato_arugula_salad",
+    "name": "Fava feta tomato arugula salad",
+    "description": "A Mediterranean lunch or dinner draft salad with fava beans, feta, tomatoes and arugula.",
+    "recipe_format_code": "salad",
+    "cuisine_family_code": "mediterranean",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 0,
+    "equipment": ["none"],
+    "ingredients": [
+      { "ingredient_id": 214, "ingredient_name": "Fave cotte", "quantity_g": 155, "quantity_unit": "g", "measurement_basis": "cooked", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 56, "ingredient_name": "Feta", "quantity_g": 45, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true },
+      { "ingredient_id": 83, "ingredient_name": "Pomodorini", "quantity_g": 100, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 78, "ingredient_name": "Rucola", "quantity_g": 50, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 242, "ingredient_name": "Limone", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Place the fava beans in a bowl.",
+      "Slice the tomatoes and arugula.",
+      "Add the vegetables to the fava beans.",
+      "Crumble the feta over the salad.",
+      "Finish with lemon and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_lunch_dinner_edamame_rice_pasta_kale_bowl",
+    "name": "Edamame rice pasta kale bowl",
+    "description": "A lunch or dinner draft bowl with edamame, rice pasta, kale and tomato.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["lunch", "dinner"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 16,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 17, "ingredient_name": "Edamame", "quantity_g": 130, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 46, "ingredient_name": "Pasta di riso", "quantity_g": 70, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 84, "ingredient_name": "Cavolo kale", "quantity_g": 100, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 82, "ingredient_name": "Pomodoro", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 268, "ingredient_name": "Basilico fresco", "quantity_g": 5, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the rice pasta until tender.",
+      "Cook the edamame according to package directions.",
+      "Cook the kale and tomato briefly.",
+      "Combine the pasta, edamame and vegetables in a bowl.",
+      "Finish with fresh basil and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_pre_workout_basmati_dates_honey_bowl",
+    "name": "Basmati dates honey bowl",
+    "description": "A simple pre-workout draft bowl with basmati rice, dates and honey.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["pre_workout"],
+    "difficulty": "easy",
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 24, "ingredient_name": "Riso basmati", "quantity_g": 60, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 102, "ingredient_name": "Datteri", "quantity_g": 25, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fruit", "is_scalable": true },
+      { "ingredient_id": 111, "ingredient_name": "Miele", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the basmati rice until tender.",
+      "Let the rice cool slightly.",
+      "Chop the dates.",
+      "Top the rice with dates and honey before serving."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_pre_workout_banana_peach_honey_plate",
+    "name": "Banana peach honey plate",
+    "description": "A pre-workout draft plate with banana, peach and honey.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["pre_workout"],
+    "difficulty": "easy",
+    "prep_time_min": 7,
+    "cook_time_min": 0,
+    "equipment": ["none"],
+    "ingredients": [
+      { "ingredient_id": 90, "ingredient_name": "Banana", "quantity_g": 130, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 245, "ingredient_name": "Pesca", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fruit", "is_scalable": true },
+      { "ingredient_id": 111, "ingredient_name": "Miele", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Slice the banana.",
+      "Slice the peach.",
+      "Arrange the fruit on a plate.",
+      "Drizzle with honey and serve."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_pre_workout_jasmine_rice_date_espresso_cup",
+    "name": "Jasmine rice date espresso cup",
+    "description": "A simple pre-workout draft cup with jasmine rice, dates and espresso.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["pre_workout"],
+    "difficulty": "easy",
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 27, "ingredient_name": "Riso jasmine", "quantity_g": 60, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 102, "ingredient_name": "Datteri", "quantity_g": 25, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fruit", "is_scalable": true },
+      { "ingredient_id": 259, "ingredient_name": "Caffè (espresso)", "quantity_g": 50, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "flavor", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the jasmine rice until tender.",
+      "Chop the dates.",
+      "Prepare the espresso.",
+      "Serve the rice with dates and espresso."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_post_workout_tuna_jasmine_pineapple_cucumber_bowl",
+    "name": "Tuna jasmine pineapple cucumber bowl",
+    "description": "A post-workout draft full-meal bowl with tuna, jasmine rice, pineapple and cucumber.",
+    "recipe_format_code": "bowl",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["post_workout"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 15,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 6, "ingredient_name": "Tonno al naturale", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "cooked", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 27, "ingredient_name": "Riso jasmine", "quantity_g": 80, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 100, "ingredient_name": "Ananas", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fruit", "is_scalable": true },
+      { "ingredient_id": 76, "ingredient_name": "Cetrioli", "quantity_g": 80, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the jasmine rice until tender.",
+      "Drain the tuna if needed.",
+      "Cut the pineapple and cucumber into bite-size pieces.",
+      "Combine the rice, tuna, pineapple and cucumber in a bowl."
+    ]
+  },
+  {
+    "authoring_key": "pilot05_post_workout_cod_basmati_carrot_plate",
+    "name": "Cod basmati carrot plate",
+    "description": "A post-workout draft full-meal plate with cod, basmati rice and carrots.",
+    "recipe_format_code": "plated_meal",
+    "cuisine_family_code": "neutral",
+    "eligible_meal_types": ["post_workout"],
+    "difficulty": "easy",
+    "prep_time_min": 8,
+    "cook_time_min": 18,
+    "equipment": ["stovetop"],
+    "ingredients": [
+      { "ingredient_id": 7, "ingredient_name": "Merluzzo", "quantity_g": 160, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "protein_primary", "is_scalable": true },
+      { "ingredient_id": 24, "ingredient_name": "Riso basmati", "quantity_g": 80, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "carb_primary", "is_scalable": true },
+      { "ingredient_id": 71, "ingredient_name": "Carote", "quantity_g": 120, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "vegetable", "is_scalable": true },
+      { "ingredient_id": 252, "ingredient_name": "Semi di canapa", "quantity_g": 10, "quantity_unit": "g", "measurement_basis": "raw", "culinary_role": "fat", "is_scalable": true }
+    ],
+    "instructions_steps": [
+      "Cook the basmati rice until tender.",
+      "Cook the cod in a pan until done.",
+      "Cook the carrots until tender.",
+      "Plate the cod with rice and carrots.",
+      "Top with hemp seeds and serve."
+    ]
+  }
+]
