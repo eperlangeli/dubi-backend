@@ -1,0 +1,516 @@
+{
+  "version": "fake-profiles-v1",
+  "purpose": "Deterministic fictional input profiles for future DUBI meal-plan engine validation.",
+  "status": "test_inputs_only",
+  "macro_kcal_tolerance_percent": 5,
+  "notes": [
+    "All profiles are fictional and age 18 or older.",
+    "These profiles must not be used as real user data.",
+    "Professional nutrition, allergen and clinical gates are still pending.",
+    "This pack does not authorize runtime recipe use or production plan generation."
+  ],
+  "profiles": [
+    {
+      "profile_id": "fake_profile_01",
+      "age": 35,
+      "sex_for_calculation": "male",
+      "height_cm": 178,
+      "weight_kg": 78,
+      "goal": "maintenance",
+      "mode": "standard",
+      "target_kcal": 2400,
+      "target_macros": {
+        "protein_g": 150,
+        "carbs_g": 270,
+        "fat_g": 80
+      },
+      "dietary_style": "omnivore",
+      "preferences": ["mediterranean", "simple lunches", "savory breakfast"],
+      "excluded_food_preferences": ["no sweet drinks"],
+      "allergies": [],
+      "intolerances": [],
+      "meal_count": 3,
+      "meal_schedule": {
+        "breakfast": "08:00",
+        "lunch": "13:00",
+        "dinner": "20:00"
+      },
+      "training": {
+        "training_day": false,
+        "sport_type": "none",
+        "start_time": null,
+        "duration_min": 0,
+        "intensity": "none"
+      },
+      "breakfast_preference": "savory",
+      "kitchen_time": {
+        "breakfast_max_min": 15,
+        "lunch_max_min": 25,
+        "dinner_max_min": 30
+      },
+      "equipment": ["stovetop", "oven"],
+      "budget_level": "medium",
+      "expected_plan_behavior": [
+        "3 total eating events",
+        "no pre-workout or post-workout meal",
+        "daily kcal should remain near target",
+        "protein target should be prioritized",
+        "no recipe repetition inside the same day"
+      ],
+      "test_focus": ["rest day", "3 meals", "base calorie target"]
+    },
+    {
+      "profile_id": "fake_profile_02",
+      "age": 29,
+      "sex_for_calculation": "female",
+      "height_cm": 165,
+      "weight_kg": 62,
+      "goal": "lean_gain",
+      "mode": "training_day",
+      "target_kcal": 2300,
+      "target_macros": {
+        "protein_g": 140,
+        "carbs_g": 260,
+        "fat_g": 76
+      },
+      "dietary_style": "omnivore",
+      "preferences": ["rice bowls", "fish", "quick snacks"],
+      "excluded_food_preferences": ["no mushrooms"],
+      "allergies": [],
+      "intolerances": ["low lactose preference"],
+      "meal_count": 4,
+      "meal_schedule": {
+        "breakfast": "07:30",
+        "lunch": "12:45",
+        "pre_workout": "17:00",
+        "dinner": "20:30"
+      },
+      "training": {
+        "training_day": true,
+        "sport_type": "resistance_training",
+        "start_time": "18:30",
+        "duration_min": 70,
+        "intensity": "moderate_high"
+      },
+      "breakfast_preference": "balanced",
+      "kitchen_time": {
+        "breakfast_max_min": 10,
+        "lunch_max_min": 20,
+        "dinner_max_min": 35
+      },
+      "equipment": ["stovetop", "microwave"],
+      "budget_level": "medium",
+      "expected_plan_behavior": [
+        "4 total eating events",
+        "pre-workout replaces afternoon snack",
+        "dinner functions as post-workout full meal",
+        "daily kcal should remain near target",
+        "no recipe repetition inside the same day"
+      ],
+      "test_focus": ["evening workout", "resistance training", "pre-workout replacement"]
+    },
+    {
+      "profile_id": "fake_profile_03",
+      "age": 41,
+      "sex_for_calculation": "male",
+      "height_cm": 174,
+      "weight_kg": 83,
+      "goal": "fat_loss",
+      "mode": "training_day",
+      "target_kcal": 2100,
+      "target_macros": {
+        "protein_g": 165,
+        "carbs_g": 205,
+        "fat_g": 73
+      },
+      "dietary_style": "omnivore",
+      "preferences": ["eggs", "chicken", "warm breakfast"],
+      "excluded_food_preferences": ["no raw onion"],
+      "allergies": [],
+      "intolerances": [],
+      "meal_count": 4,
+      "meal_schedule": {
+        "pre_workout": "06:15",
+        "breakfast": "08:15",
+        "lunch": "13:00",
+        "dinner": "19:30"
+      },
+      "training": {
+        "training_day": true,
+        "sport_type": "functional_training",
+        "start_time": "06:45",
+        "duration_min": 50,
+        "intensity": "moderate"
+      },
+      "breakfast_preference": "post_workout_breakfast",
+      "kitchen_time": {
+        "breakfast_max_min": 20,
+        "lunch_max_min": 25,
+        "dinner_max_min": 30
+      },
+      "equipment": ["stovetop"],
+      "budget_level": "medium",
+      "expected_plan_behavior": [
+        "morning pre-workout should be light",
+        "breakfast functions as post-workout full meal",
+        "4 total eating events",
+        "protein target should be prioritized",
+        "daily kcal should remain near target"
+      ],
+      "test_focus": ["morning workout", "breakfast post-workout interaction"]
+    },
+    {
+      "profile_id": "fake_profile_04",
+      "age": 33,
+      "sex_for_calculation": "female",
+      "height_cm": 170,
+      "weight_kg": 68,
+      "goal": "recomposition",
+      "mode": "training_day",
+      "target_kcal": 2200,
+      "target_macros": {
+        "protein_g": 145,
+        "carbs_g": 250,
+        "fat_g": 71
+      },
+      "dietary_style": "pescatarian",
+      "preferences": ["seafood", "pasta", "vegetable-heavy dinners"],
+      "excluded_food_preferences": ["no red meat"],
+      "allergies": [],
+      "intolerances": [],
+      "meal_count": 4,
+      "meal_schedule": {
+        "breakfast": "08:30",
+        "lunch": "13:30",
+        "dinner": "18:45",
+        "pre_workout": "21:00"
+      },
+      "training": {
+        "training_day": true,
+        "sport_type": "pilates_strength",
+        "start_time": "22:15",
+        "duration_min": 45,
+        "intensity": "moderate"
+      },
+      "breakfast_preference": "light_sweet",
+      "kitchen_time": {
+        "breakfast_max_min": 10,
+        "lunch_max_min": 25,
+        "dinner_max_min": 30
+      },
+      "equipment": ["stovetop", "oven"],
+      "budget_level": "medium",
+      "expected_plan_behavior": [
+        "dinner may serve as pre-workout only if completed at least 2 hours before training",
+        "if dinner timing is too close, use light pre-workout structure",
+        "post-workout may be omitted if no separate eating event is scheduled",
+        "daily kcal should remain near target"
+      ],
+      "test_focus": ["late workout", "dinner timing", "pescatarian"]
+    },
+    {
+      "profile_id": "fake_profile_05",
+      "age": 27,
+      "sex_for_calculation": "male",
+      "height_cm": 188,
+      "weight_kg": 92,
+      "goal": "performance_gain",
+      "mode": "training_day",
+      "target_kcal": 3200,
+      "target_macros": {
+        "protein_g": 190,
+        "carbs_g": 430,
+        "fat_g": 80
+      },
+      "dietary_style": "omnivore",
+      "preferences": ["large bowls", "rice", "chicken", "olive oil"],
+      "excluded_food_preferences": ["no soups"],
+      "allergies": [],
+      "intolerances": [],
+      "meal_count": 5,
+      "meal_schedule": {
+        "breakfast": "07:00",
+        "snack": "10:30",
+        "lunch": "13:30",
+        "pre_workout": "16:45",
+        "dinner": "20:15"
+      },
+      "training": {
+        "training_day": true,
+        "sport_type": "hypertrophy_training",
+        "start_time": "18:00",
+        "duration_min": 85,
+        "intensity": "high"
+      },
+      "breakfast_preference": "high_energy",
+      "kitchen_time": {
+        "breakfast_max_min": 20,
+        "lunch_max_min": 35,
+        "dinner_max_min": 40
+      },
+      "equipment": ["stovetop", "oven", "blender"],
+      "budget_level": "high",
+      "expected_plan_behavior": [
+        "5 total eating events",
+        "high calorie target should be distributed without exceeding 6 meals",
+        "pre-workout replaces afternoon snack",
+        "dinner functions as post-workout full meal",
+        "protein target should be prioritized"
+      ],
+      "test_focus": ["high calorie", "high protein", "resistance training"]
+    },
+    {
+      "profile_id": "fake_profile_06",
+      "age": 45,
+      "sex_for_calculation": "female",
+      "height_cm": 160,
+      "weight_kg": 70,
+      "goal": "fat_loss",
+      "mode": "standard",
+      "target_kcal": 1650,
+      "target_macros": {
+        "protein_g": 130,
+        "carbs_g": 150,
+        "fat_g": 59
+      },
+      "dietary_style": "omnivore",
+      "preferences": ["small meals", "salads", "white fish"],
+      "excluded_food_preferences": ["no spicy food"],
+      "allergies": [],
+      "intolerances": ["low lactose preference"],
+      "meal_count": 5,
+      "meal_schedule": {
+        "breakfast": "07:45",
+        "snack_1": "10:30",
+        "lunch": "13:00",
+        "snack_2": "16:30",
+        "dinner": "20:00"
+      },
+      "training": {
+        "training_day": false,
+        "sport_type": "none",
+        "start_time": null,
+        "duration_min": 0,
+        "intensity": "none"
+      },
+      "breakfast_preference": "quick_light",
+      "kitchen_time": {
+        "breakfast_max_min": 8,
+        "lunch_max_min": 20,
+        "dinner_max_min": 25
+      },
+      "equipment": ["stovetop", "microwave"],
+      "budget_level": "low",
+      "expected_plan_behavior": [
+        "5 total eating events",
+        "lower calorie target should not create oversized snacks",
+        "protein target should be prioritized",
+        "daily kcal should remain near target",
+        "rest-day kcal remain same base target unless a later policy changes this"
+      ],
+      "test_focus": ["low calorie", "5 meals", "budget"]
+    },
+    {
+      "profile_id": "fake_profile_07",
+      "age": 38,
+      "sex_for_calculation": "male",
+      "height_cm": 181,
+      "weight_kg": 76,
+      "goal": "maintenance",
+      "mode": "training_day",
+      "target_kcal": 2400,
+      "target_macros": {
+        "protein_g": 135,
+        "carbs_g": 315,
+        "fat_g": 67
+      },
+      "dietary_style": "vegetarian",
+      "preferences": ["legumes", "eggs", "dairy", "grain bowls"],
+      "excluded_food_preferences": ["no meat", "no fish"],
+      "allergies": [],
+      "intolerances": [],
+      "meal_count": 4,
+      "meal_schedule": {
+        "breakfast": "08:00",
+        "lunch": "12:45",
+        "snack": "16:30",
+        "dinner": "20:00"
+      },
+      "training": {
+        "training_day": true,
+        "sport_type": "resistance_training",
+        "start_time": "17:30",
+        "duration_min": 60,
+        "intensity": "moderate"
+      },
+      "breakfast_preference": "savory",
+      "kitchen_time": {
+        "breakfast_max_min": 15,
+        "lunch_max_min": 30,
+        "dinner_max_min": 35
+      },
+      "equipment": ["stovetop", "oven"],
+      "budget_level": "medium",
+      "expected_plan_behavior": [
+        "vegetarian recipe eligibility should be respected",
+        "pre-workout may replace snack if timing fits",
+        "dinner functions as post-workout full meal",
+        "protein target should be prioritized using vegetarian-compatible recipes"
+      ],
+      "test_focus": ["vegetarian", "resistance training", "recipe eligibility"]
+    },
+    {
+      "profile_id": "fake_profile_08",
+      "age": 31,
+      "sex_for_calculation": "female",
+      "height_cm": 168,
+      "weight_kg": 64,
+      "goal": "lean_gain",
+      "mode": "training_day",
+      "target_kcal": 2500,
+      "target_macros": {
+        "protein_g": 145,
+        "carbs_g": 310,
+        "fat_g": 76
+      },
+      "dietary_style": "omnivore",
+      "preferences": ["frequent meals", "smoothies", "chicken", "potatoes"],
+      "excluded_food_preferences": [],
+      "allergies": [],
+      "intolerances": [],
+      "meal_count": 6,
+      "meal_schedule": {
+        "breakfast": "07:00",
+        "snack_1": "10:00",
+        "lunch": "12:45",
+        "pre_workout": "15:30",
+        "post_workout": "18:15",
+        "dinner": "21:00"
+      },
+      "training": {
+        "training_day": true,
+        "sport_type": "mixed_training",
+        "start_time": "16:15",
+        "duration_min": 75,
+        "intensity": "high"
+      },
+      "breakfast_preference": "balanced",
+      "kitchen_time": {
+        "breakfast_max_min": 12,
+        "lunch_max_min": 25,
+        "dinner_max_min": 30
+      },
+      "equipment": ["stovetop", "blender", "air_fryer"],
+      "budget_level": "medium",
+      "expected_plan_behavior": [
+        "6 total eating events maximum",
+        "do not exceed max 6 meals",
+        "pre-workout and post-workout are separate events",
+        "daily kcal should remain near target",
+        "no recipe repetition inside the same day"
+      ],
+      "test_focus": ["high meal count", "max 6 meals", "afternoon workout"]
+    },
+    {
+      "profile_id": "fake_profile_09",
+      "age": 52,
+      "sex_for_calculation": "female",
+      "height_cm": 158,
+      "weight_kg": 61,
+      "goal": "fat_loss",
+      "mode": "standard",
+      "target_kcal": 1700,
+      "target_macros": {
+        "protein_g": 125,
+        "carbs_g": 165,
+        "fat_g": 60
+      },
+      "dietary_style": "pescatarian",
+      "preferences": ["no-cook breakfast", "fish", "soups"],
+      "excluded_food_preferences": ["no chicken", "no red meat"],
+      "allergies": [],
+      "intolerances": [],
+      "meal_count": 4,
+      "meal_schedule": {
+        "breakfast": "06:50",
+        "snack": "10:45",
+        "lunch": "13:30",
+        "dinner": "19:45"
+      },
+      "training": {
+        "training_day": false,
+        "sport_type": "none",
+        "start_time": null,
+        "duration_min": 0,
+        "intensity": "none"
+      },
+      "breakfast_preference": "no_cook",
+      "kitchen_time": {
+        "breakfast_max_min": 3,
+        "lunch_max_min": 20,
+        "dinner_max_min": 25
+      },
+      "equipment": ["none"],
+      "budget_level": "medium",
+      "expected_plan_behavior": [
+        "breakfast preparation must fit very limited time",
+        "4 total eating events",
+        "rest-day kcal remain same base target unless a later policy changes this",
+        "pescatarian recipe eligibility should be respected",
+        "daily kcal should remain near target"
+      ],
+      "test_focus": ["limited prep time", "pescatarian", "rest day"]
+    },
+    {
+      "profile_id": "fake_profile_10",
+      "age": 24,
+      "sex_for_calculation": "male",
+      "height_cm": 180,
+      "weight_kg": 72,
+      "goal": "endurance_performance",
+      "mode": "training_day",
+      "target_kcal": 2800,
+      "target_macros": {
+        "protein_g": 145,
+        "carbs_g": 410,
+        "fat_g": 64
+      },
+      "dietary_style": "omnivore",
+      "preferences": ["rice", "fruit", "light pre-workout", "fish"],
+      "excluded_food_preferences": ["no heavy sauces before training"],
+      "allergies": [],
+      "intolerances": [],
+      "meal_count": 5,
+      "meal_schedule": {
+        "breakfast": "07:30",
+        "snack": "10:30",
+        "lunch": "13:00",
+        "pre_workout": "15:45",
+        "dinner": "19:45"
+      },
+      "training": {
+        "training_day": true,
+        "sport_type": "endurance_running",
+        "start_time": "16:30",
+        "duration_min": 90,
+        "intensity": "moderate_high"
+      },
+      "breakfast_preference": "carb_forward",
+      "kitchen_time": {
+        "breakfast_max_min": 12,
+        "lunch_max_min": 25,
+        "dinner_max_min": 30
+      },
+      "equipment": ["stovetop", "oven"],
+      "budget_level": "medium",
+      "expected_plan_behavior": [
+        "5 total eating events",
+        "pre-workout should remain light and carbohydrate-focused",
+        "dinner functions as post-workout full meal",
+        "daily kcal should remain near target",
+        "do not encode a fixed 90g pre-workout carb rule"
+      ],
+      "test_focus": ["endurance", "afternoon workout", "carbohydrate distribution"]
+    }
+  ]
+}
