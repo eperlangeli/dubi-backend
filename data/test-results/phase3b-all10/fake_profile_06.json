@@ -1,0 +1,349 @@
+{
+  "profile_id": "fake_profile_06",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 1650,
+    "protein_g": 130,
+    "carbs_g": 150,
+    "fat_g": 59
+  },
+  "actual": {
+    "kcal": 1650.1,
+    "protein_g": 118.3,
+    "carbs_g": 216.1,
+    "fat_g": 39,
+    "fiber_g": 36.6
+  },
+  "delta": {
+    "kcal": 0.1,
+    "kcal_pct": 0.01,
+    "protein_g": -11.7,
+    "carbs_g": 66.1,
+    "fat_g": -20
+  },
+  "meal_count_target": 5,
+  "meal_count_actual": 5,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "07:45",
+      "authoring_key": "pilot06_breakfast_rye_bresaola_avocado_plate",
+      "recipe_name": "Rye bresaola avocado breakfast plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 368,
+        "protein_g": 26.5,
+        "carbs_g": 38.7,
+        "fat_g": 12.9,
+        "fiber_g": 9
+      },
+      "scale_factor": 1.1483,
+      "scaled_macros": {
+        "kcal": 422.6,
+        "protein_g": 30.4,
+        "carbs_g": 44.4,
+        "fat_g": 14.8,
+        "fiber_g": 10.3
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 4,
+          "ingredient_name": "Bresaola",
+          "measurement_basis": "raw",
+          "base_quantity_g": 60,
+          "scaled_quantity_g": 68.9
+        },
+        {
+          "ingredient_id": 40,
+          "ingredient_name": "Pane di segale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 60,
+          "scaled_quantity_g": 68.9
+        },
+        {
+          "ingredient_id": 101,
+          "ingredient_name": "Avocado",
+          "measurement_basis": "raw",
+          "base_quantity_g": 65,
+          "scaled_quantity_g": 74.6
+        },
+        {
+          "ingredient_id": 82,
+          "ingredient_name": "Pomodoro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 114.8
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    },
+    {
+      "event_index": 1,
+      "meal_type": "snack",
+      "scheduled_time": "10:30",
+      "authoring_key": "pilot06_snack_cottage_cucumber_pepper_bowl",
+      "recipe_name": "Cottage cucumber pepper bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 167.8,
+        "protein_g": 16.9,
+        "carbs_g": 12.3,
+        "fat_g": 6.3,
+        "fiber_g": 1.9
+      },
+      "scale_factor": 1.1483,
+      "scaled_macros": {
+        "kcal": 192.7,
+        "protein_g": 19.4,
+        "carbs_g": 14.1,
+        "fat_g": 7.2,
+        "fiber_g": 2.2
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 53,
+          "ingredient_name": "Fiocchi di latte",
+          "measurement_basis": "raw",
+          "base_quantity_g": 140,
+          "scaled_quantity_g": 160.8
+        },
+        {
+          "ingredient_id": 76,
+          "ingredient_name": "Cetrioli",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 137.8
+        },
+        {
+          "ingredient_id": 273,
+          "ingredient_name": "Pepe nero",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 5.7
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    },
+    {
+      "event_index": 2,
+      "meal_type": "lunch",
+      "scheduled_time": "13:00",
+      "authoring_key": "pilot05_lunch_dinner_fava_feta_tomato_arugula_salad",
+      "recipe_name": "Fava feta tomato arugula salad",
+      "recipe_format": "salad",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 322.7,
+        "protein_g": 20.9,
+        "carbs_g": 39.1,
+        "fat_g": 10.8,
+        "fiber_g": 13.4
+      },
+      "scale_factor": 1.1483,
+      "scaled_macros": {
+        "kcal": 370.6,
+        "protein_g": 24,
+        "carbs_g": 44.9,
+        "fat_g": 12.4,
+        "fiber_g": 15.4
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 214,
+          "ingredient_name": "Fave cotte",
+          "measurement_basis": "cooked",
+          "base_quantity_g": 155,
+          "scaled_quantity_g": 178
+        },
+        {
+          "ingredient_id": 56,
+          "ingredient_name": "Feta",
+          "measurement_basis": "raw",
+          "base_quantity_g": 45,
+          "scaled_quantity_g": 51.7
+        },
+        {
+          "ingredient_id": 83,
+          "ingredient_name": "Pomodorini",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 114.8
+        },
+        {
+          "ingredient_id": 78,
+          "ingredient_name": "Rucola",
+          "measurement_basis": "raw",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 57.4
+        },
+        {
+          "ingredient_id": 242,
+          "ingredient_name": "Limone",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 11.5
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    },
+    {
+      "event_index": 3,
+      "meal_type": "snack",
+      "scheduled_time": "16:30",
+      "authoring_key": "pilot03_snack_skyr_kiwi_honey_cup",
+      "recipe_name": "Skyr kiwi honey cup",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 198.1,
+        "protein_g": 17.9,
+        "carbs_g": 31.9,
+        "fat_g": 0.9,
+        "fiber_g": 3.6
+      },
+      "scale_factor": 1.1483,
+      "scaled_macros": {
+        "kcal": 227.5,
+        "protein_g": 20.6,
+        "carbs_g": 36.6,
+        "fat_g": 1,
+        "fiber_g": 4.1
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 51,
+          "ingredient_name": "Skyr naturale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 172.2
+        },
+        {
+          "ingredient_id": 97,
+          "ingredient_name": "Kiwi",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 137.8
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 11.5
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    },
+    {
+      "event_index": 4,
+      "meal_type": "dinner",
+      "scheduled_time": "20:00",
+      "authoring_key": "pilot05_lunch_dinner_oyster_couscous_daikon_bowl",
+      "recipe_name": "Oyster couscous daikon bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 380.3,
+        "protein_g": 20.8,
+        "carbs_g": 66.3,
+        "fat_g": 3.1,
+        "fiber_g": 4
+      },
+      "scale_factor": 1.1483,
+      "scaled_macros": {
+        "kcal": 436.7,
+        "protein_g": 23.9,
+        "carbs_g": 76.1,
+        "fat_g": 3.6,
+        "fiber_g": 4.6
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 209,
+          "ingredient_name": "Ostriche",
+          "measurement_basis": "raw",
+          "base_quantity_g": 90,
+          "scaled_quantity_g": 103.3
+        },
+        {
+          "ingredient_id": 34,
+          "ingredient_name": "Cous cous",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 80.4
+        },
+        {
+          "ingredient_id": 230,
+          "ingredient_name": "Daikon",
+          "measurement_basis": "raw",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 91.9
+        },
+        {
+          "ingredient_id": 232,
+          "ingredient_name": "Germogli di soia",
+          "measurement_basis": "raw",
+          "base_quantity_g": 60,
+          "scaled_quantity_g": 68.9
+        },
+        {
+          "ingredient_id": 277,
+          "ingredient_name": "Zenzero fresco",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 5.7
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "weekly_variety_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}

@@ -1,0 +1,355 @@
+{
+  "profile_id": "fake_profile_07",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "selection_strategy": "day_level_macro_optimizer_v1",
+  "optimizer": {
+    "candidates_per_event": [
+      {
+        "event_index": 0,
+        "meal_type": "breakfast",
+        "candidates": 2,
+        "shortlist": 2
+      },
+      {
+        "event_index": 1,
+        "meal_type": "lunch",
+        "candidates": 32,
+        "shortlist": 32
+      },
+      {
+        "event_index": 2,
+        "meal_type": "snack",
+        "candidates": 12,
+        "shortlist": 12
+      },
+      {
+        "event_index": 3,
+        "meal_type": "dinner",
+        "candidates": 43,
+        "shortlist": 32
+      }
+    ],
+    "combinations_evaluated": 24906,
+    "winning_score": 0.810524,
+    "base_day_kcal": 1896.4,
+    "base_day_protein_g": 106.8,
+    "base_day_carbs_g": 240.2,
+    "base_day_fat_g": 60.8,
+    "estimated_global_scale": 1.2656,
+    "estimated_scaled_protein_g": 135.2,
+    "beam_width": 2500,
+    "event_shortlist_limit": 32
+  },
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 2400,
+    "protein_g": 135,
+    "carbs_g": 315,
+    "fat_g": 67
+  },
+  "actual": {
+    "kcal": 2400.1,
+    "protein_g": 135.2,
+    "carbs_g": 304.1,
+    "fat_g": 76.8,
+    "fiber_g": 54.9
+  },
+  "delta": {
+    "kcal": 0.1,
+    "kcal_pct": 0,
+    "protein_g": 0.2,
+    "carbs_g": -10.9,
+    "fat_g": 9.8
+  },
+  "meal_count_target": 4,
+  "meal_count_actual": 4,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "08:00",
+      "authoring_key": "pilot04_breakfast_egg_avocado_rye_plate",
+      "recipe_name": "Egg avocado rye plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 407,
+        "protein_g": 19.4,
+        "carbs_g": 38,
+        "fat_g": 20.5,
+        "fiber_g": 8.8
+      },
+      "scale_factor": 1.2656,
+      "scaled_macros": {
+        "kcal": 515.1,
+        "protein_g": 24.6,
+        "carbs_g": 48.1,
+        "fat_g": 25.9,
+        "fiber_g": 11.1
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 65,
+          "ingredient_name": "Uova intere",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 126.6
+        },
+        {
+          "ingredient_id": 40,
+          "ingredient_name": "Pane di segale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 60,
+          "scaled_quantity_g": 75.9
+        },
+        {
+          "ingredient_id": 101,
+          "ingredient_name": "Avocado",
+          "measurement_basis": "raw",
+          "base_quantity_g": 60,
+          "scaled_quantity_g": 75.9
+        },
+        {
+          "ingredient_id": 273,
+          "ingredient_name": "Pepe nero",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 6.3
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation",
+      "selection_rank_within_event": 1
+    },
+    {
+      "event_index": 1,
+      "meal_type": "lunch",
+      "scheduled_time": "12:45",
+      "authoring_key": "pilot06_lunch_dinner_chickpea_carrot_couscous_bowl",
+      "recipe_name": "Chickpea carrot couscous bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 678.4,
+        "protein_g": 25.4,
+        "carbs_g": 111.7,
+        "fat_g": 15.6,
+        "fiber_g": 18.9
+      },
+      "scale_factor": 1.2656,
+      "scaled_macros": {
+        "kcal": 858.6,
+        "protein_g": 32.1,
+        "carbs_g": 141.4,
+        "fat_g": 19.7,
+        "fiber_g": 23.9
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 18,
+          "ingredient_name": "Ceci cotti",
+          "measurement_basis": "cooked",
+          "base_quantity_g": 160,
+          "scaled_quantity_g": 202.5
+        },
+        {
+          "ingredient_id": 34,
+          "ingredient_name": "Cous cous",
+          "measurement_basis": "raw",
+          "base_quantity_g": 65,
+          "scaled_quantity_g": 82.3
+        },
+        {
+          "ingredient_id": 71,
+          "ingredient_name": "Carote",
+          "measurement_basis": "raw",
+          "base_quantity_g": 110,
+          "scaled_quantity_g": 139.2
+        },
+        {
+          "ingredient_id": 69,
+          "ingredient_name": "Zucchine",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 151.9
+        },
+        {
+          "ingredient_id": 270,
+          "ingredient_name": "Curcuma in polvere",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 6.3
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 12.7
+        }
+      ],
+      "workout_relation": "pre_workout_full_meal_2h_plus",
+      "selection_rank_within_event": 20
+    },
+    {
+      "event_index": 2,
+      "meal_type": "snack",
+      "scheduled_time": "16:30",
+      "authoring_key": "pilot03_snack_skyr_kiwi_honey_cup",
+      "recipe_name": "Skyr kiwi honey cup",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 198.1,
+        "protein_g": 17.9,
+        "carbs_g": 31.9,
+        "fat_g": 0.9,
+        "fiber_g": 3.6
+      },
+      "scale_factor": 1.2656,
+      "scaled_macros": {
+        "kcal": 250.7,
+        "protein_g": 22.7,
+        "carbs_g": 40.4,
+        "fat_g": 1.1,
+        "fiber_g": 4.6
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 51,
+          "ingredient_name": "Skyr naturale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 189.8
+        },
+        {
+          "ingredient_id": 97,
+          "ingredient_name": "Kiwi",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 151.9
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 12.7
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation",
+      "selection_rank_within_event": 1
+    },
+    {
+      "event_index": 3,
+      "meal_type": "dinner",
+      "scheduled_time": "20:00",
+      "authoring_key": "pilot04_lunch_dinner_coniglio_quinoa_carciofo_plate",
+      "recipe_name": "Coniglio quinoa carciofo plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 612.9,
+        "protein_g": 44.1,
+        "carbs_g": 58.6,
+        "fat_g": 23.8,
+        "fiber_g": 12.1
+      },
+      "scale_factor": 1.2656,
+      "scaled_macros": {
+        "kcal": 775.7,
+        "protein_g": 55.8,
+        "carbs_g": 74.2,
+        "fat_g": 30.1,
+        "fiber_g": 15.3
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 206,
+          "ingredient_name": "Coniglio",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 189.8
+        },
+        {
+          "ingredient_id": 32,
+          "ingredient_name": "Quinoa",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 88.6
+        },
+        {
+          "ingredient_id": 222,
+          "ingredient_name": "Carciofo",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 151.9
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 12.7
+        },
+        {
+          "ingredient_id": 276,
+          "ingredient_name": "Rosmarino",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 6.3
+        }
+      ],
+      "workout_relation": "post_workout_full_meal",
+      "selection_rank_within_event": 12
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "dietary_style_structured_gate_pending": true,
+    "step_aware_scaling_not_implemented": true,
+    "bounds_aware_scaling_not_implemented": true,
+    "weekly_variety_not_tested": true,
+    "production_runtime_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}

@@ -1,0 +1,403 @@
+{
+  "profile_id": "fake_profile_06",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "selection_strategy": "day_level_macro_optimizer_v1",
+  "optimizer": {
+    "candidates_per_event": [
+      {
+        "event_index": 0,
+        "meal_type": "breakfast",
+        "candidates": 8,
+        "shortlist": 8
+      },
+      {
+        "event_index": 1,
+        "meal_type": "snack",
+        "candidates": 14,
+        "shortlist": 14
+      },
+      {
+        "event_index": 2,
+        "meal_type": "lunch",
+        "candidates": 5,
+        "shortlist": 5
+      },
+      {
+        "event_index": 3,
+        "meal_type": "snack",
+        "candidates": 14,
+        "shortlist": 14
+      },
+      {
+        "event_index": 4,
+        "meal_type": "dinner",
+        "candidates": 19,
+        "shortlist": 19
+      }
+    ],
+    "combinations_evaluated": 52960,
+    "winning_score": 0.082362,
+    "base_day_kcal": 1630.7,
+    "base_day_protein_g": 128.8,
+    "base_day_carbs_g": 149.7,
+    "base_day_fat_g": 59.2,
+    "estimated_global_scale": 1.0118,
+    "estimated_scaled_protein_g": 130.3,
+    "beam_width": 2500,
+    "event_shortlist_limit": 32
+  },
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 1650,
+    "protein_g": 130,
+    "carbs_g": 150,
+    "fat_g": 59
+  },
+  "actual": {
+    "kcal": 1650,
+    "protein_g": 130.4,
+    "carbs_g": 151.4,
+    "fat_g": 59.9,
+    "fiber_g": 25.2
+  },
+  "delta": {
+    "kcal": 0,
+    "kcal_pct": 0,
+    "protein_g": 0.4,
+    "carbs_g": 1.4,
+    "fat_g": 0.9
+  },
+  "meal_count_target": 5,
+  "meal_count_actual": 5,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "07:45",
+      "authoring_key": "pilot04_breakfast_cottage_cheese_apricot_seed_bowl",
+      "recipe_name": "Cottage cheese apricot seed bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 304.6,
+        "protein_g": 21.7,
+        "carbs_g": 25.5,
+        "fat_g": 14.7,
+        "fiber_g": 6.3
+      },
+      "scale_factor": 1.0118,
+      "scaled_macros": {
+        "kcal": 308.2,
+        "protein_g": 22,
+        "carbs_g": 25.8,
+        "fat_g": 14.9,
+        "fiber_g": 6.4
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 53,
+          "ingredient_name": "Fiocchi di latte",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 151.8
+        },
+        {
+          "ingredient_id": 237,
+          "ingredient_name": "Albicocca",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 121.4
+        },
+        {
+          "ingredient_id": 253,
+          "ingredient_name": "Semi di girasole",
+          "measurement_basis": "raw",
+          "base_quantity_g": 15,
+          "scaled_quantity_g": 15.2
+        },
+        {
+          "ingredient_id": 269,
+          "ingredient_name": "Cannella in polvere",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 5.1
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation",
+      "selection_rank_within_event": 2
+    },
+    {
+      "event_index": 1,
+      "meal_type": "snack",
+      "scheduled_time": "10:30",
+      "authoring_key": "pilot04_snack_boiled_egg_grapefruit_plate",
+      "recipe_name": "Boiled egg grapefruit plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 140.5,
+        "protein_g": 8,
+        "carbs_g": 16.6,
+        "fat_g": 5.6,
+        "fiber_g": 2.9
+      },
+      "scale_factor": 1.0118,
+      "scaled_macros": {
+        "kcal": 142.2,
+        "protein_g": 8.1,
+        "carbs_g": 16.8,
+        "fat_g": 5.7,
+        "fiber_g": 2.9
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 67,
+          "ingredient_name": "Uovo sodo",
+          "measurement_basis": "cooked",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 50.6
+        },
+        {
+          "ingredient_id": 246,
+          "ingredient_name": "Pompelmo",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 121.4
+        },
+        {
+          "ingredient_id": 273,
+          "ingredient_name": "Pepe nero",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 5.1
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation",
+      "selection_rank_within_event": 7
+    },
+    {
+      "event_index": 2,
+      "meal_type": "lunch",
+      "scheduled_time": "13:00",
+      "authoring_key": "pilot07_lunch_dinner_bresaola_radicchio_pasta_salad",
+      "recipe_name": "Bresaola radicchio pasta salad",
+      "recipe_format": "salad",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 471,
+        "protein_g": 39.1,
+        "carbs_g": 51.3,
+        "fat_g": 11.7,
+        "fiber_g": 7.2
+      },
+      "scale_factor": 1.0118,
+      "scaled_macros": {
+        "kcal": 476.6,
+        "protein_g": 39.6,
+        "carbs_g": 51.9,
+        "fat_g": 11.8,
+        "fiber_g": 7.3
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 4,
+          "ingredient_name": "Bresaola",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 70.8
+        },
+        {
+          "ingredient_id": 35,
+          "ingredient_name": "Pasta integrale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 70.8
+        },
+        {
+          "ingredient_id": 236,
+          "ingredient_name": "Radicchio",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 70.8
+        },
+        {
+          "ingredient_id": 57,
+          "ingredient_name": "Grana Padano",
+          "measurement_basis": "raw",
+          "base_quantity_g": 20,
+          "scaled_quantity_g": 20.2
+        },
+        {
+          "ingredient_id": 113,
+          "ingredient_name": "Olive",
+          "measurement_basis": "raw",
+          "base_quantity_g": 25,
+          "scaled_quantity_g": 25.3
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation",
+      "selection_rank_within_event": 2
+    },
+    {
+      "event_index": 3,
+      "meal_type": "snack",
+      "scheduled_time": "16:30",
+      "authoring_key": "pilot04_snack_bresaola_cucumber_rolls",
+      "recipe_name": "Bresaola cucumber rolls",
+      "recipe_format": "handheld",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 105.5,
+        "protein_g": 19.9,
+        "carbs_g": 4.1,
+        "fat_g": 1.3,
+        "fiber_g": 0.7
+      },
+      "scale_factor": 1.0118,
+      "scaled_macros": {
+        "kcal": 106.7,
+        "protein_g": 20.1,
+        "carbs_g": 4.1,
+        "fat_g": 1.3,
+        "fiber_g": 0.7
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 4,
+          "ingredient_name": "Bresaola",
+          "measurement_basis": "raw",
+          "base_quantity_g": 60,
+          "scaled_quantity_g": 60.7
+        },
+        {
+          "ingredient_id": 76,
+          "ingredient_name": "Cetrioli",
+          "measurement_basis": "raw",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 80.9
+        },
+        {
+          "ingredient_id": 242,
+          "ingredient_name": "Limone",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10.1
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation",
+      "selection_rank_within_event": 4
+    },
+    {
+      "event_index": 4,
+      "meal_type": "dinner",
+      "scheduled_time": "20:00",
+      "authoring_key": "pilot06_lunch_dinner_sardine_pasta_caper_tomato_plate",
+      "recipe_name": "Sardine pasta caper tomato plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 609.1,
+        "protein_g": 40.1,
+        "carbs_g": 52.2,
+        "fat_g": 25.9,
+        "fiber_g": 7.8
+      },
+      "scale_factor": 1.0118,
+      "scaled_macros": {
+        "kcal": 616.3,
+        "protein_g": 40.6,
+        "carbs_g": 52.8,
+        "fat_g": 26.2,
+        "fiber_g": 7.9
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 210,
+          "ingredient_name": "Sardine al naturale",
+          "measurement_basis": "preserved",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 121.4
+        },
+        {
+          "ingredient_id": 35,
+          "ingredient_name": "Pasta integrale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 70.8
+        },
+        {
+          "ingredient_id": 82,
+          "ingredient_name": "Pomodoro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 140,
+          "scaled_quantity_g": 141.7
+        },
+        {
+          "ingredient_id": 221,
+          "ingredient_name": "Capperi",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10.1
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10.1
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation",
+      "selection_rank_within_event": 17
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "dietary_style_structured_gate_pending": true,
+    "step_aware_scaling_not_implemented": true,
+    "bounds_aware_scaling_not_implemented": true,
+    "weekly_variety_not_tested": true,
+    "production_runtime_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}

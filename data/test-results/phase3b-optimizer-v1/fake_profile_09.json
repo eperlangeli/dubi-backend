@@ -1,0 +1,109 @@
+{
+  "profile_id": "fake_profile_09",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "selection_strategy": "day_level_macro_optimizer_v1",
+  "optimizer": {
+    "candidates_per_event": [
+      {
+        "event_index": 0,
+        "meal_type": "breakfast",
+        "candidates": 0
+      },
+      {
+        "event_index": 1,
+        "meal_type": "snack",
+        "candidates": 13
+      },
+      {
+        "event_index": 2,
+        "meal_type": "lunch",
+        "candidates": 2
+      },
+      {
+        "event_index": 3,
+        "meal_type": "dinner",
+        "candidates": 2
+      }
+    ],
+    "combinations_evaluated": 0
+  },
+  "generation_status": "CONTROLLED_FAILURE",
+  "target": {
+    "kcal": 1700,
+    "protein_g": 125,
+    "carbs_g": 165,
+    "fat_g": 60
+  },
+  "actual": {
+    "kcal": 0,
+    "protein_g": 0,
+    "carbs_g": 0,
+    "fat_g": 0,
+    "fiber_g": 0
+  },
+  "delta": {
+    "kcal": -1700,
+    "kcal_pct": -100,
+    "protein_g": -125,
+    "carbs_g": -165,
+    "fat_g": -60
+  },
+  "meal_count_target": 4,
+  "meal_count_actual": 0,
+  "meals": [],
+  "assertions": {
+    "calorie_target_pass": false,
+    "protein_target_pass": false,
+    "meal_count_pass": false,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "dietary_style_structured_gate_pending": true,
+    "step_aware_scaling_not_implemented": true,
+    "bounds_aware_scaling_not_implemented": true,
+    "weekly_variety_not_tested": true,
+    "production_runtime_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "SCALING_SKIPPED_BASE_CALORIES_ZERO",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": [
+    {
+      "code": "NO_ELIGIBLE_DRAFT_RECIPE",
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "06:50"
+    }
+  ]
+}

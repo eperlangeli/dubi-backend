@@ -1,0 +1,465 @@
+{
+  "profile_id": "fake_profile_08",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "selection_strategy": "day_level_macro_optimizer_v1",
+  "optimizer": {
+    "candidates_per_event": [
+      {
+        "event_index": 0,
+        "meal_type": "breakfast",
+        "candidates": 14,
+        "shortlist": 14
+      },
+      {
+        "event_index": 1,
+        "meal_type": "snack",
+        "candidates": 15,
+        "shortlist": 15
+      },
+      {
+        "event_index": 2,
+        "meal_type": "lunch",
+        "candidates": 19,
+        "shortlist": 19
+      },
+      {
+        "event_index": 3,
+        "meal_type": "pre_workout",
+        "candidates": 15,
+        "shortlist": 15
+      },
+      {
+        "event_index": 4,
+        "meal_type": "post_workout",
+        "candidates": 14,
+        "shortlist": 14
+      },
+      {
+        "event_index": 5,
+        "meal_type": "dinner",
+        "candidates": 44,
+        "shortlist": 32
+      }
+    ],
+    "combinations_evaluated": 156017,
+    "winning_score": 0.050392,
+    "base_day_kcal": 2499.9,
+    "base_day_protein_g": 145.4,
+    "base_day_carbs_g": 314.5,
+    "base_day_fat_g": 76,
+    "estimated_global_scale": 1,
+    "estimated_scaled_protein_g": 145.4,
+    "beam_width": 2500,
+    "event_shortlist_limit": 32
+  },
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 2500,
+    "protein_g": 145,
+    "carbs_g": 310,
+    "fat_g": 76
+  },
+  "actual": {
+    "kcal": 2499.9,
+    "protein_g": 145.4,
+    "carbs_g": 314.5,
+    "fat_g": 76,
+    "fiber_g": 42.4
+  },
+  "delta": {
+    "kcal": -0.1,
+    "kcal_pct": 0,
+    "protein_g": 0.4,
+    "carbs_g": 4.5,
+    "fat_g": 0
+  },
+  "meal_count_target": 6,
+  "meal_count_actual": 6,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "07:00",
+      "authoring_key": "pilot03_breakfast_kefir_oat_mango_smoothie",
+      "recipe_name": "Kefir oat mango smoothie",
+      "recipe_format": "smoothie",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 386,
+        "protein_g": 14.7,
+        "carbs_g": 61.8,
+        "fat_g": 10.2,
+        "fiber_g": 6.2
+      },
+      "scale_factor": 1,
+      "scaled_macros": {
+        "kcal": 386,
+        "protein_g": 14.7,
+        "carbs_g": 61.8,
+        "fat_g": 10.2,
+        "fiber_g": 6.2
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 52,
+          "ingredient_name": "Kefir naturale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 200,
+          "scaled_quantity_g": 200
+        },
+        {
+          "ingredient_id": 30,
+          "ingredient_name": "Fiocchi di avena",
+          "measurement_basis": "raw",
+          "base_quantity_g": 40,
+          "scaled_quantity_g": 40
+        },
+        {
+          "ingredient_id": 98,
+          "ingredient_name": "Mango",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 120
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation",
+      "selection_rank_within_event": 8
+    },
+    {
+      "event_index": 1,
+      "meal_type": "snack",
+      "scheduled_time": "10:00",
+      "authoring_key": "pilot05_snack_apricot_hazelnuts",
+      "recipe_name": "Apricot hazelnut snack",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 183.2,
+        "protein_g": 4.7,
+        "carbs_g": 16.7,
+        "fat_g": 12.6,
+        "fiber_g": 4.3
+      },
+      "scale_factor": 1,
+      "scaled_macros": {
+        "kcal": 183.2,
+        "protein_g": 4.7,
+        "carbs_g": 16.7,
+        "fat_g": 12.6,
+        "fiber_g": 4.3
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 237,
+          "ingredient_name": "Albicocca",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 120
+        },
+        {
+          "ingredient_id": 251,
+          "ingredient_name": "Nocciole",
+          "measurement_basis": "raw",
+          "base_quantity_g": 20,
+          "scaled_quantity_g": 20
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation",
+      "selection_rank_within_event": 13
+    },
+    {
+      "event_index": 2,
+      "meal_type": "lunch",
+      "scheduled_time": "12:45",
+      "authoring_key": "pilot06_lunch_dinner_sardine_pasta_caper_tomato_plate",
+      "recipe_name": "Sardine pasta caper tomato plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 609.1,
+        "protein_g": 40.1,
+        "carbs_g": 52.2,
+        "fat_g": 25.9,
+        "fiber_g": 7.8
+      },
+      "scale_factor": 1,
+      "scaled_macros": {
+        "kcal": 609.1,
+        "protein_g": 40.1,
+        "carbs_g": 52.2,
+        "fat_g": 25.9,
+        "fiber_g": 7.8
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 210,
+          "ingredient_name": "Sardine al naturale",
+          "measurement_basis": "preserved",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 120
+        },
+        {
+          "ingredient_id": 35,
+          "ingredient_name": "Pasta integrale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 70
+        },
+        {
+          "ingredient_id": 82,
+          "ingredient_name": "Pomodoro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 140,
+          "scaled_quantity_g": 140
+        },
+        {
+          "ingredient_id": 221,
+          "ingredient_name": "Capperi",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10
+        }
+      ],
+      "workout_relation": "pre_workout_full_meal_2h_plus",
+      "selection_rank_within_event": 17
+    },
+    {
+      "event_index": 3,
+      "meal_type": "pre_workout",
+      "scheduled_time": "15:30",
+      "authoring_key": "pilot03_pre_workout_oat_flour_date_pancake",
+      "recipe_name": "Oat flour date pancake",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 336.5,
+        "protein_g": 21.3,
+        "carbs_g": 54.8,
+        "fat_g": 3.9,
+        "fiber_g": 6.9
+      },
+      "scale_factor": 1,
+      "scaled_macros": {
+        "kcal": 336.5,
+        "protein_g": 21.3,
+        "carbs_g": 54.8,
+        "fat_g": 3.9,
+        "fiber_g": 6.9
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 31,
+          "ingredient_name": "Farina di avena",
+          "measurement_basis": "raw",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 50
+        },
+        {
+          "ingredient_id": 66,
+          "ingredient_name": "Albumi",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 120
+        },
+        {
+          "ingredient_id": 102,
+          "ingredient_name": "Datteri",
+          "measurement_basis": "raw",
+          "base_quantity_g": 30,
+          "scaled_quantity_g": 30
+        }
+      ],
+      "workout_relation": "explicit_pre_workout",
+      "selection_rank_within_event": 1
+    },
+    {
+      "event_index": 4,
+      "meal_type": "post_workout",
+      "scheduled_time": "18:15",
+      "authoring_key": "pilot05_post_workout_cod_basmati_carrot_plate",
+      "recipe_name": "Cod basmati carrot plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 520.5,
+        "protein_g": 38.4,
+        "carbs_g": 75.3,
+        "fat_g": 6.9,
+        "fiber_g": 4.8
+      },
+      "scale_factor": 1,
+      "scaled_macros": {
+        "kcal": 520.5,
+        "protein_g": 38.4,
+        "carbs_g": 75.3,
+        "fat_g": 6.9,
+        "fiber_g": 4.8
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 7,
+          "ingredient_name": "Merluzzo",
+          "measurement_basis": "raw",
+          "base_quantity_g": 160,
+          "scaled_quantity_g": 160
+        },
+        {
+          "ingredient_id": 24,
+          "ingredient_name": "Riso basmati",
+          "measurement_basis": "raw",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 80
+        },
+        {
+          "ingredient_id": 71,
+          "ingredient_name": "Carote",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 120
+        },
+        {
+          "ingredient_id": 252,
+          "ingredient_name": "Semi di canapa",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10
+        }
+      ],
+      "workout_relation": "explicit_post_workout",
+      "selection_rank_within_event": 7
+    },
+    {
+      "event_index": 5,
+      "meal_type": "dinner",
+      "scheduled_time": "21:00",
+      "authoring_key": "pilot02_lunch_dinner_lentil_pasta_tomato_spinach_bowl",
+      "recipe_name": "Lentil pasta tomato spinach bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 464.6,
+        "protein_g": 26.2,
+        "carbs_g": 53.7,
+        "fat_g": 16.5,
+        "fiber_g": 12.4
+      },
+      "scale_factor": 1,
+      "scaled_macros": {
+        "kcal": 464.6,
+        "protein_g": 26.2,
+        "carbs_g": 53.7,
+        "fat_g": 16.5,
+        "fiber_g": 12.4
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 36,
+          "ingredient_name": "Pasta di lenticchie",
+          "measurement_basis": "raw",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 80
+        },
+        {
+          "ingredient_id": 82,
+          "ingredient_name": "Pomodoro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 150
+        },
+        {
+          "ingredient_id": 68,
+          "ingredient_name": "Spinaci",
+          "measurement_basis": "raw",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 80
+        },
+        {
+          "ingredient_id": 57,
+          "ingredient_name": "Grana Padano",
+          "measurement_basis": "raw",
+          "base_quantity_g": 15,
+          "scaled_quantity_g": 15
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10
+        },
+        {
+          "ingredient_id": 268,
+          "ingredient_name": "Basilico fresco",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 5
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation",
+      "selection_rank_within_event": 3
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "dietary_style_structured_gate_pending": true,
+    "step_aware_scaling_not_implemented": true,
+    "bounds_aware_scaling_not_implemented": true,
+    "weekly_variety_not_tested": true,
+    "production_runtime_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}

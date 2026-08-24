@@ -1,0 +1,362 @@
+{
+  "profile_id": "fake_profile_04",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "selection_strategy": "day_level_macro_optimizer_v1",
+  "optimizer": {
+    "candidates_per_event": [
+      {
+        "event_index": 0,
+        "meal_type": "breakfast",
+        "candidates": 8,
+        "shortlist": 8
+      },
+      {
+        "event_index": 1,
+        "meal_type": "lunch",
+        "candidates": 17,
+        "shortlist": 17
+      },
+      {
+        "event_index": 2,
+        "meal_type": "dinner",
+        "candidates": 37,
+        "shortlist": 32
+      },
+      {
+        "event_index": 3,
+        "meal_type": "pre_workout",
+        "candidates": 15,
+        "shortlist": 15
+      }
+    ],
+    "combinations_evaluated": 41884,
+    "winning_score": 0.318377,
+    "base_day_kcal": 2208.7,
+    "base_day_protein_g": 148.1,
+    "base_day_carbs_g": 272.1,
+    "base_day_fat_g": 65.2,
+    "estimated_global_scale": 0.9961,
+    "estimated_scaled_protein_g": 147.5,
+    "beam_width": 2500,
+    "event_shortlist_limit": 32
+  },
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 2200,
+    "protein_g": 145,
+    "carbs_g": 250,
+    "fat_g": 71
+  },
+  "actual": {
+    "kcal": 2200,
+    "protein_g": 147.5,
+    "carbs_g": 271,
+    "fat_g": 64.9,
+    "fiber_g": 26.5
+  },
+  "delta": {
+    "kcal": 0,
+    "kcal_pct": 0,
+    "protein_g": 2.5,
+    "carbs_g": 21,
+    "fat_g": -6.1
+  },
+  "meal_count_target": 4,
+  "meal_count_actual": 4,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "08:30",
+      "authoring_key": "pilot05_breakfast_milk_cream_rice_cherry_bowl",
+      "recipe_name": "Milk cream of rice cherry bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 492.4,
+        "protein_g": 17.1,
+        "carbs_g": 74.9,
+        "fat_g": 16.3,
+        "fiber_g": 5.6
+      },
+      "scale_factor": 0.9961,
+      "scaled_macros": {
+        "kcal": 490.5,
+        "protein_g": 17,
+        "carbs_g": 74.6,
+        "fat_g": 16.2,
+        "fiber_g": 5.6
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 29,
+          "ingredient_name": "Crema di riso",
+          "measurement_basis": "raw",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 49.8
+        },
+        {
+          "ingredient_id": 58,
+          "ingredient_name": "Latte parzialmente scremato",
+          "measurement_basis": "raw",
+          "base_quantity_g": 200,
+          "scaled_quantity_g": 199.2
+        },
+        {
+          "ingredient_id": 240,
+          "ingredient_name": "Ciliegie",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 119.5
+        },
+        {
+          "ingredient_id": 250,
+          "ingredient_name": "Farina di mandorle",
+          "measurement_basis": "raw",
+          "base_quantity_g": 25,
+          "scaled_quantity_g": 24.9
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation",
+      "selection_rank_within_event": 5
+    },
+    {
+      "event_index": 1,
+      "meal_type": "lunch",
+      "scheduled_time": "13:30",
+      "authoring_key": "pilot03_lunch_dinner_seitan_rice_pasta_pak_choi_bowl",
+      "recipe_name": "Seitan rice pasta pak choi bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 798.4,
+        "protein_g": 82.8,
+        "carbs_g": 89.2,
+        "fat_g": 12.9,
+        "fiber_g": 5.6
+      },
+      "scale_factor": 0.9961,
+      "scaled_macros": {
+        "kcal": 795.3,
+        "protein_g": 82.5,
+        "carbs_g": 88.8,
+        "fat_g": 12.8,
+        "fiber_g": 5.6
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 16,
+          "ingredient_name": "Seitan",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 99.6
+        },
+        {
+          "ingredient_id": 46,
+          "ingredient_name": "Pasta di riso",
+          "measurement_basis": "raw",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 79.7
+        },
+        {
+          "ingredient_id": 234,
+          "ingredient_name": "Pak choi (cavolo cinese)",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 149.4
+        },
+        {
+          "ingredient_id": 71,
+          "ingredient_name": "Carote",
+          "measurement_basis": "raw",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 79.7
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10
+        },
+        {
+          "ingredient_id": 255,
+          "ingredient_name": "Aceto di mele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10
+        },
+        {
+          "ingredient_id": 277,
+          "ingredient_name": "Zenzero fresco",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 5
+        }
+      ],
+      "workout_relation": "pre_workout_full_meal_2h_plus",
+      "selection_rank_within_event": 16
+    },
+    {
+      "event_index": 2,
+      "meal_type": "dinner",
+      "scheduled_time": "18:45",
+      "authoring_key": "pilot02_lunch_dinner_salmon_quinoa_broccoli_plate",
+      "recipe_name": "Salmon quinoa broccoli plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 725,
+        "protein_g": 45.7,
+        "carbs_g": 58.7,
+        "fat_g": 35.2,
+        "fiber_g": 10.1
+      },
+      "scale_factor": 0.9961,
+      "scaled_macros": {
+        "kcal": 722.1,
+        "protein_g": 45.5,
+        "carbs_g": 58.5,
+        "fat_g": 35.1,
+        "fiber_g": 10.1
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 5,
+          "ingredient_name": "Salmone",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 149.4
+        },
+        {
+          "ingredient_id": 32,
+          "ingredient_name": "Quinoa",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 69.7
+        },
+        {
+          "ingredient_id": 70,
+          "ingredient_name": "Broccoli",
+          "measurement_basis": "raw",
+          "base_quantity_g": 180,
+          "scaled_quantity_g": 179.3
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10
+        },
+        {
+          "ingredient_id": 242,
+          "ingredient_name": "Limone",
+          "measurement_basis": "raw",
+          "base_quantity_g": 20,
+          "scaled_quantity_g": 19.9
+        }
+      ],
+      "workout_relation": "pre_workout_full_meal_2h_plus",
+      "selection_rank_within_event": 24
+    },
+    {
+      "event_index": 3,
+      "meal_type": "pre_workout",
+      "scheduled_time": "21:00",
+      "authoring_key": "pilot05_pre_workout_banana_peach_honey_plate",
+      "recipe_name": "Banana peach honey plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 192.9,
+        "protein_g": 2.5,
+        "carbs_g": 49.3,
+        "fat_g": 0.8,
+        "fiber_g": 5.2
+      },
+      "scale_factor": 0.9961,
+      "scaled_macros": {
+        "kcal": 192.1,
+        "protein_g": 2.5,
+        "carbs_g": 49.1,
+        "fat_g": 0.8,
+        "fiber_g": 5.2
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 90,
+          "ingredient_name": "Banana",
+          "measurement_basis": "raw",
+          "base_quantity_g": 130,
+          "scaled_quantity_g": 129.5
+        },
+        {
+          "ingredient_id": 245,
+          "ingredient_name": "Pesca",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 119.5
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 10
+        }
+      ],
+      "workout_relation": "explicit_pre_workout",
+      "selection_rank_within_event": 13
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "dietary_style_structured_gate_pending": true,
+    "step_aware_scaling_not_implemented": true,
+    "bounds_aware_scaling_not_implemented": true,
+    "weekly_variety_not_tested": true,
+    "production_runtime_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}

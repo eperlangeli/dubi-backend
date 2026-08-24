@@ -1,0 +1,267 @@
+{
+  "profile_id": "fake_profile_09",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "generation_status": "CONTROLLED_FAILURE",
+  "target": {
+    "kcal": 1700,
+    "protein_g": 125,
+    "carbs_g": 165,
+    "fat_g": 60
+  },
+  "actual": {
+    "kcal": 1700,
+    "protein_g": 110.1,
+    "carbs_g": 194.3,
+    "fat_g": 59.3,
+    "fiber_g": 50.6
+  },
+  "delta": {
+    "kcal": 0,
+    "kcal_pct": 0,
+    "protein_g": -14.9,
+    "carbs_g": 29.3,
+    "fat_g": -0.7
+  },
+  "meal_count_target": 4,
+  "meal_count_actual": 3,
+  "meals": [
+    {
+      "event_index": 1,
+      "meal_type": "snack",
+      "scheduled_time": "10:45",
+      "authoring_key": "pilot07_snack_tuna_rye_lemon_open_bite",
+      "recipe_name": "Tuna rye lemon open bite",
+      "recipe_format": "handheld",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 225.2,
+        "protein_g": 24.8,
+        "carbs_g": 25.1,
+        "fat_g": 2.5,
+        "fiber_g": 3.2
+      },
+      "scale_factor": 1.6397,
+      "scaled_macros": {
+        "kcal": 369.3,
+        "protein_g": 40.7,
+        "carbs_g": 41.2,
+        "fat_g": 4.1,
+        "fiber_g": 5.2
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 6,
+          "ingredient_name": "Tonno al naturale",
+          "measurement_basis": "preserved",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 131.2
+        },
+        {
+          "ingredient_id": 40,
+          "ingredient_name": "Pane di segale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 82
+        },
+        {
+          "ingredient_id": 242,
+          "ingredient_name": "Limone",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 16.4
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    },
+    {
+      "event_index": 2,
+      "meal_type": "lunch",
+      "scheduled_time": "13:30",
+      "authoring_key": "pilot03_lunch_dinner_chickpea_feta_cucumber_salad",
+      "recipe_name": "Chickpea feta cucumber salad",
+      "recipe_format": "salad",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 488.9,
+        "protein_g": 21.4,
+        "carbs_g": 54.3,
+        "fat_g": 22.9,
+        "fiber_g": 14.3
+      },
+      "scale_factor": 1.6397,
+      "scaled_macros": {
+        "kcal": 801.6,
+        "protein_g": 35.1,
+        "carbs_g": 89,
+        "fat_g": 37.5,
+        "fiber_g": 23.4
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 18,
+          "ingredient_name": "Ceci cotti",
+          "measurement_basis": "cooked",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 245.9
+        },
+        {
+          "ingredient_id": 83,
+          "ingredient_name": "Pomodorini",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 196.8
+        },
+        {
+          "ingredient_id": 76,
+          "ingredient_name": "Cetrioli",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 196.8
+        },
+        {
+          "ingredient_id": 56,
+          "ingredient_name": "Feta",
+          "measurement_basis": "raw",
+          "base_quantity_g": 40,
+          "scaled_quantity_g": 65.6
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 16.4
+        },
+        {
+          "ingredient_id": 242,
+          "ingredient_name": "Limone",
+          "measurement_basis": "raw",
+          "base_quantity_g": 20,
+          "scaled_quantity_g": 32.8
+        },
+        {
+          "ingredient_id": 271,
+          "ingredient_name": "Menta fresca",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 8.2
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    },
+    {
+      "event_index": 3,
+      "meal_type": "dinner",
+      "scheduled_time": "19:45",
+      "authoring_key": "pilot05_lunch_dinner_fava_feta_tomato_arugula_salad",
+      "recipe_name": "Fava feta tomato arugula salad",
+      "recipe_format": "salad",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 322.7,
+        "protein_g": 20.9,
+        "carbs_g": 39.1,
+        "fat_g": 10.8,
+        "fiber_g": 13.4
+      },
+      "scale_factor": 1.6397,
+      "scaled_macros": {
+        "kcal": 529.1,
+        "protein_g": 34.3,
+        "carbs_g": 64.1,
+        "fat_g": 17.7,
+        "fiber_g": 22
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 214,
+          "ingredient_name": "Fave cotte",
+          "measurement_basis": "cooked",
+          "base_quantity_g": 155,
+          "scaled_quantity_g": 254.1
+        },
+        {
+          "ingredient_id": 56,
+          "ingredient_name": "Feta",
+          "measurement_basis": "raw",
+          "base_quantity_g": 45,
+          "scaled_quantity_g": 73.8
+        },
+        {
+          "ingredient_id": 83,
+          "ingredient_name": "Pomodorini",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 164
+        },
+        {
+          "ingredient_id": 78,
+          "ingredient_name": "Rucola",
+          "measurement_basis": "raw",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 82
+        },
+        {
+          "ingredient_id": 242,
+          "ingredient_name": "Limone",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 16.4
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": false,
+    "meal_count_pass": false,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "weekly_variety_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": [
+    {
+      "code": "NO_ELIGIBLE_DRAFT_RECIPE",
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "06:50"
+    }
+  ]
+}

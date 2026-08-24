@@ -1,0 +1,300 @@
+{
+  "profile_id": "fake_profile_01",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "selection_strategy": "day_level_macro_optimizer_v1",
+  "optimizer": {
+    "candidates_per_event": [
+      {
+        "event_index": 0,
+        "meal_type": "breakfast",
+        "candidates": 3,
+        "shortlist": 3
+      },
+      {
+        "event_index": 1,
+        "meal_type": "lunch",
+        "candidates": 19,
+        "shortlist": 19
+      },
+      {
+        "event_index": 2,
+        "meal_type": "dinner",
+        "candidates": 45,
+        "shortlist": 32
+      }
+    ],
+    "combinations_evaluated": 1851,
+    "winning_score": 1.243936,
+    "base_day_kcal": 1622.5,
+    "base_day_protein_g": 102.6,
+    "base_day_carbs_g": 171.3,
+    "base_day_fat_g": 60.3,
+    "estimated_global_scale": 1.4792,
+    "estimated_scaled_protein_g": 151.8,
+    "beam_width": 2500,
+    "event_shortlist_limit": 32
+  },
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 2400,
+    "protein_g": 150,
+    "carbs_g": 270,
+    "fat_g": 80
+  },
+  "actual": {
+    "kcal": 2399.9,
+    "protein_g": 151.8,
+    "carbs_g": 253.3,
+    "fat_g": 89.2,
+    "fiber_g": 34.7
+  },
+  "delta": {
+    "kcal": -0.1,
+    "kcal_pct": 0,
+    "protein_g": 1.8,
+    "carbs_g": -16.7,
+    "fat_g": 9.2
+  },
+  "meal_count_target": 3,
+  "meal_count_actual": 3,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "08:00",
+      "authoring_key": "pilot06_breakfast_rye_bresaola_avocado_plate",
+      "recipe_name": "Rye bresaola avocado breakfast plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 368,
+        "protein_g": 26.5,
+        "carbs_g": 38.7,
+        "fat_g": 12.9,
+        "fiber_g": 9
+      },
+      "scale_factor": 1.4792,
+      "scaled_macros": {
+        "kcal": 544.3,
+        "protein_g": 39.2,
+        "carbs_g": 57.2,
+        "fat_g": 19.1,
+        "fiber_g": 13.3
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 4,
+          "ingredient_name": "Bresaola",
+          "measurement_basis": "raw",
+          "base_quantity_g": 60,
+          "scaled_quantity_g": 88.8
+        },
+        {
+          "ingredient_id": 40,
+          "ingredient_name": "Pane di segale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 60,
+          "scaled_quantity_g": 88.8
+        },
+        {
+          "ingredient_id": 101,
+          "ingredient_name": "Avocado",
+          "measurement_basis": "raw",
+          "base_quantity_g": 65,
+          "scaled_quantity_g": 96.1
+        },
+        {
+          "ingredient_id": 82,
+          "ingredient_name": "Pomodoro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 147.9
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation",
+      "selection_rank_within_event": 1
+    },
+    {
+      "event_index": 1,
+      "meal_type": "lunch",
+      "scheduled_time": "13:00",
+      "authoring_key": "pilot04_lunch_dinner_vongole_couscous_pomodoro_bowl",
+      "recipe_name": "Vongole couscous pomodoro bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 529.5,
+        "protein_g": 30.4,
+        "carbs_g": 73.9,
+        "fat_g": 12.2,
+        "fiber_g": 4.4
+      },
+      "scale_factor": 1.4792,
+      "scaled_macros": {
+        "kcal": 783.2,
+        "protein_g": 45,
+        "carbs_g": 109.3,
+        "fat_g": 18,
+        "fiber_g": 6.5
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 211,
+          "ingredient_name": "Vongole",
+          "measurement_basis": "raw",
+          "base_quantity_g": 130,
+          "scaled_quantity_g": 192.3
+        },
+        {
+          "ingredient_id": 34,
+          "ingredient_name": "Cous cous",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 103.5
+        },
+        {
+          "ingredient_id": 82,
+          "ingredient_name": "Pomodoro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 177.5
+        },
+        {
+          "ingredient_id": 235,
+          "ingredient_name": "Porro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 103.5
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 14.8
+        },
+        {
+          "ingredient_id": 275,
+          "ingredient_name": "Prezzemolo",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 7.4
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation",
+      "selection_rank_within_event": 7
+    },
+    {
+      "event_index": 2,
+      "meal_type": "dinner",
+      "scheduled_time": "20:00",
+      "authoring_key": "pilot02_lunch_dinner_salmon_quinoa_broccoli_plate",
+      "recipe_name": "Salmon quinoa broccoli plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 725,
+        "protein_g": 45.7,
+        "carbs_g": 58.7,
+        "fat_g": 35.2,
+        "fiber_g": 10.1
+      },
+      "scale_factor": 1.4792,
+      "scaled_macros": {
+        "kcal": 1072.4,
+        "protein_g": 67.6,
+        "carbs_g": 86.8,
+        "fat_g": 52.1,
+        "fiber_g": 14.9
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 5,
+          "ingredient_name": "Salmone",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 221.9
+        },
+        {
+          "ingredient_id": 32,
+          "ingredient_name": "Quinoa",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 103.5
+        },
+        {
+          "ingredient_id": 70,
+          "ingredient_name": "Broccoli",
+          "measurement_basis": "raw",
+          "base_quantity_g": 180,
+          "scaled_quantity_g": 266.3
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 14.8
+        },
+        {
+          "ingredient_id": 242,
+          "ingredient_name": "Limone",
+          "measurement_basis": "raw",
+          "base_quantity_g": 20,
+          "scaled_quantity_g": 29.6
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation",
+      "selection_rank_within_event": 1
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "dietary_style_structured_gate_pending": true,
+    "step_aware_scaling_not_implemented": true,
+    "bounds_aware_scaling_not_implemented": true,
+    "weekly_variety_not_tested": true,
+    "production_runtime_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}

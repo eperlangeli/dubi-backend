@@ -1,0 +1,417 @@
+{
+  "profile_id": "fake_profile_10",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "selection_strategy": "day_level_macro_optimizer_v1",
+  "optimizer": {
+    "candidates_per_event": [
+      {
+        "event_index": 0,
+        "meal_type": "breakfast",
+        "candidates": 10,
+        "shortlist": 10
+      },
+      {
+        "event_index": 1,
+        "meal_type": "snack",
+        "candidates": 14,
+        "shortlist": 14
+      },
+      {
+        "event_index": 2,
+        "meal_type": "lunch",
+        "candidates": 19,
+        "shortlist": 19
+      },
+      {
+        "event_index": 3,
+        "meal_type": "pre_workout",
+        "candidates": 15,
+        "shortlist": 15
+      },
+      {
+        "event_index": 4,
+        "meal_type": "dinner",
+        "candidates": 45,
+        "shortlist": 32
+      }
+    ],
+    "combinations_evaluated": 118181,
+    "winning_score": 0.363818,
+    "base_day_kcal": 2544.8,
+    "base_day_protein_g": 134.3,
+    "base_day_carbs_g": 386.1,
+    "base_day_fat_g": 58.7,
+    "estimated_global_scale": 1.1003,
+    "estimated_scaled_protein_g": 147.8,
+    "beam_width": 2500,
+    "event_shortlist_limit": 32
+  },
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 2800,
+    "protein_g": 145,
+    "carbs_g": 410,
+    "fat_g": 64
+  },
+  "actual": {
+    "kcal": 2800.1,
+    "protein_g": 147.7,
+    "carbs_g": 424.7,
+    "fat_g": 64.6,
+    "fiber_g": 43.3
+  },
+  "delta": {
+    "kcal": 0.1,
+    "kcal_pct": 0,
+    "protein_g": 2.7,
+    "carbs_g": 14.7,
+    "fat_g": 0.6
+  },
+  "meal_count_target": 5,
+  "meal_count_actual": 5,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "07:30",
+      "authoring_key": "pilot05_breakfast_milk_cream_rice_cherry_bowl",
+      "recipe_name": "Milk cream of rice cherry bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 492.4,
+        "protein_g": 17.1,
+        "carbs_g": 74.9,
+        "fat_g": 16.3,
+        "fiber_g": 5.6
+      },
+      "scale_factor": 1.1003,
+      "scaled_macros": {
+        "kcal": 541.8,
+        "protein_g": 18.8,
+        "carbs_g": 82.4,
+        "fat_g": 17.9,
+        "fiber_g": 6.2
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 29,
+          "ingredient_name": "Crema di riso",
+          "measurement_basis": "raw",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 55
+        },
+        {
+          "ingredient_id": 58,
+          "ingredient_name": "Latte parzialmente scremato",
+          "measurement_basis": "raw",
+          "base_quantity_g": 200,
+          "scaled_quantity_g": 220.1
+        },
+        {
+          "ingredient_id": 240,
+          "ingredient_name": "Ciliegie",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 132
+        },
+        {
+          "ingredient_id": 250,
+          "ingredient_name": "Farina di mandorle",
+          "measurement_basis": "raw",
+          "base_quantity_g": 25,
+          "scaled_quantity_g": 27.5
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation",
+      "selection_rank_within_event": 7
+    },
+    {
+      "event_index": 1,
+      "meal_type": "snack",
+      "scheduled_time": "10:30",
+      "authoring_key": "pilot02_snack_pear_walnuts",
+      "recipe_name": "Pear with walnuts",
+      "recipe_format": "handheld",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 222,
+        "protein_g": 3.7,
+        "carbs_g": 27.1,
+        "fat_g": 13.2,
+        "fiber_g": 6.3
+      },
+      "scale_factor": 1.1003,
+      "scaled_macros": {
+        "kcal": 244.3,
+        "protein_g": 4.1,
+        "carbs_g": 29.8,
+        "fat_g": 14.5,
+        "fiber_g": 6.9
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 92,
+          "ingredient_name": "Pera",
+          "measurement_basis": "raw",
+          "base_quantity_g": 160,
+          "scaled_quantity_g": 176
+        },
+        {
+          "ingredient_id": 105,
+          "ingredient_name": "Noci",
+          "measurement_basis": "raw",
+          "base_quantity_g": 20,
+          "scaled_quantity_g": 22
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation",
+      "selection_rank_within_event": 13
+    },
+    {
+      "event_index": 2,
+      "meal_type": "lunch",
+      "scheduled_time": "13:00",
+      "authoring_key": "pilot03_lunch_dinner_seitan_rice_pasta_pak_choi_bowl",
+      "recipe_name": "Seitan rice pasta pak choi bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 798.4,
+        "protein_g": 82.8,
+        "carbs_g": 89.2,
+        "fat_g": 12.9,
+        "fiber_g": 5.6
+      },
+      "scale_factor": 1.1003,
+      "scaled_macros": {
+        "kcal": 878.5,
+        "protein_g": 91.1,
+        "carbs_g": 98.1,
+        "fat_g": 14.2,
+        "fiber_g": 6.2
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 16,
+          "ingredient_name": "Seitan",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 110
+        },
+        {
+          "ingredient_id": 46,
+          "ingredient_name": "Pasta di riso",
+          "measurement_basis": "raw",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 88
+        },
+        {
+          "ingredient_id": 234,
+          "ingredient_name": "Pak choi (cavolo cinese)",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 165
+        },
+        {
+          "ingredient_id": 71,
+          "ingredient_name": "Carote",
+          "measurement_basis": "raw",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 88
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 11
+        },
+        {
+          "ingredient_id": 255,
+          "ingredient_name": "Aceto di mele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 11
+        },
+        {
+          "ingredient_id": 277,
+          "ingredient_name": "Zenzero fresco",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 5.5
+        }
+      ],
+      "workout_relation": "pre_workout_full_meal_2h_plus",
+      "selection_rank_within_event": 18
+    },
+    {
+      "event_index": 3,
+      "meal_type": "pre_workout",
+      "scheduled_time": "15:45",
+      "authoring_key": "pilot04_pre_workout_white_rice_banana_honey_cup",
+      "recipe_name": "White rice banana honey cup",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 353.6,
+        "protein_g": 5.3,
+        "carbs_g": 83.2,
+        "fat_g": 0.7,
+        "fiber_g": 2.9
+      },
+      "scale_factor": 1.1003,
+      "scaled_macros": {
+        "kcal": 389.1,
+        "protein_g": 5.8,
+        "carbs_g": 91.5,
+        "fat_g": 0.8,
+        "fiber_g": 3.2
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 23,
+          "ingredient_name": "Riso bianco",
+          "measurement_basis": "raw",
+          "base_quantity_g": 60,
+          "scaled_quantity_g": 66
+        },
+        {
+          "ingredient_id": 90,
+          "ingredient_name": "Banana",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 110
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 15,
+          "scaled_quantity_g": 16.5
+        }
+      ],
+      "workout_relation": "explicit_pre_workout",
+      "selection_rank_within_event": 4
+    },
+    {
+      "event_index": 4,
+      "meal_type": "dinner",
+      "scheduled_time": "19:45",
+      "authoring_key": "pilot06_lunch_dinner_chickpea_carrot_couscous_bowl",
+      "recipe_name": "Chickpea carrot couscous bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 678.4,
+        "protein_g": 25.4,
+        "carbs_g": 111.7,
+        "fat_g": 15.6,
+        "fiber_g": 18.9
+      },
+      "scale_factor": 1.1003,
+      "scaled_macros": {
+        "kcal": 746.4,
+        "protein_g": 27.9,
+        "carbs_g": 122.9,
+        "fat_g": 17.2,
+        "fiber_g": 20.8
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 18,
+          "ingredient_name": "Ceci cotti",
+          "measurement_basis": "cooked",
+          "base_quantity_g": 160,
+          "scaled_quantity_g": 176
+        },
+        {
+          "ingredient_id": 34,
+          "ingredient_name": "Cous cous",
+          "measurement_basis": "raw",
+          "base_quantity_g": 65,
+          "scaled_quantity_g": 71.5
+        },
+        {
+          "ingredient_id": 71,
+          "ingredient_name": "Carote",
+          "measurement_basis": "raw",
+          "base_quantity_g": 110,
+          "scaled_quantity_g": 121
+        },
+        {
+          "ingredient_id": 69,
+          "ingredient_name": "Zucchine",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 132
+        },
+        {
+          "ingredient_id": 270,
+          "ingredient_name": "Curcuma in polvere",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 5.5
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 11
+        }
+      ],
+      "workout_relation": "post_workout_full_meal",
+      "selection_rank_within_event": 32
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "dietary_style_structured_gate_pending": true,
+    "step_aware_scaling_not_implemented": true,
+    "bounds_aware_scaling_not_implemented": true,
+    "weekly_variety_not_tested": true,
+    "production_runtime_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}

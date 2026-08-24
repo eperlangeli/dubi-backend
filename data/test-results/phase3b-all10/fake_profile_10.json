@@ -1,0 +1,370 @@
+{
+  "profile_id": "fake_profile_10",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 2800,
+    "protein_g": 145,
+    "carbs_g": 410,
+    "fat_g": 64
+  },
+  "actual": {
+    "kcal": 2799.9,
+    "protein_g": 158.2,
+    "carbs_g": 415.8,
+    "fat_g": 61.4,
+    "fiber_g": 43.1
+  },
+  "delta": {
+    "kcal": -0.1,
+    "kcal_pct": 0,
+    "protein_g": 13.2,
+    "carbs_g": 5.8,
+    "fat_g": -2.6
+  },
+  "meal_count_target": 5,
+  "meal_count_actual": 5,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "07:30",
+      "authoring_key": "pilot05_breakfast_oat_flour_pear_cottage_bowl",
+      "recipe_name": "Oat flour pear cottage bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 484,
+        "protein_g": 28.1,
+        "carbs_g": 62.8,
+        "fat_g": 15,
+        "fiber_g": 11.9
+      },
+      "scale_factor": 1.36,
+      "scaled_macros": {
+        "kcal": 658.2,
+        "protein_g": 38.2,
+        "carbs_g": 85.4,
+        "fat_g": 20.4,
+        "fiber_g": 16.2
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 31,
+          "ingredient_name": "Farina di avena",
+          "measurement_basis": "raw",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 68
+        },
+        {
+          "ingredient_id": 53,
+          "ingredient_name": "Fiocchi di latte",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 204
+        },
+        {
+          "ingredient_id": 92,
+          "ingredient_name": "Pera",
+          "measurement_basis": "raw",
+          "base_quantity_g": 140,
+          "scaled_quantity_g": 190.4
+        },
+        {
+          "ingredient_id": 252,
+          "ingredient_name": "Semi di canapa",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 13.6
+        },
+        {
+          "ingredient_id": 269,
+          "ingredient_name": "Cannella in polvere",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 6.8
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation"
+    },
+    {
+      "event_index": 1,
+      "meal_type": "snack",
+      "scheduled_time": "10:30",
+      "authoring_key": "pilot03_snack_skyr_kiwi_honey_cup",
+      "recipe_name": "Skyr kiwi honey cup",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 198.1,
+        "protein_g": 17.9,
+        "carbs_g": 31.9,
+        "fat_g": 0.9,
+        "fiber_g": 3.6
+      },
+      "scale_factor": 1.36,
+      "scaled_macros": {
+        "kcal": 269.4,
+        "protein_g": 24.3,
+        "carbs_g": 43.4,
+        "fat_g": 1.2,
+        "fiber_g": 4.9
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 51,
+          "ingredient_name": "Skyr naturale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 204
+        },
+        {
+          "ingredient_id": 97,
+          "ingredient_name": "Kiwi",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 163.2
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 13.6
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation"
+    },
+    {
+      "event_index": 2,
+      "meal_type": "lunch",
+      "scheduled_time": "13:00",
+      "authoring_key": "pilot04_lunch_dinner_vongole_couscous_pomodoro_bowl",
+      "recipe_name": "Vongole couscous pomodoro bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 529.5,
+        "protein_g": 30.4,
+        "carbs_g": 73.9,
+        "fat_g": 12.2,
+        "fiber_g": 4.4
+      },
+      "scale_factor": 1.36,
+      "scaled_macros": {
+        "kcal": 720.1,
+        "protein_g": 41.3,
+        "carbs_g": 100.5,
+        "fat_g": 16.6,
+        "fiber_g": 6
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 211,
+          "ingredient_name": "Vongole",
+          "measurement_basis": "raw",
+          "base_quantity_g": 130,
+          "scaled_quantity_g": 176.8
+        },
+        {
+          "ingredient_id": 34,
+          "ingredient_name": "Cous cous",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 95.2
+        },
+        {
+          "ingredient_id": 82,
+          "ingredient_name": "Pomodoro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 163.2
+        },
+        {
+          "ingredient_id": 235,
+          "ingredient_name": "Porro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 95.2
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 13.6
+        },
+        {
+          "ingredient_id": 275,
+          "ingredient_name": "Prezzemolo",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 6.8
+        }
+      ],
+      "workout_relation": "pre_workout_full_meal_2h_plus"
+    },
+    {
+      "event_index": 3,
+      "meal_type": "pre_workout",
+      "scheduled_time": "15:45",
+      "authoring_key": "pilot03_pre_workout_oat_banana_honey_bar",
+      "recipe_name": "Oat banana honey bar",
+      "recipe_format": "handheld",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 329.1,
+        "protein_g": 9.6,
+        "carbs_g": 68.3,
+        "fat_g": 3.8,
+        "fiber_g": 7.9
+      },
+      "scale_factor": 1.36,
+      "scaled_macros": {
+        "kcal": 447.6,
+        "protein_g": 13.1,
+        "carbs_g": 92.9,
+        "fat_g": 5.2,
+        "fiber_g": 10.7
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 30,
+          "ingredient_name": "Fiocchi di avena",
+          "measurement_basis": "raw",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 68
+        },
+        {
+          "ingredient_id": 90,
+          "ingredient_name": "Banana",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 136
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 15,
+          "scaled_quantity_g": 20.4
+        }
+      ],
+      "workout_relation": "explicit_pre_workout"
+    },
+    {
+      "event_index": 4,
+      "meal_type": "dinner",
+      "scheduled_time": "19:45",
+      "authoring_key": "pilot04_lunch_dinner_calamari_rice_pasta_zucchini_bowl",
+      "recipe_name": "Calamari rice pasta zucchini bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 518.1,
+        "protein_g": 30.4,
+        "carbs_g": 68.8,
+        "fat_g": 13.2,
+        "fiber_g": 3.9
+      },
+      "scale_factor": 1.36,
+      "scaled_macros": {
+        "kcal": 704.6,
+        "protein_g": 41.3,
+        "carbs_g": 93.6,
+        "fat_g": 18,
+        "fiber_g": 5.3
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 203,
+          "ingredient_name": "Calamari",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 204
+        },
+        {
+          "ingredient_id": 46,
+          "ingredient_name": "Pasta di riso",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 95.2
+        },
+        {
+          "ingredient_id": 69,
+          "ingredient_name": "Zucchine",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 204
+        },
+        {
+          "ingredient_id": 83,
+          "ingredient_name": "Pomodorini",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 136
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 13.6
+        },
+        {
+          "ingredient_id": 275,
+          "ingredient_name": "Prezzemolo",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 6.8
+        }
+      ],
+      "workout_relation": "post_workout_full_meal"
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "weekly_variety_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}

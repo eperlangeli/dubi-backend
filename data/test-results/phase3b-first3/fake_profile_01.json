@@ -1,0 +1,260 @@
+{
+  "profile_id": "fake_profile_01",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 2400,
+    "protein_g": 150,
+    "carbs_g": 270,
+    "fat_g": 80
+  },
+  "actual": {
+    "kcal": 2400,
+    "protein_g": 159.9,
+    "carbs_g": 219.3,
+    "fat_g": 102.6,
+    "fiber_g": 34
+  },
+  "delta": {
+    "kcal": 0,
+    "kcal_pct": 0,
+    "protein_g": 9.9,
+    "carbs_g": -50.7,
+    "fat_g": 22.6
+  },
+  "meal_count_target": 3,
+  "meal_count_actual": 3,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "08:00",
+      "authoring_key": "pilot04_breakfast_boiled_egg_melon_seed_plate",
+      "recipe_name": "Boiled egg melon seed plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 238.9,
+        "protein_g": 11.6,
+        "carbs_g": 21.5,
+        "fat_g": 13.6,
+        "fiber_g": 4.2
+      },
+      "scale_factor": 1.6526,
+      "scaled_macros": {
+        "kcal": 394.8,
+        "protein_g": 19.2,
+        "carbs_g": 35.5,
+        "fat_g": 22.5,
+        "fiber_g": 6.9
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 67,
+          "ingredient_name": "Uovo sodo",
+          "measurement_basis": "cooked",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 82.6
+        },
+        {
+          "ingredient_id": 244,
+          "ingredient_name": "Melone cantalupo",
+          "measurement_basis": "raw",
+          "base_quantity_g": 180,
+          "scaled_quantity_g": 297.5
+        },
+        {
+          "ingredient_id": 253,
+          "ingredient_name": "Semi di girasole",
+          "measurement_basis": "raw",
+          "base_quantity_g": 15,
+          "scaled_quantity_g": 24.8
+        },
+        {
+          "ingredient_id": 273,
+          "ingredient_name": "Pepe nero",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 8.3
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    },
+    {
+      "event_index": 1,
+      "meal_type": "lunch",
+      "scheduled_time": "13:00",
+      "authoring_key": "pilot06_lunch_dinner_sardine_pasta_caper_tomato_plate",
+      "recipe_name": "Sardine pasta caper tomato plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 609.1,
+        "protein_g": 40.1,
+        "carbs_g": 52.2,
+        "fat_g": 25.9,
+        "fiber_g": 7.8
+      },
+      "scale_factor": 1.6526,
+      "scaled_macros": {
+        "kcal": 1006.6,
+        "protein_g": 66.3,
+        "carbs_g": 86.3,
+        "fat_g": 42.8,
+        "fiber_g": 12.9
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 210,
+          "ingredient_name": "Sardine al naturale",
+          "measurement_basis": "preserved",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 198.3
+        },
+        {
+          "ingredient_id": 35,
+          "ingredient_name": "Pasta integrale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 115.7
+        },
+        {
+          "ingredient_id": 82,
+          "ingredient_name": "Pomodoro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 140,
+          "scaled_quantity_g": 231.4
+        },
+        {
+          "ingredient_id": 221,
+          "ingredient_name": "Capperi",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 16.5
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 16.5
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    },
+    {
+      "event_index": 2,
+      "meal_type": "dinner",
+      "scheduled_time": "20:00",
+      "authoring_key": "pilot06_lunch_dinner_beef_amaranth_radicchio_plate",
+      "recipe_name": "Beef amaranth radicchio plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 604.3,
+        "protein_g": 45,
+        "carbs_g": 59,
+        "fat_g": 22.6,
+        "fiber_g": 8.6
+      },
+      "scale_factor": 1.6526,
+      "scaled_macros": {
+        "kcal": 998.6,
+        "protein_g": 74.4,
+        "carbs_g": 97.5,
+        "fat_g": 37.3,
+        "fiber_g": 14.2
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 3,
+          "ingredient_name": "Manzo magro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 247.9
+        },
+        {
+          "ingredient_id": 44,
+          "ingredient_name": "Amaranto",
+          "measurement_basis": "raw",
+          "base_quantity_g": 65,
+          "scaled_quantity_g": 107.4
+        },
+        {
+          "ingredient_id": 236,
+          "ingredient_name": "Radicchio",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 165.3
+        },
+        {
+          "ingredient_id": 86,
+          "ingredient_name": "Barbabietola",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 198.3
+        },
+        {
+          "ingredient_id": 255,
+          "ingredient_name": "Aceto di mele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 16.5
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 16.5
+        }
+      ],
+      "workout_relation": "rest_day_no_workout_relation"
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "weekly_variety_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}

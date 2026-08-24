@@ -1,0 +1,301 @@
+{
+  "profile_id": "fake_profile_07",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 2400,
+    "protein_g": 135,
+    "carbs_g": 315,
+    "fat_g": 67
+  },
+  "actual": {
+    "kcal": 2400,
+    "protein_g": 142.4,
+    "carbs_g": 239.7,
+    "fat_g": 106.2,
+    "fiber_g": 45.7
+  },
+  "delta": {
+    "kcal": 0,
+    "kcal_pct": 0,
+    "protein_g": 7.4,
+    "carbs_g": -75.3,
+    "fat_g": 39.2
+  },
+  "meal_count_target": 4,
+  "meal_count_actual": 4,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "08:00",
+      "authoring_key": "pilot04_breakfast_boiled_egg_melon_seed_plate",
+      "recipe_name": "Boiled egg melon seed plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 238.9,
+        "protein_g": 11.6,
+        "carbs_g": 21.5,
+        "fat_g": 13.6,
+        "fiber_g": 4.2
+      },
+      "scale_factor": 1.5049,
+      "scaled_macros": {
+        "kcal": 359.5,
+        "protein_g": 17.5,
+        "carbs_g": 32.4,
+        "fat_g": 20.5,
+        "fiber_g": 6.3
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 67,
+          "ingredient_name": "Uovo sodo",
+          "measurement_basis": "cooked",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 75.2
+        },
+        {
+          "ingredient_id": 244,
+          "ingredient_name": "Melone cantalupo",
+          "measurement_basis": "raw",
+          "base_quantity_g": 180,
+          "scaled_quantity_g": 270.9
+        },
+        {
+          "ingredient_id": 253,
+          "ingredient_name": "Semi di girasole",
+          "measurement_basis": "raw",
+          "base_quantity_g": 15,
+          "scaled_quantity_g": 22.6
+        },
+        {
+          "ingredient_id": 273,
+          "ingredient_name": "Pepe nero",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 7.5
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation"
+    },
+    {
+      "event_index": 1,
+      "meal_type": "lunch",
+      "scheduled_time": "12:45",
+      "authoring_key": "pilot05_lunch_dinner_soia_integral_pasta_cime_rapa_bowl",
+      "recipe_name": "Soia integral pasta cime di rapa bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 625.4,
+        "protein_g": 37.2,
+        "carbs_g": 66.4,
+        "fat_g": 25.6,
+        "fiber_g": 17.7
+      },
+      "scale_factor": 1.5049,
+      "scaled_macros": {
+        "kcal": 941.2,
+        "protein_g": 56,
+        "carbs_g": 99.9,
+        "fat_g": 38.5,
+        "fiber_g": 26.6
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 216,
+          "ingredient_name": "Soia cotta",
+          "measurement_basis": "cooked",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 225.7
+        },
+        {
+          "ingredient_id": 35,
+          "ingredient_name": "Pasta integrale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 105.3
+        },
+        {
+          "ingredient_id": 227,
+          "ingredient_name": "Cime di rapa",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 180.6
+        },
+        {
+          "ingredient_id": 267,
+          "ingredient_name": "Aglio",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 7.5
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 15
+        }
+      ],
+      "workout_relation": "pre_workout_full_meal_2h_plus"
+    },
+    {
+      "event_index": 2,
+      "meal_type": "snack",
+      "scheduled_time": "16:30",
+      "authoring_key": "pilot04_snack_kefir_cacao_hazelnut_cup",
+      "recipe_name": "Kefir cacao hazelnut cup",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 220.8,
+        "protein_g": 9.5,
+        "carbs_g": 13.5,
+        "fat_g": 16.1,
+        "fiber_g": 3.3
+      },
+      "scale_factor": 1.5049,
+      "scaled_macros": {
+        "kcal": 332.3,
+        "protein_g": 14.3,
+        "carbs_g": 20.3,
+        "fat_g": 24.2,
+        "fiber_g": 5
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 52,
+          "ingredient_name": "Kefir naturale",
+          "measurement_basis": "raw",
+          "base_quantity_g": 180,
+          "scaled_quantity_g": 270.9
+        },
+        {
+          "ingredient_id": 251,
+          "ingredient_name": "Nocciole",
+          "measurement_basis": "raw",
+          "base_quantity_g": 15,
+          "scaled_quantity_g": 22.6
+        },
+        {
+          "ingredient_id": 116,
+          "ingredient_name": "Cacao amaro",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 7.5
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation"
+    },
+    {
+      "event_index": 3,
+      "meal_type": "dinner",
+      "scheduled_time": "20:00",
+      "authoring_key": "pilot04_lunch_dinner_nasello_polenta_chard_plate",
+      "recipe_name": "Nasello polenta chard plate",
+      "recipe_format": "plated_meal",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 509.7,
+        "protein_g": 36.3,
+        "carbs_g": 57.9,
+        "fat_g": 15.3,
+        "fiber_g": 5.2
+      },
+      "scale_factor": 1.5049,
+      "scaled_macros": {
+        "kcal": 767,
+        "protein_g": 54.6,
+        "carbs_g": 87.1,
+        "fat_g": 23,
+        "fiber_g": 7.8
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 11,
+          "ingredient_name": "Nasello",
+          "measurement_basis": "raw",
+          "base_quantity_g": 160,
+          "scaled_quantity_g": 240.8
+        },
+        {
+          "ingredient_id": 45,
+          "ingredient_name": "Polenta",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 105.3
+        },
+        {
+          "ingredient_id": 220,
+          "ingredient_name": "Bietola",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 180.6
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 15
+        },
+        {
+          "ingredient_id": 267,
+          "ingredient_name": "Aglio",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 7.5
+        }
+      ],
+      "workout_relation": "post_workout_full_meal"
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "weekly_variety_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}

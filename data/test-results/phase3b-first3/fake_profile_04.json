@@ -1,0 +1,315 @@
+{
+  "profile_id": "fake_profile_04",
+  "test_date": "2026-09-01",
+  "engine_path": "local_draft_recipe_harness_v1",
+  "generation_status": "SUCCESS",
+  "target": {
+    "kcal": 2200,
+    "protein_g": 145,
+    "carbs_g": 250,
+    "fat_g": 71
+  },
+  "actual": {
+    "kcal": 2199.9,
+    "protein_g": 131,
+    "carbs_g": 335.1,
+    "fat_g": 48.2,
+    "fiber_g": 37.8
+  },
+  "delta": {
+    "kcal": -0.1,
+    "kcal_pct": 0,
+    "protein_g": -14,
+    "carbs_g": 85.1,
+    "fat_g": -22.8
+  },
+  "meal_count_target": 4,
+  "meal_count_actual": 4,
+  "meals": [
+    {
+      "event_index": 0,
+      "meal_type": "breakfast",
+      "scheduled_time": "08:30",
+      "authoring_key": "pilot01_breakfast_greek_yogurt_oat_strawberry_bowl",
+      "recipe_name": "Greek yogurt oat strawberry bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 383.4,
+        "protein_g": 27.2,
+        "carbs_g": 61.4,
+        "fat_g": 4.5,
+        "fiber_g": 7.8
+      },
+      "scale_factor": 1.2353,
+      "scaled_macros": {
+        "kcal": 473.6,
+        "protein_g": 33.6,
+        "carbs_g": 75.8,
+        "fat_g": 5.6,
+        "fiber_g": 9.6
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 49,
+          "ingredient_name": "Yogurt greco 0%",
+          "measurement_basis": "raw",
+          "base_quantity_g": 175,
+          "scaled_quantity_g": 216.2
+        },
+        {
+          "ingredient_id": 30,
+          "ingredient_name": "Fiocchi di avena",
+          "measurement_basis": "raw",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 61.8
+        },
+        {
+          "ingredient_id": 93,
+          "ingredient_name": "Fragole",
+          "measurement_basis": "raw",
+          "base_quantity_g": 125,
+          "scaled_quantity_g": 154.4
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 15,
+          "scaled_quantity_g": 18.5
+        }
+      ],
+      "workout_relation": "no_direct_workout_relation"
+    },
+    {
+      "event_index": 1,
+      "meal_type": "lunch",
+      "scheduled_time": "13:30",
+      "authoring_key": "pilot04_lunch_dinner_calamari_rice_pasta_zucchini_bowl",
+      "recipe_name": "Calamari rice pasta zucchini bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 518.1,
+        "protein_g": 30.4,
+        "carbs_g": 68.8,
+        "fat_g": 13.2,
+        "fiber_g": 3.9
+      },
+      "scale_factor": 1.2353,
+      "scaled_macros": {
+        "kcal": 640,
+        "protein_g": 37.6,
+        "carbs_g": 85,
+        "fat_g": 16.3,
+        "fiber_g": 4.8
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 203,
+          "ingredient_name": "Calamari",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 185.3
+        },
+        {
+          "ingredient_id": 46,
+          "ingredient_name": "Pasta di riso",
+          "measurement_basis": "raw",
+          "base_quantity_g": 70,
+          "scaled_quantity_g": 86.5
+        },
+        {
+          "ingredient_id": 69,
+          "ingredient_name": "Zucchine",
+          "measurement_basis": "raw",
+          "base_quantity_g": 150,
+          "scaled_quantity_g": 185.3
+        },
+        {
+          "ingredient_id": 83,
+          "ingredient_name": "Pomodorini",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 123.5
+        },
+        {
+          "ingredient_id": 110,
+          "ingredient_name": "Olio EVO",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 12.4
+        },
+        {
+          "ingredient_id": 275,
+          "ingredient_name": "Prezzemolo",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 6.2
+        }
+      ],
+      "workout_relation": "pre_workout_full_meal_2h_plus"
+    },
+    {
+      "event_index": 2,
+      "meal_type": "dinner",
+      "scheduled_time": "18:45",
+      "authoring_key": "pilot06_lunch_dinner_tempeh_buckwheat_cabbage_bowl",
+      "recipe_name": "Tempeh buckwheat cabbage bowl",
+      "recipe_format": "bowl",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 550.3,
+        "protein_g": 38.8,
+        "carbs_g": 72.8,
+        "fat_g": 17.5,
+        "fiber_g": 11
+      },
+      "scale_factor": 1.2353,
+      "scaled_macros": {
+        "kcal": 679.8,
+        "protein_g": 47.9,
+        "carbs_g": 89.9,
+        "fat_g": 21.6,
+        "fiber_g": 13.6
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 15,
+          "ingredient_name": "Tempeh",
+          "measurement_basis": "raw",
+          "base_quantity_g": 130,
+          "scaled_quantity_g": 160.6
+        },
+        {
+          "ingredient_id": 43,
+          "ingredient_name": "Grano saraceno",
+          "measurement_basis": "raw",
+          "base_quantity_g": 65,
+          "scaled_quantity_g": 80.3
+        },
+        {
+          "ingredient_id": 226,
+          "ingredient_name": "Cavolo viola",
+          "measurement_basis": "raw",
+          "base_quantity_g": 120,
+          "scaled_quantity_g": 148.2
+        },
+        {
+          "ingredient_id": 232,
+          "ingredient_name": "Germogli di soia",
+          "measurement_basis": "raw",
+          "base_quantity_g": 80,
+          "scaled_quantity_g": 98.8
+        },
+        {
+          "ingredient_id": 277,
+          "ingredient_name": "Zenzero fresco",
+          "measurement_basis": "raw",
+          "base_quantity_g": 5,
+          "scaled_quantity_g": 6.2
+        },
+        {
+          "ingredient_id": 255,
+          "ingredient_name": "Aceto di mele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 10,
+          "scaled_quantity_g": 12.4
+        }
+      ],
+      "workout_relation": "pre_workout_full_meal_2h_plus"
+    },
+    {
+      "event_index": 3,
+      "meal_type": "pre_workout",
+      "scheduled_time": "21:00",
+      "authoring_key": "pilot03_pre_workout_oat_banana_honey_bar",
+      "recipe_name": "Oat banana honey bar",
+      "recipe_format": "handheld",
+      "source": "controlled_draft_corpus",
+      "base_recipe_macros": {
+        "kcal": 329.1,
+        "protein_g": 9.6,
+        "carbs_g": 68.3,
+        "fat_g": 3.8,
+        "fiber_g": 7.9
+      },
+      "scale_factor": 1.2353,
+      "scaled_macros": {
+        "kcal": 406.5,
+        "protein_g": 11.9,
+        "carbs_g": 84.4,
+        "fat_g": 4.7,
+        "fiber_g": 9.8
+      },
+      "ingredients": [
+        {
+          "ingredient_id": 30,
+          "ingredient_name": "Fiocchi di avena",
+          "measurement_basis": "raw",
+          "base_quantity_g": 50,
+          "scaled_quantity_g": 61.8
+        },
+        {
+          "ingredient_id": 90,
+          "ingredient_name": "Banana",
+          "measurement_basis": "raw",
+          "base_quantity_g": 100,
+          "scaled_quantity_g": 123.5
+        },
+        {
+          "ingredient_id": 111,
+          "ingredient_name": "Miele",
+          "measurement_basis": "raw",
+          "base_quantity_g": 15,
+          "scaled_quantity_g": 18.5
+        }
+      ],
+      "workout_relation": "explicit_pre_workout"
+    }
+  ],
+  "assertions": {
+    "calorie_target_pass": true,
+    "protein_target_pass": true,
+    "meal_count_pass": true,
+    "timing_pass": true,
+    "recipe_eligibility_pass": true,
+    "no_freeform_fallback_pass": true,
+    "variety_day_pass": true
+  },
+  "limitations": {
+    "professional_review_pending": true,
+    "allergen_review_pending": true,
+    "clinical_gate_pending": true,
+    "weekly_variety_not_tested": true,
+    "runtime_configuration_gate_not_tested": true
+  },
+  "warnings": [
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "excluded_food_preferences"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "budget_level"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "allergies"
+    },
+    {
+      "code": "NOT_ENFORCED_IN_PHASE_3B",
+      "field": "intolerances"
+    },
+    "LOCAL_UNIFORM_RECIPE_SCALING_ONLY",
+    "SAFETY_GATE_INCOMPLETE",
+    {
+      "code": "WEEKLY_VARIETY_NOT_TESTED"
+    }
+  ],
+  "failures": []
+}
