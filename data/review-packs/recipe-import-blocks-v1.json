@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "blocks": [
+    {
+      "authoring_key": "pilot03_lunch_dinner_seitan_rice_pasta_pak_choi_bowl",
+      "block_code": "SEITAN_SOURCE_UNRESOLVED",
+      "status": "ACTIVE",
+      "scope": "DEFINITIVE_IMPORT",
+      "source": "nutritionist_review_2026-08-24",
+      "reason": "The nutritionist flagged anomalous nutrition values in a seitan recipe. Ingredient ID 16 source, per-100g basis and product/form must be verified before definitive import.",
+      "resolution_required": [
+        "verify ingredient source",
+        "verify per-100g basis",
+        "verify product/form",
+        "correct ingredient data if necessary",
+        "recalculate recipe",
+        "professional re-review"
+      ]
+    },
+    {
+      "authoring_key": "pilot06_lunch_dinner_seitan_quinoa_pepper_bowl",
+      "block_code": "SEITAN_SOURCE_UNRESOLVED",
+      "status": "ACTIVE",
+      "scope": "DEFINITIVE_IMPORT",
+      "source": "nutritionist_review_2026-08-24",
+      "reason": "The nutritionist flagged anomalous nutrition values in a seitan recipe. Ingredient ID 16 source, per-100g basis and product/form must be verified before definitive import.",
+      "resolution_required": [
+        "verify ingredient source",
+        "verify per-100g basis",
+        "verify product/form",
+        "correct ingredient data if necessary",
+        "recalculate recipe",
+        "professional re-review"
+      ]
+    },
+    {
+      "authoring_key": "pilot07_lunch_dinner_seitan_buckwheat_arugula_salad",
+      "block_code": "SEITAN_SOURCE_UNRESOLVED",
+      "status": "ACTIVE",
+      "scope": "DEFINITIVE_IMPORT",
+      "source": "nutritionist_review_2026-08-24",
+      "reason": "The nutritionist flagged anomalous nutrition values in a seitan recipe. Ingredient ID 16 source, per-100g basis and product/form must be verified before definitive import.",
+      "resolution_required": [
+        "verify ingredient source",
+        "verify per-100g basis",
+        "verify product/form",
+        "correct ingredient data if necessary",
+        "recalculate recipe",
+        "professional re-review"
+      ]
+    }
+  ]
+}
