@@ -1,0 +1,32 @@
+const COMPONENT_ROLES = Object.freeze({
+  PROTEIN: 'PROTEIN',
+  STARCHY_CARB: 'STARCHY_CARB',
+  ADDED_FAT: 'ADDED_FAT',
+  VEGETABLE: 'VEGETABLE',
+  FRUIT: 'FRUIT',
+  SPICE_AROMATIC: 'SPICE_AROMATIC',
+  FIXED_OTHER: 'FIXED_OTHER',
+  UNRESOLVED: 'UNRESOLVED',
+});
+
+const CULINARY_ROLE_TO_COMPONENT_ROLE = Object.freeze({
+  protein_primary: COMPONENT_ROLES.PROTEIN,
+  carb_primary: COMPONENT_ROLES.STARCHY_CARB,
+  fat: COMPONENT_ROLES.ADDED_FAT,
+  vegetable: COMPONENT_ROLES.VEGETABLE,
+  fruit: COMPONENT_ROLES.FRUIT,
+  flavor: COMPONENT_ROLES.SPICE_AROMATIC,
+  garnish: COMPONENT_ROLES.SPICE_AROMATIC,
+  binding: COMPONENT_ROLES.FIXED_OTHER,
+});
+
+function resolveComponentRole(ingredient) {
+  const culinaryRole = String(ingredient?.culinary_role || '').trim();
+  return CULINARY_ROLE_TO_COMPONENT_ROLE[culinaryRole] || COMPONENT_ROLES.UNRESOLVED;
+}
+
+module.exports = {
+  COMPONENT_ROLES,
+  CULINARY_ROLE_TO_COMPONENT_ROLE,
+  resolveComponentRole,
+};

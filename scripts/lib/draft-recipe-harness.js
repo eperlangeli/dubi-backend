@@ -1,5 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const {
+  COMPONENT_ROLES,
+  resolveComponentRole,
+} = require('./component-role-policy');
 
 const RECIPE_FILES = Object.freeze([
   'pilot-01.json',
@@ -16,6 +20,14 @@ const RECIPE_SOURCE = 'controlled_draft_corpus';
 const SELECTION_STRATEGY = 'day_level_macro_optimizer_v1';
 const EVENT_SHORTLIST_LIMIT = 32;
 const BEAM_WIDTH = 2500;
+const COMPONENT_SCALING_STRATEGY = 'component_aware_scaling_v1';
+const COMPONENT_ROLE_ORDER = Object.freeze([
+  COMPONENT_ROLES.STARCHY_CARB,
+  COMPONENT_ROLES.PROTEIN,
+  COMPONENT_ROLES.ADDED_FAT,
+  COMPONENT_ROLES.FRUIT,
+  COMPONENT_ROLES.VEGETABLE,
+]);
 const BLOCKING_ERROR_CODES = Object.freeze({
   corpusCountInvalid: 'HARNESS_CORPUS_COUNT_INVALID',
   duplicateRecipeKey: 'HARNESS_DUPLICATE_RECIPE_KEY',
@@ -24,6 +36,7 @@ const BLOCKING_ERROR_CODES = Object.freeze({
   noEligibleRecipe: 'NO_ELIGIBLE_DRAFT_RECIPE',
   varietyConstraintFailure: 'VARIETY_CONSTRAINT_FAILURE',
   ambiguousSchedule: 'AMBIGUOUS_MEAL_SCHEDULE',
+  componentScalingInfeasible: 'COMPONENT_SCALING_INFEASIBLE',
 });
 
 function readJson(filePath) {
@@ -120,6 +133,39 @@ function loadFakeProfiles(rootDir) {
   return Array.isArray(parsed) ? parsed : parsed.profiles;
 }
 
+function normalizeKey(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function loadIngredientScalingMetadata(rootDir) {
+  const parsed = readJson(path.join(rootDir, 'data', 'test-fixtures', 'ingredient-scaling-metadata-v1.json'));
+  const records = Array.isArray(parsed) ? parsed : parsed.ingredients;
+  return new Map((records || []).map((record) => [Number(record.ingredient_id), record]));
+}
+
+function loadIngredientNutritionReferences(rootDir) {
+  const parsed = readJson(path.join(rootDir, 'data', 'usda-ingredient-references.json'));
+  const references = Array.isArray(parsed) ? parsed : parsed.references;
+  const byName = new Map();
+  (references || []).forEach((record) => {
+    const nutrition = {
+      calories: parseNumber(record.calories_per_100g),
+      protein_g: parseNumber(record.protein_per_100g),
+      carbs_g: parseNumber(record.carbs_per_100g),
+      fat_g: parseNumber(record.fats_per_100g),
+      fiber_g: parseNumber(record.fiber_per_100g),
+    };
+    byName.set(normalizeKey(record.display_name), nutrition);
+    byName.set(normalizeKey(record.ingredient_key), nutrition);
+  });
+  return byName;
+}
+
 function validateCorpus(recipes, reviewLookup, whitelist) {
   const failures = [];
   const keys = new Set();
@@ -174,6 +220,8 @@ function loadHarnessData(rootDir = process.cwd()) {
   const review = loadReviewRecords(rootDir);
   const whitelist = loadCleanWhitelist(rootDir);
   const profiles = loadFakeProfiles(rootDir);
+  const ingredientScalingMetadata = loadIngredientScalingMetadata(rootDir);
+  const ingredientNutritionReferences = loadIngredientNutritionReferences(rootDir);
   const corpus = validateCorpus(recipes, review.lookup, whitelist);
   return {
     recipes,
@@ -181,6 +229,8 @@ function loadHarnessData(rootDir = process.cwd()) {
     reviewLookup: review.lookup,
     whitelist,
     profiles,
+    ingredientScalingMetadata,
+    ingredientNutritionReferences,
     corpus,
   };
 }
@@ -359,6 +409,22 @@ function scoreRecipe(recipe, nutrition, target) {
   return kcalScore + proteinScore * 0.8 + fatScore * 0.2 + proteinDensityShortfall;
 }
 
+function scoreComponentReadiness(recipe, data) {
+  const invalidBaseQuantityCount = (recipe.ingredients || []).filter((ingredient) => {
+    const metadata = data.ingredientScalingMetadata.get(Number(ingredient.ingredient_id));
+    return metadata && !withinBounds(Number(ingredient.quantity_g), metadata);
+  }).length;
+  const scalableResolved = (recipe.ingredients || []).filter((ingredient) => {
+    const role = resolveComponentRole(ingredient);
+    return ![COMPONENT_ROLES.SPICE_AROMATIC, COMPONENT_ROLES.FIXED_OTHER, COMPONENT_ROLES.UNRESOLVED].includes(role);
+  });
+  if (scalableResolved.length === 0) return 2 + invalidBaseQuantityCount * 10;
+  const missing = scalableResolved.filter((ingredient) => (
+    !data.ingredientNutritionReferences.get(normalizeKey(ingredient.ingredient_name))
+  )).length;
+  return (missing / scalableResolved.length) + invalidBaseQuantityCount * 10;
+}
+
 function scoreDayCombination(items, profile, testDate) {
   const target = {
     kcal: profile.target_kcal,
@@ -421,15 +487,27 @@ function scoreDayCombination(items, profile, testDate) {
   };
 }
 
-function rankedCandidatesForEvent(recipes, event, profile, reviewLookup, events) {
+function rankedCandidatesForEvent(recipes, event, profile, reviewLookup, events, data) {
   const eligible = eligibleRecipesForEvent(recipes, event, profile, new Set());
   const target = mealMacroTarget(profile, events);
   return eligible
-    .map((recipe) => ({
-      recipe,
-      nutrition: reviewLookup.get(recipe.authoring_key),
-      score: scoreRecipe(recipe, reviewLookup.get(recipe.authoring_key), target),
-    }))
+    .map((recipe) => {
+      const baseMeal = buildBaseMeal(event, recipe, reviewLookup);
+      const componentMeal = componentScaleMeal(baseMeal, profile, events, event.event_index, data);
+      const macros = componentMeal.scaled_macros || baseMeal.scaled_macros;
+      const nutrition = {
+        calories: macros.kcal,
+        protein_g: macros.protein_g,
+        carbs_g: macros.carbs_g,
+        fat_g: macros.fat_g,
+        fiber_g: macros.fiber_g,
+      };
+      return {
+        recipe,
+        nutrition,
+        score: scoreRecipe(recipe, nutrition, target) + scoreComponentReadiness(recipe, data),
+      };
+    })
     .sort((a, b) => a.score - b.score || a.recipe.authoring_key.localeCompare(b.recipe.authoring_key))
     .map((candidate, index) => ({
       ...candidate,
@@ -437,8 +515,8 @@ function rankedCandidatesForEvent(recipes, event, profile, reviewLookup, events)
     }));
 }
 
-function selectRecipesForDay(recipes, events, profile, reviewLookup, testDate) {
-  const rankedByEvent = events.map((event) => rankedCandidatesForEvent(recipes, event, profile, reviewLookup, events));
+function selectRecipesForDay(recipes, events, profile, reviewLookup, testDate, data) {
+  const rankedByEvent = events.map((event) => rankedCandidatesForEvent(recipes, event, profile, reviewLookup, events, data));
   const zeroIndex = rankedByEvent.findIndex((ranked) => ranked.length === 0);
   if (zeroIndex !== -1) {
     const event = events[zeroIndex];
@@ -549,6 +627,118 @@ function nutritionTotals(meals) {
   }, { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 });
 }
 
+function macroFromIngredientNutrition(nutrition, quantityG) {
+  const factor = quantityG / 100;
+  return {
+    kcal: parseNumber(nutrition?.calories) * factor,
+    protein_g: parseNumber(nutrition?.protein_g) * factor,
+    carbs_g: parseNumber(nutrition?.carbs_g) * factor,
+    fat_g: parseNumber(nutrition?.fat_g) * factor,
+    fiber_g: parseNumber(nutrition?.fiber_g) * factor,
+  };
+}
+
+function addMacros(left, right) {
+  return {
+    kcal: left.kcal + right.kcal,
+    protein_g: left.protein_g + right.protein_g,
+    carbs_g: left.carbs_g + right.carbs_g,
+    fat_g: left.fat_g + right.fat_g,
+    fiber_g: left.fiber_g + right.fiber_g,
+  };
+}
+
+function subtractMacros(left, right) {
+  return {
+    kcal: left.kcal - right.kcal,
+    protein_g: left.protein_g - right.protein_g,
+    carbs_g: left.carbs_g - right.carbs_g,
+    fat_g: left.fat_g - right.fat_g,
+    fiber_g: left.fiber_g - right.fiber_g,
+  };
+}
+
+function scoreMealMacros(macros, target) {
+  const kcalDeviation = Math.abs(macros.kcal - target.kcal) / Math.max(target.kcal, 1);
+  const proteinShortfall = Math.max(0, target.protein_g - macros.protein_g) / Math.max(target.protein_g, 1);
+  const proteinExcess = Math.max(0, macros.protein_g - target.protein_g * 1.15) / Math.max(target.protein_g, 1);
+  const fatShortfall = Math.max(0, target.fat_g * 0.75 - macros.fat_g) / Math.max(target.fat_g, 1);
+  const fatDeviation = Math.abs(macros.fat_g - target.fat_g) / Math.max(target.fat_g, 1);
+  const carbDeviation = Math.abs(macros.carbs_g - target.carbs_g) / Math.max(target.carbs_g, 1);
+  return kcalDeviation * 10
+    + proteinShortfall * 8
+    + proteinExcess * 5
+    + fatShortfall * 2
+    + fatDeviation * 0.5
+    + carbDeviation;
+}
+
+function scoreDayMacros(macros, target) {
+  const kcalDeviation = Math.abs(macros.kcal - target.kcal) / Math.max(target.kcal, 1);
+  const proteinShortfall = Math.max(0, target.protein_g - macros.protein_g) / Math.max(target.protein_g, 1);
+  const proteinExcess = Math.max(0, macros.protein_g - target.protein_g * 1.15) / Math.max(target.protein_g, 1);
+  const fatShortfall = Math.max(0, target.fat_g * 0.85 - macros.fat_g) / Math.max(target.fat_g, 1);
+  const fatDeviation = Math.abs(macros.fat_g - target.fat_g) / Math.max(target.fat_g, 1);
+  const carbDeviation = Math.abs(macros.carbs_g - target.carbs_g) / Math.max(target.carbs_g, 1);
+  return kcalDeviation * 12
+    + proteinShortfall * 28
+    + proteinExcess * 8
+    + fatShortfall * 3
+    + fatDeviation
+    + carbDeviation;
+}
+
+function withinBounds(quantity, metadata) {
+  if (!metadata) return false;
+  return quantity >= Number(metadata.serving_min_g) && quantity <= Number(metadata.serving_max_g);
+}
+
+function followsStepFromBase(quantity, baseQuantity, metadata) {
+  const step = Number(metadata?.serving_step_g || 0);
+  if (!Number.isFinite(step) || step <= 0) return false;
+  const increments = (quantity - baseQuantity) / step;
+  return Math.abs(increments - Math.round(increments)) < 1e-9;
+}
+
+function candidateQuantities(baseQuantity, metadata, componentRole, hasNutrition) {
+  if (!metadata || !hasNutrition) return [baseQuantity];
+  if ([COMPONENT_ROLES.SPICE_AROMATIC, COMPONENT_ROLES.FIXED_OTHER, COMPONENT_ROLES.UNRESOLVED].includes(componentRole)) {
+    return [baseQuantity];
+  }
+  if (!withinBounds(baseQuantity, metadata)) return [];
+
+  const step = Number(metadata.serving_step_g);
+  const min = Number(metadata.serving_min_g);
+  const max = Number(metadata.serving_max_g);
+  const offsetsByRole = {
+    [COMPONENT_ROLES.STARCHY_CARB]: [-4, -3, -2, -1, 0, 1, 2, 3, 4],
+    [COMPONENT_ROLES.PROTEIN]: [-3, -2, -1, 0, 1, 2, 3],
+    [COMPONENT_ROLES.ADDED_FAT]: [-2, -1, 0, 1, 2],
+    [COMPONENT_ROLES.FRUIT]: [-2, -1, 0, 1, 2],
+    [COMPONENT_ROLES.VEGETABLE]: [-1, 0, 1],
+  };
+  const offsets = offsetsByRole[componentRole] || [0];
+  const candidates = new Set([baseQuantity, min, max]);
+  offsets.forEach((offset) => {
+    const next = baseQuantity + offset * step;
+    if (next >= min && next <= max) candidates.add(next);
+  });
+  return [...candidates]
+    .filter((quantity) => withinBounds(quantity, metadata))
+    .filter((quantity) => followsStepFromBase(quantity, baseQuantity, metadata))
+    .sort((a, b) => Math.abs(a - baseQuantity) - Math.abs(b - baseQuantity) || a - b);
+}
+
+function mealTargetForIndex(profile, meals, index) {
+  const count = Math.max(meals.length, 1);
+  return {
+    kcal: profile.target_kcal / count,
+    protein_g: profile.target_macros.protein_g / count,
+    carbs_g: profile.target_macros.carbs_g / count,
+    fat_g: profile.target_macros.fat_g / count,
+  };
+}
+
 function buildBaseMeal(event, recipe, reviewLookup, selectionRankWithinEvent = null) {
   const nutrition = reviewLookup.get(recipe.authoring_key);
   return {
@@ -578,6 +768,7 @@ function buildBaseMeal(event, recipe, reviewLookup, selectionRankWithinEvent = n
       ingredient_id: ingredient.ingredient_id,
       ingredient_name: ingredient.ingredient_name,
       measurement_basis: ingredient.measurement_basis,
+      culinary_role: ingredient.culinary_role || null,
       base_quantity_g: ingredient.quantity_g,
       scaled_quantity_g: ingredient.quantity_g,
     })),
@@ -586,32 +777,245 @@ function buildBaseMeal(event, recipe, reviewLookup, selectionRankWithinEvent = n
   };
 }
 
-function applyUniformDayScaling(meals, profile, warnings) {
-  const baseTotals = nutritionTotals(meals);
-  if (baseTotals.kcal <= 0) {
-    warnings.push('SCALING_SKIPPED_BASE_CALORIES_ZERO');
-    return meals;
+function enrichIngredientsForComponentScaling(meal, data) {
+  return meal.ingredients.map((ingredient) => {
+    const metadata = data.ingredientScalingMetadata.get(Number(ingredient.ingredient_id)) || null;
+    const nutrition = data.ingredientNutritionReferences.get(normalizeKey(ingredient.ingredient_name)) || null;
+    const componentRole = resolveComponentRole(ingredient);
+    return {
+      ...ingredient,
+      selected_quantity_g: ingredient.selected_quantity_g ?? ingredient.base_quantity_g,
+      scaled_quantity_g: ingredient.selected_quantity_g ?? ingredient.scaled_quantity_g ?? ingredient.base_quantity_g,
+      component_role: componentRole,
+      serving_min_g: metadata ? metadata.serving_min_g : null,
+      serving_max_g: metadata ? metadata.serving_max_g : null,
+      serving_step_g: metadata ? metadata.serving_step_g : null,
+      nutrition_reference_available: Boolean(nutrition),
+      component_scaling_locked: !nutrition || [COMPONENT_ROLES.SPICE_AROMATIC, COMPONENT_ROLES.FIXED_OTHER, COMPONENT_ROLES.UNRESOLVED].includes(componentRole),
+      _metadata: metadata,
+      _nutrition: nutrition,
+    };
+  });
+}
+
+function recomputeMealFromIngredientDeltas(baseMacros, ingredients) {
+  return ingredients.reduce((macros, ingredient) => {
+    if (!ingredient._nutrition) return macros;
+    const baseContribution = macroFromIngredientNutrition(ingredient._nutrition, ingredient.base_quantity_g);
+    const selectedContribution = macroFromIngredientNutrition(ingredient._nutrition, ingredient.selected_quantity_g);
+    return addMacros(subtractMacros(macros, baseContribution), selectedContribution);
+  }, { ...baseMacros });
+}
+
+function stripInternalIngredientFields(ingredient) {
+  const {
+    _metadata,
+    _nutrition,
+    ...publicIngredient
+  } = ingredient;
+  return publicIngredient;
+}
+
+function componentScaleMeal(meal, profile, meals, mealIndex, data) {
+  let ingredients = enrichIngredientsForComponentScaling(meal, data);
+  if (ingredients.some((ingredient) => ingredient._metadata === null)) {
+    return {
+      ...meal,
+      component_scaling_status: 'CONTROLLED_INFEASIBLE',
+      component_scaling_failures: ingredients
+        .filter((ingredient) => ingredient._metadata === null)
+        .map((ingredient) => ({
+          code: 'INGREDIENT_SCALING_METADATA_MISSING',
+          ingredient_id: ingredient.ingredient_id,
+          ingredient_name: ingredient.ingredient_name,
+        })),
+      ingredients: ingredients.map(stripInternalIngredientFields),
+    };
   }
 
-  const scaleFactor = profile.target_kcal / baseTotals.kcal;
-  warnings.push('LOCAL_UNIFORM_RECIPE_SCALING_ONLY');
-  warnings.push('SAFETY_GATE_INCOMPLETE');
+  const target = mealTargetForIndex(profile, meals, mealIndex);
+  let selectedMacros = {
+    kcal: meal.base_recipe_macros.kcal,
+    protein_g: meal.base_recipe_macros.protein_g,
+    carbs_g: meal.base_recipe_macros.carbs_g,
+    fat_g: meal.base_recipe_macros.fat_g,
+    fiber_g: meal.base_recipe_macros.fiber_g,
+  };
 
-  return meals.map((meal) => ({
+  // Bounded greedy search: each role is considered in professional priority order,
+  // candidates always include base/min/max and nearby step increments, and no
+  // ingredient can be added, removed, or moved outside its existing metadata bounds.
+  COMPONENT_ROLE_ORDER.forEach((role) => {
+    ingredients
+      .map((ingredient, index) => ({ ingredient, index }))
+      .filter(({ ingredient }) => ingredient.component_role === role && !ingredient.component_scaling_locked)
+      .forEach(({ ingredient, index }) => {
+        const candidates = candidateQuantities(
+          ingredient.base_quantity_g,
+          ingredient._metadata,
+          ingredient.component_role,
+          ingredient.nutrition_reference_available
+        );
+        if (candidates.length === 0) return;
+        let bestQuantity = ingredient.selected_quantity_g;
+        let bestMacros = selectedMacros;
+        let bestScore = scoreMealMacros(selectedMacros, target);
+        candidates.forEach((quantity) => {
+          const nextIngredients = ingredients.map((item, itemIndex) => (
+            itemIndex === index ? { ...item, selected_quantity_g: quantity, scaled_quantity_g: quantity } : item
+          ));
+          const nextMacros = recomputeMealFromIngredientDeltas(meal.base_recipe_macros, nextIngredients);
+          const nextScore = scoreMealMacros(nextMacros, target);
+          if (nextScore < bestScore - 1e-9) {
+            bestScore = nextScore;
+            bestQuantity = quantity;
+            bestMacros = nextMacros;
+          }
+        });
+        ingredients[index] = {
+          ...ingredients[index],
+          selected_quantity_g: bestQuantity,
+          scaled_quantity_g: bestQuantity,
+        };
+        selectedMacros = bestMacros;
+      });
+  });
+
+  const componentAdjustments = ingredients.filter((ingredient) => (
+    round(ingredient.selected_quantity_g, 4) !== round(ingredient.base_quantity_g, 4)
+  )).length;
+  const unresolvedComponentRoles = ingredients.filter((ingredient) => ingredient.component_role === COMPONENT_ROLES.UNRESOLVED).length;
+  const invalidBoundStepCount = ingredients.filter((ingredient) => {
+    if (!ingredient._metadata) return true;
+    if (!withinBounds(ingredient.selected_quantity_g, ingredient._metadata)) return true;
+    if (!followsStepFromBase(ingredient.selected_quantity_g, ingredient.base_quantity_g, ingredient._metadata)) return true;
+    return false;
+  }).length;
+
+  return {
     ...meal,
-    scale_factor: round(scaleFactor, 4),
+    scale_factor: null,
+    component_scaling_strategy: COMPONENT_SCALING_STRATEGY,
+    component_scaling_status: 'SUCCESS',
+    component_adjustment_count: componentAdjustments,
+    unresolved_component_role_count: unresolvedComponentRoles,
+    invalid_bound_step_count: invalidBoundStepCount,
     scaled_macros: {
-      kcal: round(meal.base_recipe_macros.kcal * scaleFactor),
-      protein_g: round(meal.base_recipe_macros.protein_g * scaleFactor),
-      carbs_g: round(meal.base_recipe_macros.carbs_g * scaleFactor),
-      fat_g: round(meal.base_recipe_macros.fat_g * scaleFactor),
-      fiber_g: round(meal.base_recipe_macros.fiber_g * scaleFactor),
+      kcal: round(selectedMacros.kcal),
+      protein_g: round(selectedMacros.protein_g),
+      carbs_g: round(selectedMacros.carbs_g),
+      fat_g: round(selectedMacros.fat_g),
+      fiber_g: round(selectedMacros.fiber_g),
     },
-    ingredients: meal.ingredients.map((ingredient) => ({
-      ...ingredient,
-      scaled_quantity_g: round(ingredient.base_quantity_g * scaleFactor),
-    })),
-  }));
+    ingredients: ingredients.map(stripInternalIngredientFields),
+  };
+}
+
+function prepareMealForDayPass(meal, data) {
+  return {
+    ...meal,
+    ingredients: enrichIngredientsForComponentScaling(meal, data),
+  };
+}
+
+function refreshMealMacros(meal) {
+  const selectedMacros = recomputeMealFromIngredientDeltas(meal.base_recipe_macros, meal.ingredients);
+  return {
+    ...meal,
+    scaled_macros: {
+      kcal: round(selectedMacros.kcal),
+      protein_g: round(selectedMacros.protein_g),
+      carbs_g: round(selectedMacros.carbs_g),
+      fat_g: round(selectedMacros.fat_g),
+      fiber_g: round(selectedMacros.fiber_g),
+    },
+  };
+}
+
+function componentOrderPenalty(role) {
+  if (role === COMPONENT_ROLES.STARCHY_CARB) return 0;
+  if (role === COMPONENT_ROLES.PROTEIN) return 0.0001;
+  if (role === COMPONENT_ROLES.ADDED_FAT) return 0.0005;
+  if (role === COMPONENT_ROLES.FRUIT) return 0.001;
+  if (role === COMPONENT_ROLES.VEGETABLE) return 0.01;
+  return 1;
+}
+
+function applyDayLevelComponentPass(meals, profile) {
+  const target = {
+    kcal: profile.target_kcal,
+    protein_g: profile.target_macros.protein_g,
+    carbs_g: profile.target_macros.carbs_g,
+    fat_g: profile.target_macros.fat_g,
+  };
+  let nextMeals = meals;
+  for (let iteration = 0; iteration < 200; iteration += 1) {
+    const currentTotals = nutritionTotals(nextMeals);
+    let bestScore = scoreDayMacros(currentTotals, target);
+    let bestMeals = nextMeals;
+
+    nextMeals.forEach((meal, mealIndex) => {
+      meal.ingredients.forEach((ingredient, ingredientIndex) => {
+        if (ingredient.component_scaling_locked) return;
+        const candidates = candidateQuantities(
+          ingredient.base_quantity_g,
+          ingredient._metadata,
+          ingredient.component_role,
+          ingredient.nutrition_reference_available
+        ).filter((quantity) => quantity !== ingredient.selected_quantity_g);
+        candidates.forEach((quantity) => {
+          const trialMeals = nextMeals.map((candidateMeal, candidateMealIndex) => {
+            if (candidateMealIndex !== mealIndex) return candidateMeal;
+            const trialIngredients = candidateMeal.ingredients.map((candidateIngredient, candidateIngredientIndex) => (
+              candidateIngredientIndex === ingredientIndex
+                ? { ...candidateIngredient, selected_quantity_g: quantity, scaled_quantity_g: quantity }
+                : candidateIngredient
+            ));
+            return refreshMealMacros({ ...candidateMeal, ingredients: trialIngredients });
+          });
+          const trialScore = scoreDayMacros(nutritionTotals(trialMeals), target)
+            + componentOrderPenalty(ingredient.component_role);
+          if (trialScore < bestScore - 1e-9) {
+            bestScore = trialScore;
+            bestMeals = trialMeals;
+          }
+        });
+      });
+    });
+
+    if (bestMeals === nextMeals) break;
+    nextMeals = bestMeals;
+  }
+  return nextMeals;
+}
+
+function applyComponentAwareDayScaling(meals, profile, warnings, data) {
+  warnings.push('LOCAL_COMPONENT_AWARE_RECIPE_SCALING_V1');
+  warnings.push('SAFETY_GATE_INCOMPLETE');
+  const perMealScaled = meals.map((meal, index) => componentScaleMeal(meal, profile, meals, index, data));
+  const prepared = perMealScaled.map((meal) => (
+    meal.component_scaling_status === 'SUCCESS' ? prepareMealForDayPass(meal, data) : meal
+  ));
+  return applyDayLevelComponentPass(prepared, profile).map((meal) => {
+    if (meal.component_scaling_status !== 'SUCCESS') return meal;
+    const componentAdjustments = meal.ingredients.filter((ingredient) => (
+      round(ingredient.selected_quantity_g, 4) !== round(ingredient.base_quantity_g, 4)
+    )).length;
+    const unresolvedComponentRoles = meal.ingredients.filter((ingredient) => ingredient.component_role === COMPONENT_ROLES.UNRESOLVED).length;
+    const invalidBoundStepCount = meal.ingredients.filter((ingredient) => {
+      if (!ingredient._metadata) return true;
+      if (!withinBounds(ingredient.selected_quantity_g, ingredient._metadata)) return true;
+      if (!followsStepFromBase(ingredient.selected_quantity_g, ingredient.base_quantity_g, ingredient._metadata)) return true;
+      return false;
+    }).length;
+    return {
+      ...meal,
+      component_adjustment_count: componentAdjustments,
+      unresolved_component_role_count: unresolvedComponentRoles,
+      invalid_bound_step_count: invalidBoundStepCount,
+      ingredients: meal.ingredients.map(stripInternalIngredientFields),
+    };
+  });
 }
 
 function recipeEligibleForAssignedEvent(meal, recipesByKey) {
@@ -664,7 +1068,7 @@ function generateDraftRecipeDay(profileInput, options = {}) {
   failures.push(...structureFailures);
 
   const daySelection = failures.length === 0
-    ? selectRecipesForDay(data.recipes, events, profile, data.reviewLookup, testDate)
+    ? selectRecipesForDay(data.recipes, events, profile, data.reviewLookup, testDate, data)
     : {
       selected: [],
       diagnostics: {
@@ -682,7 +1086,16 @@ function generateDraftRecipeDay(profileInput, options = {}) {
     buildBaseMeal(selection.event, selection.recipe, data.reviewLookup, selection.selection_rank_within_event)
   ));
 
-  const scaledMeals = applyUniformDayScaling(meals, profile, warnings);
+  const scaledMeals = applyComponentAwareDayScaling(meals, profile, warnings, data);
+  scaledMeals
+    .filter((meal) => meal.component_scaling_status === 'CONTROLLED_INFEASIBLE')
+    .forEach((meal) => {
+      failures.push({
+        code: BLOCKING_ERROR_CODES.componentScalingInfeasible,
+        authoring_key: meal.authoring_key,
+        failures: meal.component_scaling_failures || [],
+      });
+    });
   const actualRaw = nutritionTotals(scaledMeals);
   const actual = {
     kcal: round(actualRaw.kcal),
@@ -724,8 +1137,7 @@ function generateDraftRecipeDay(profileInput, options = {}) {
       allergen_review_pending: true,
       clinical_gate_pending: true,
       dietary_style_structured_gate_pending: true,
-      step_aware_scaling_not_implemented: true,
-      bounds_aware_scaling_not_implemented: true,
+      component_aware_scaling_v1_runtime_only: true,
       weekly_variety_not_tested: true,
       production_runtime_not_tested: true,
       runtime_configuration_gate_not_tested: true,
@@ -765,6 +1177,7 @@ module.exports = {
   BEAM_WIDTH,
   ENGINE_PATH,
   EVENT_SHORTLIST_LIMIT,
+  COMPONENT_SCALING_STRATEGY,
   RECIPE_FILES,
   RECIPE_SOURCE,
   SELECTION_STRATEGY,
